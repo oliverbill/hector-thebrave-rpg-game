@@ -25,6 +25,7 @@ Abra `castelo.html` em qualquer navegador (ou adicione à tela inicial do iPhone
 - **Rolar** — botão direito ou Espaço (invulnerabilidade breve, cooldown de 1s)
 - **Trapo** (cura +40) — botão menor ou Q (2 iniciais; há mais 4 escondidos nas catacumbas)
 - **Ação contextual** (FORÇAR / FALAR / ABRIR) — botão âmbar ou E
+- **Golpe de facão** (depois de achá-lo nas catacumbas) — botão ⚔ ou F; o facão fica na mão do jogador e abre um popup de Inventário ao ser pego
 
 ## Arquitetura: MOTOR × CONTEÚDO
 

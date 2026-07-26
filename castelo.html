@@ -116,6 +116,28 @@
   #bolsa .item .tag{position:absolute; top:2px; right:3px; font-family:var(--mono); font-size:7px;
     color:var(--brasa); letter-spacing:.1em;}
   #bolsa .vazio{color:#5a5266; font-size:11px; font-style:italic;}
+
+  /* popup de item novo no inventário */
+  #popupInv{position:absolute; inset:0; z-index:7; background:rgba(8,5,14,.8);
+    display:flex; align-items:center; justify-content:center; padding:30px;}
+  #popupInv.oculto{display:none;}
+  #invCard{background:#150f22; border:1px solid var(--brasa); border-radius:4px;
+    padding:22px 28px 24px; text-align:center; max-width:320px;
+    box-shadow:0 0 44px #e8a13c44; animation:invEntra .25s ease-out;}
+  @keyframes invEntra{ from{transform:scale(.85); opacity:0;} to{transform:scale(1); opacity:1;} }
+  #invCard h2{font-family:var(--mono); font-weight:400; color:var(--brasa); letter-spacing:.28em;
+    text-transform:uppercase; font-size:12px; margin-bottom:16px;}
+  #invImg{width:120px; height:150px; object-fit:contain; image-rendering:pixelated;
+    display:block; margin:0 auto 12px; filter:drop-shadow(0 0 14px #e8a13c66);}
+  #invNome{font-family:var(--serifa); font-size:19px; color:var(--osso); margin-bottom:8px;}
+  #invDesc{font-size:11px; color:#9d94ad; line-height:1.7; margin-bottom:18px;}
+  #invFechar{background:transparent; border:1px solid var(--brasa); color:var(--brasa);
+    font-family:var(--mono); font-size:12px; letter-spacing:.2em; padding:11px 26px; text-transform:uppercase;}
+  #invFechar:active{background:var(--brasa); color:#120d06;}
+
+  #btnGolpe{width:70px; height:70px; border-color:#8a4a3a; background:#241410d9; display:none;}
+  #btnGolpe.on{display:flex;}
+  #btnGolpe .n{color:#e8b48a;}
 </style>
 </head>
 <body>
@@ -139,6 +161,7 @@
   <div id="acoes">
     <div class="circ" id="btnPocao"><span class="n" id="sPocoes">2</span><span>TRAPO</span></div>
     <div class="circ" id="btnDash"><span class="n">»</span><span>ROLAR</span><div class="carga" id="cargaDash"></div></div>
+    <div class="circ" id="btnGolpe"><span class="n">⚔</span><span>GOLPE</span><div class="carga" id="cargaGolpe"></div></div>
     <div class="circ" id="btnAcao"><span class="n" id="acaoIcone">✥</span><span id="acaoRotulo">FORÇAR</span></div>
   </div>
 
@@ -159,6 +182,16 @@
     <div id="bolsa">
       <div class="rot">Bolsa</div>
       <div class="itens" id="bolsaItens"></div>
+    </div>
+  </div>
+
+  <div id="popupInv" class="oculto">
+    <div id="invCard">
+      <h2>Inventário</h2>
+      <img id="invImg" alt="">
+      <div id="invNome"></div>
+      <div id="invDesc"></div>
+      <button id="invFechar">Empunhar</button>
     </div>
   </div>
 </div>
@@ -859,7 +892,7 @@ function escolherVoz(voz){
 let audioFala = null;
 /* a música abaixa enquanto um preso fala, para a voz ficar na frente */
 function abaixarBgm(falando){
-  if(bgmAudio){ try{ bgmAudio.volume = falando ? .1 : .35; }catch(e){} }
+  if(bgmAudio){ try{ fundirBgm(falando ? BGM_VOL_FALA : bgmVolAtual); }catch(e){} }
 }
 function falarVoz(texto, voz, url){
   try{
@@ -1341,7 +1374,7 @@ function avancarDialogo(){
     atualizarHUD();
   }
   dialogo = null; pausado = false;
-  fundirBgm(BGM_VOL);
+  fundirBgm(bgmVolAtual);
   calarVoz();
   el('dialogo').classList.remove('on');
 }
@@ -1353,7 +1386,7 @@ function vozChefe(nome){
   let a = vozesChefe[nome];
   if(!a){
     a = new Audio('audio/' + nome + '.mp3');
-    a.volume = .9;
+    a.volume = 1;
     vozesChefe[nome] = a;
   }
   if(!a.paused && !a.ended) return;
@@ -1596,6 +1629,7 @@ window.addEventListener('keydown', e => {
   if(e.key === ' '){ e.preventDefault(); if(dialogo) avancarDialogo(); else rolar(); }
   if(e.key.toLowerCase() === 'e'){ if(dialogo) avancarDialogo(); else agir(); }
   if(e.key.toLowerCase() === 'q') usarTrapo();
+  if(e.key.toLowerCase() === 'f' && piso.acaoGolpe) piso.acaoGolpe();
 });
 window.addEventListener('keyup', e => { teclas[e.key.toLowerCase()] = false; });
 function lerEntrada(){
@@ -1797,8 +1831,14 @@ function imgRetrato(url){
 function desenharInformante(p, ox, oy){
   const px = ox + p.x*tam, py = oy + p.y*tam, r = tam*.26;
   const resp = Math.sin(p.fase*1.6)*tam*.03;
+  /* loop de GIF: o tempo anda em quadros discretos (8 por segundo), repetindo o ciclo */
+  const q = Math.floor(p.fase*8)/8;
+  const gira  = Math.sin(q*2.2)*.05;               // balança de um lado ao outro
+  const sopro = 1 + Math.sin(q*3.4)*.022;          // respiração (estica/encolhe)
+  const quica = Math.abs(Math.sin(q*2.2))*tam*.05; // quique no ritmo do balanço
   ctx.fillStyle = 'rgba(0,0,0,.35)';
-  ctx.beginPath(); ctx.ellipse(px, py + r*1.2, r*.9, r*.3, 0, 0, TAU); ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(px, py + r*1.2, r*(.9 + quica/tam*.8), r*.3, 0, 0, TAU); ctx.fill();
   const foto = p.retrato && imgRetrato(p.retrato);
   let topo = py - r*2.0;
   if(foto && foto.complete && foto.naturalWidth > 0){
@@ -1806,9 +1846,14 @@ function desenharInformante(p, ox, oy){
     const alt = imgJogador.naturalWidth > 0
       ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2;
     const lar = foto.naturalWidth*(alt/foto.naturalHeight);
-    topo = py + r*1.2 - alt + resp;
-    ctx.drawImage(foto, px - lar/2, topo, lar, alt);
-    topo -= tam*.18;
+    const base = py + r*1.2 - quica;
+    ctx.save();
+    ctx.translate(px, base);         // gira e respira apoiado nos pés
+    ctx.rotate(gira);
+    ctx.scale(2 - sopro, sopro);
+    ctx.drawImage(foto, -lar/2, -alt, lar, alt);
+    ctx.restore();
+    topo = base - alt*sopro - tam*.18;
   }else{
     ctx.fillStyle = p.cor;
     ctx.beginPath();
@@ -1823,7 +1868,7 @@ function desenharInformante(p, ox, oy){
     ctx.beginPath(); ctx.arc(px + r*.16, py - r*.8 + resp, Math.max(1, r*.09), 0, TAU); ctx.fill();
   }
   if(!p.feito && (!piso.falarLiberado || piso.falarLiberado())){
-    const bob = Math.sin(p.fase*3)*tam*.08;
+    const bob = Math.sin(q*3)*tam*.08;
     const hy = topo + bob - tam*.18;
     const hg = ctx.createRadialGradient(px, hy, 0, px, hy, Math.max(1, tam*.6));
     hg.addColorStop(0, 'rgba(232,161,60,.5)'); hg.addColorStop(1, 'rgba(232,161,60,0)');
@@ -1960,6 +2005,21 @@ function renderizarBolsa(mostrar){
   }).join('');
   setTimeout(() => inventario.forEach(i => i.novo = false), 3500);
 }
+/* popup de item novo: pausa o jogo e mostra a conquista */
+function abrirPopupInventario(item){
+  pausado = true;
+  calarVoz();
+  el('invImg').src = item.img || '';
+  el('invNome').textContent = item.nome;
+  el('invDesc').textContent = item.desc || '';
+  el('popupInv').classList.remove('oculto');
+}
+function fecharPopupInventario(){
+  el('popupInv').classList.add('oculto');
+  if(!dialogo) pausado = false;
+}
+el('invFechar').addEventListener('click', fecharPopupInventario);
+
 function iniciarPiso(p){
   piso = p;
   etapa = 'inicio'; vivo = true; pausado = false;
@@ -1988,19 +2048,20 @@ el('comecar').addEventListener('click', () => {
 });
 
 /* ---------- música de fundo (loop por piso) ---------- */
-let bgmAudio = null, bgmSrc = null, bgmFade = null;
+let bgmAudio = null, bgmSrc = null, bgmFade = null, bgmVolAtual = .35;
 const BGM_VOL = .35, BGM_VOL_FALA = .08;
-function tocarBgm(url){
+function tocarBgm(url, vol){
+  bgmVolAtual = vol != null ? vol : BGM_VOL;
   if(!url){ pararBgm(); return; }
   if(bgmSrc === url && bgmAudio){
-    try{ bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
+    try{ bgmAudio.volume = dialogo ? BGM_VOL_FALA : bgmVolAtual; bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
     return;
   }
   pararBgm();
   try{
     bgmAudio = new Audio(url);
     bgmAudio.loop = true;
-    bgmAudio.volume = dialogo ? BGM_VOL_FALA : BGM_VOL;
+    bgmAudio.volume = dialogo ? BGM_VOL_FALA : bgmVolAtual;
     bgmSrc = url;
     bgmAudio.play().catch(() => {});
   }catch(e){}
@@ -2025,6 +2086,9 @@ el('btnDash').addEventListener('touchstart', e => { e.preventDefault(); rolar();
 el('btnDash').addEventListener('mousedown', rolar);
 el('btnPocao').addEventListener('touchstart', e => { e.preventDefault(); usarTrapo(); }, {passive:false});
 el('btnPocao').addEventListener('mousedown', usarTrapo);
+const golpeManual = () => { if(piso.acaoGolpe) piso.acaoGolpe(); };
+el('btnGolpe').addEventListener('touchstart', e => { e.preventDefault(); golpeManual(); }, {passive:false});
+el('btnGolpe').addEventListener('mousedown', golpeManual);
 
 let ultimo = performance.now(), falhou = false;
 function quadro(t){
@@ -2299,6 +2363,42 @@ function desenharFacao(ox, oy){
   }
 }
 
+/* --- facão empunhado: desenho na mão e golpe manual --- */
+function desenharFacaoNaMao(px, py, r){
+  if(!(imgFacao.complete && imgFacao.naturalWidth > 0)) return;
+  const p = jog.golpe > 0 ? jog.golpe/.2 : 0;              // 1 -> 0 durante o golpe
+  const ang = jog.angulo + (p > 0 ? -.9 + (1-p)*1.9 : .62); // varre o arco; em repouso fica ao lado
+  const mx = px + Math.cos(ang)*r*1.25, my = py + Math.sin(ang)*r*1.25 - r*.1;
+  const alt = tam*.85, lar = imgFacao.naturalWidth*(alt/imgFacao.naturalHeight);
+  ctx.save();
+  ctx.translate(mx, my);
+  ctx.rotate(ang + Math.PI/2 + (p > 0 ? 0 : .5));          // lâmina aponta para onde o golpe vai
+  ctx.drawImage(imgFacao, -lar/2, -alt*.92, lar, alt);     // pivô no cabo
+  ctx.restore();
+}
+function golpeDeFacao(){
+  if(!vivo || pausado || !jog.temFacao || jog.recarga > 0) return;
+  jog.recarga = .36; jog.golpe = .2;
+  sEspadaCorta();
+  if(chefe && chefe.hp > 0){
+    const d = Math.hypot(chefe.x-jog.x, chefe.y-jog.y) - chefe.raio;
+    if(d < 1.2){ golpear(chefe); return; }   // golpear cuida de dano, fraquezas e sons
+  }
+  ratazanas.forEach(rz => {
+    if(rz.hp <= 0) return;
+    const dx = rz.x-jog.x, dy = rz.y-jog.y, d = Math.hypot(dx,dy);
+    if(d > 1.3) return;
+    jog.angulo = Math.atan2(dy, dx);
+    const dano = Math.round((jog.dano + irand(5))*2);
+    rz.hp -= dano; rz.flash = 1;
+    rz.vx += dx/Math.max(.01,d)*6; rz.vy += dy/Math.max(.01,d)*6;
+    sCorte();
+    flutuar(rz.x, rz.y-.4, dano, '#ffd88a');
+    for(let k=0;k<8;k++) faisca(rz.x, rz.y, '#a34040', .12);
+    if(rz.hp <= 0){ sRato(); for(let k=0;k<12;k++) faisca(rz.x, rz.y, '#6d5a60', .14); }
+  });
+}
+
 /* --- ratazanas --- */
 function desenharRatazanas(ox, oy){
   ratazanas.forEach(rz => {
@@ -2360,7 +2460,7 @@ function abrirPortao(){
   for(let x=9;x<=11;x++) mapa[idx(x,CAL.PORTAO.y)] = CHAO;
   desenharCache();
   sPortao(); tremor = 8;
-  tocarBgm('audio/portao-gladiador.mp3');
+  tocarBgm('audio/portao-gladiador.mp3', .16);   // mais baixa: as vozes da luta ficam na frente
   avisar('O portão sobe', 'a areia está do outro lado');
 }
 function fecharPortao(){
@@ -2727,6 +2827,8 @@ const PISO_CALABOUCO = {
                  fase:Math.random()*TAU, morde:0, flash:0, guincho:0}));
     facao = livre(41.5, 54.5) || livre(22.5, 53.5);
     if(facao) facao.pego = false;
+    jog.temFacao = inventario.some(i => i.id === 'facao-catacumbas');
+    if(facao && jog.temFacao) facao.pego = true;   // já é seu: não reaparece no chão
     etapa = 'preso';
     jog.lento = true; jog.dashOff = true;
     avisar('Acorrentado', 'force até arrebentar');
@@ -2817,14 +2919,22 @@ const PISO_CALABOUCO = {
     });
     if(facao && !facao.pego && Math.hypot(facao.x-jog.x, facao.y-jog.y) < .7){
       facao.pego = true;
-      adicionarAoInventario({
+      const item = {
         id:'facao-catacumbas', nome:'Facão das Catacumbas', img:'img/facao.png',
-        desc:'Lâmina curva achada entre os ossos — abate ratazanas em um golpe.'
-      });
+        desc:'Lâmina curva achada entre os ossos. Fica na sua mão a partir de agora — use o botão GOLPE (ou F) para atacar.'
+      };
+      adicionarAoInventario(item);
+      jog.temFacao = true;
       sEspadaAcerta();
       flutuar(facao.x, facao.y-.4, '+ facão', '#e8a13c');
       for(let k=0;k<14;k++) faisca(facao.x, facao.y, '#e8a13c', .14);
-      avisar('Um facão entre os ossos', 'guardado na bolsa — as ratazanas que se cuidem');
+      abrirPopupInventario(item);
+    }
+    const bg = el('btnGolpe');
+    bg.classList.toggle('on', !!jog.temFacao);
+    if(jog.temFacao){
+      bg.classList.toggle('off', jog.recarga > 0);
+      el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
     }
     if(!vistoCata && jog.y > 34.5){
       vistoCata = true;
@@ -2844,6 +2954,7 @@ const PISO_CALABOUCO = {
     if(i.tipo === 'forcar') forcarCorrente();
     else if(i.tipo === 'portao') abrirPortao();
   },
+  acaoGolpe: golpeDeFacao,
   desenharCenario(ox, oy){
     desenharEspinhos(ox, oy);
     desenharTrapos(ox, oy);
@@ -2869,6 +2980,7 @@ const PISO_CALABOUCO = {
             r*.22, i%2 ? r*.09 : r*.16, r*.055, .6);
       }
     }
+    if(jog.temFacao) desenharFacaoNaMao(px, py, r);
   }
 };
 
