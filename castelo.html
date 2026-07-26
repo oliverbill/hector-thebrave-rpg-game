@@ -205,6 +205,7 @@ let particulas = [], riscos = [], destrocos = [];
 
 const tela = el('tela'), ctx = tela.getContext('2d');
 const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('2d');
+const imgJogador = new Image(); imgJogador.src = 'img/jogador.png';
 const luzCv = document.createElement('canvas'), lcx = luzCv.getContext('2d');
 
 /* ---------- som (síntese realista via Web Audio) ---------- */
@@ -1667,23 +1668,36 @@ function desenharJogador(ox, oy){
     ctx.arc(px, py, tam*.8, jog.angulo - 1.0 + (1-p)*1.5, jog.angulo + .5 + (1-p)*1.5);
     ctx.stroke();
   }
-  const bal = Math.sin(jog.passo*3.2)*tam*.05;
-  ctx.fillStyle = jog.flash > .5 ? '#fff' : '#6c5a48';
-  ctx.beginPath();
-  ctx.moveTo(px, py - r*1.0);
-  ctx.quadraticCurveTo(px + r*1.2, py + r*.4, px + r*.8 + bal, py + r*1.0);
-  ctx.lineTo(px - r*.8 + bal, py + r*1.0);
-  ctx.quadraticCurveTo(px - r*1.2, py + r*.4, px, py - r*1.0);
-  ctx.fill();
-  ctx.fillStyle = jog.flash > .5 ? '#fff' : '#caa98a';
-  ctx.beginPath(); ctx.arc(px, py - r*.6, r*.46, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#2a2028';
-  const ex = Math.cos(jog.angulo)*r*.16, ey = Math.sin(jog.angulo)*r*.16;
-  ctx.beginPath(); ctx.arc(px + ex - r*.14, py - r*.62 + ey, Math.max(1, r*.08), 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + ex + r*.14, py - r*.62 + ey, Math.max(1, r*.08), 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#8a8296'; ctx.lineWidth = Math.max(1.5, r*.13);
-  ctx.beginPath(); ctx.arc(px - r*.55, py + r*.1, r*.16, 0, TAU); ctx.stroke();
-  ctx.beginPath(); ctx.arc(px + r*.55, py + r*.1, r*.16, 0, TAU); ctx.stroke();
+  const bal = Math.sin(jog.passo*3.2)*tam*.04;
+  if(imgJogador.complete && imgJogador.naturalWidth > 0){
+    const sW = tam*.9, sH = sW * (imgJogador.naturalHeight/imgJogador.naturalWidth);
+    const dx = px - sW/2, dy = py + r*.95 - sH;
+    ctx.save();
+    const virado = Math.cos(jog.angulo) < 0;
+    if(virado){ ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
+    if(jog.flash > .5){
+      ctx.filter = 'brightness(2.4) saturate(0)';
+      ctx.drawImage(imgJogador, dx, dy + bal, sW, sH);
+      ctx.filter = 'none';
+    } else {
+      ctx.drawImage(imgJogador, dx, dy + bal, sW, sH);
+    }
+    ctx.restore();
+  } else {
+    ctx.fillStyle = jog.flash > .5 ? '#fff' : '#6c5a48';
+    ctx.beginPath();
+    ctx.moveTo(px, py - r*1.0);
+    ctx.quadraticCurveTo(px + r*1.2, py + r*.4, px + r*.8 + bal, py + r*1.0);
+    ctx.lineTo(px - r*.8 + bal, py + r*1.0);
+    ctx.quadraticCurveTo(px - r*1.2, py + r*.4, px, py - r*1.0);
+    ctx.fill();
+    ctx.fillStyle = jog.flash > .5 ? '#fff' : '#caa98a';
+    ctx.beginPath(); ctx.arc(px, py - r*.6, r*.46, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2a2028';
+    const ex = Math.cos(jog.angulo)*r*.16, ey = Math.sin(jog.angulo)*r*.16;
+    ctx.beginPath(); ctx.arc(px + ex - r*.14, py - r*.62 + ey, Math.max(1, r*.08), 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(px + ex + r*.14, py - r*.62 + ey, Math.max(1, r*.08), 0, TAU); ctx.fill();
+  }
   if(piso.desenharNoJogador) piso.desenharNoJogador(px, py, r, bal);
   ctx.globalAlpha = 1;
 }
