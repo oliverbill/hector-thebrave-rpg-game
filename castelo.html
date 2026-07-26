@@ -785,6 +785,27 @@ function sFala(){
 /* dano genérico — usa dor do jogador */
 function sDano(){ sDorJog(); }
 
+/* efeitos em arquivo (mp3): clones para sobrepor golpes rápidos; cai na síntese se falhar */
+const sfxCache = {};
+function tocarSfx(url, vol, reserva){
+  try{
+    if(!sfxCache[url]){ sfxCache[url] = new Audio(url); sfxCache[url].preload = 'auto'; }
+    const a = sfxCache[url].cloneNode();
+    a.volume = vol != null ? vol : 1;
+    const p = a.play();
+    if(p && p.catch) p.catch(() => { if(reserva) reserva(); });
+  }catch(e){ if(reserva) reserva(); }
+}
+const SFX_CLASH = 'audio/espada-clash.mp3';   // as lâminas se encontram
+const SFX_CORTE = 'audio/espada-corte.mp3';   // a lâmina acha carne
+let ultimoClash = -9;
+function sClash(){
+  if(tempo - ultimoClash < .15) return;       // os dois lados detectam o mesmo choque
+  ultimoClash = tempo;
+  tocarSfx(SFX_CLASH, .9, sEspadaAcerta);
+}
+function sCorte(){ tocarSfx(SFX_CORTE, .9, sEspadaAcerta); }
+
 /* vitória: acorde suave com harmônico (sem beeps) */
 function sVitoria(){
   if(!iniAudio()) return;
@@ -1375,7 +1396,11 @@ function golpeChefe(dano, alcance){
   vozChefe('gladiador-golpe');
   sEspadaCorta();
   for(let k=0;k<6;k++) faisca(chefe.x + Math.cos(chefe.angulo)*1.4, chefe.y + Math.sin(chefe.angulo)*1.4, '#e0d0b0', .12);
-  if(d < alcance && dif < 1.25){ sEspadaAcerta(); machucar(dano); jog.vx += Math.cos(ang)*10; jog.vy += Math.sin(ang)*10; }
+  if(d < alcance && dif < 1.25){
+    if(jog.golpe > 0) sClash();    // o jogador também estava golpeando: aço contra aço
+    else sCorte();                 // o gemido vem do machucar (sDorJog)
+    machucar(dano); jog.vx += Math.cos(ang)*10; jog.vy += Math.sin(ang)*10;
+  }
 }
 function atualizarChefe(dt){
   const c = chefe, f = c.cfg;
@@ -1481,8 +1506,12 @@ function golpear(alvo){
   dano = Math.round(dano);
 
   alvo.hp -= dano; alvo.flash = 1;
-  sEspadaAcerta();
-  if(Math.random() < .6) setTimeout(() => vozChefe('gladiador-levagolpe'), 45);
+  if(alvo.golpeAnim > 0){          // os dois golpearam ao mesmo tempo: aço contra aço
+    sClash();
+  } else {
+    sCorte();
+    setTimeout(() => vozChefe('gladiador-levagolpe'), 60);   // o gemido acompanha o corte
+  }
   flutuar(alvo.x, alvo.y-.5, dano, dano > jog.dano*1.8 ? '#ffd88a' : '#f4e2b4');
   faisca(alvo.x - dx/d*alvo.raio, alvo.y - dy/d*alvo.raio, '#f0c070', .12);
   tremor = 4;
