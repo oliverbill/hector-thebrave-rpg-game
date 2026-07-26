@@ -199,51 +199,585 @@ const tela = el('tela'), ctx = tela.getContext('2d');
 const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('2d');
 const luzCv = document.createElement('canvas'), lcx = luzCv.getContext('2d');
 
-/* ---------- som ---------- */
+/* ---------- som (síntese realista via Web Audio) ---------- */
 let ac = null, somOk = true;
-function beep(f,d,tipo,v){
-  if(!somOk) return;
-  try{
-    if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)();
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.type = tipo||'square';
-    o.frequency.setValueAtTime(f, ac.currentTime);
-    if(arguments.length > 4 && arguments[4]) o.frequency.exponentialRampToValueAtTime(arguments[4], ac.currentTime + d);
-    g.gain.setValueAtTime(v||.05, ac.currentTime);
-    g.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d);
-    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
-  }catch(e){ somOk = false; }
-}
-const sGolpe   = () => beep(190 + irand(70), .06, 'square', .04);
-const sPassoChefe   = () => { beep(46,.09,'sawtooth',.055); beep(120,.03,'square',.02); };
-const sEspadaCorta  = () => beep(850 + irand(350), .05, 'sawtooth', .022);            // lâmina cortando o ar
-const sEspadaAcerta = () => { beep(130,.07,'square',.06); setTimeout(()=>beep(70,.12,'sawtooth',.05),15); }; // impacto surdo
-const sDorChefe     = () => { beep(95,.16,'sawtooth',.085); setTimeout(()=>beep(68,.2,'sawtooth',.06),70); }; // grunhido grave
-const sDorJog       = () => { beep(340,.08,'square',.07); setTimeout(()=>beep(210,.14,'sawtooth',.06),60); };  // grito curto, agudo
-const sFerro   = () => { beep(2400,.03,'square',.05); setTimeout(()=>beep(1300,.09,'triangle',.04),30); };
-const sDano    = () => beep(85, .2, 'sawtooth', .075);
-const sRolar   = () => beep(560, .1, 'sine', .045);
-const sFala    = () => beep(330 + irand(80), .04, 'sine', .03);
-const sVitoria = () => [392,523,659,784].forEach((f,i)=>setTimeout(()=>beep(f,.22,'triangle',.055), i*160));
-const sTarefa  = () => [523,659,784].forEach((f,i)=>setTimeout(()=>beep(f,.13,'triangle',.06), i*95));
-const sRanger  = t => {                                        // t: tensão 0..1
-  const b = 78 + t*55;
-  beep(b*1.7, .3, 'sawtooth', .05, b);
-  setTimeout(() => beep(880 + t*520, .13, 'square', .016, 600), 40);
-};
-const sPortao  = () => [140,110,90].forEach((f,i)=>setTimeout(()=>beep(f,.4,'sawtooth',.06), i*180));
+let masterGain = null, reverbConv = null, reverbGain = null;
+let bufRuido = null, bufBrown = null;
 
-/* voz: síntese de fala do aparelho, offline */
+function iniAudio(){
+  if(ac) return true;
+  if(!somOk) return false;
+  try{
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    masterGain = ac.createGain(); masterGain.gain.value = 0.85;
+    masterGain.connect(ac.destination);
+    // reverb curto de câmara de pedra
+    reverbConv = ac.createConvolver();
+    reverbConv.buffer = criarImpulso(1.6, 2.6);
+    reverbGain = ac.createGain(); reverbGain.gain.value = 0.22;
+    reverbConv.connect(reverbGain); reverbGain.connect(masterGain);
+    bufRuido = criarRuido(2, false);
+    bufBrown = criarRuido(2, true);
+    return true;
+  }catch(e){ somOk = false; return false; }
+}
+function criarImpulso(dur, decai){
+  const sr = ac.sampleRate, n = Math.floor(sr*dur);
+  const b = ac.createBuffer(2, n, sr);
+  for(let c=0;c<2;c++){ const d = b.getChannelData(c);
+    for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/n, decai); }
+  return b;
+}
+function criarRuido(sec, brown){
+  const sr = ac.sampleRate, n = Math.floor(sr*sec);
+  const b = ac.createBuffer(1, n, sr), d = b.getChannelData(0);
+  if(brown){ let u = 0; for(let i=0;i<n;i++){ u = (u + .02*(Math.random()*2-1))/1.02; d[i] = u*3.5; } }
+  else for(let i=0;i<n;i++) d[i] = Math.random()*2 - 1;
+  return b;
+}
+function ruido(brown){
+  const s = ac.createBufferSource();
+  s.buffer = brown ? bufBrown : bufRuido; s.loop = true;
+  s.playbackRate.value = 0.85 + Math.random()*0.3;
+  return s;
+}
+function filtro(tipo, freq, q, ganho){
+  const f = ac.createBiquadFilter();
+  f.type = tipo; f.frequency.value = freq;
+  if(q != null) f.Q.value = q;
+  if(ganho != null) f.gain.value = ganho;
+  return f;
+}
+function envelope(pico, ataque, decai, sustain, liberacao){
+  const g = ac.createGain(), t = ac.currentTime;
+  const p = Math.max(0.0001, pico);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(p, t + ataque);
+  const s = Math.max(0.0001, p * (sustain != null ? sustain : 0.3));
+  g.gain.exponentialRampToValueAtTime(s, t + ataque + decai);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + ataque + decai + liberacao);
+  return g;
+}
+function saida(node, molhado){
+  const w = molhado != null ? molhado : 0.35;
+  const dry = ac.createGain(); dry.gain.value = 1 - w*0.4;
+  const wet = ac.createGain(); wet.gain.value = w;
+  node.connect(dry); dry.connect(masterGain);
+  node.connect(wet); wet.connect(reverbConv);
+}
+function parar(no, dur){ try{ no.start(); no.stop(ac.currentTime + dur + 0.06); }catch(e){} }
+function pararEm(no, t0, dur){ try{ no.start(t0); no.stop(t0 + dur + 0.06); }catch(e){} }
+
+/* passo pesado: bota + armadura em pedra */
+function sPassoChefe(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(true), lp = filtro('lowpass', 260, 1.5);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.45, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.19);
+  n.connect(lp); lp.connect(g); saida(g, 0.45);
+  parar(n, 0.22);
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(78, t);
+  o.frequency.exponentialRampToValueAtTime(38, t + 0.12);
+  const og = ac.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.42, t + 0.006);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.17);
+  o.connect(og); saida(og, 0.35);
+  parar(o, 0.2);
+  if(Math.random() < 0.75){
+    const nn = ruido(), bp = filtro('bandpass', 3000 + Math.random()*1500, 9);
+    const gg = ac.createGain();
+    const tt = t + 0.02 + Math.random()*0.03;
+    gg.gain.setValueAtTime(0.0001, tt);
+    gg.gain.exponentialRampToValueAtTime(0.06, tt + 0.004);
+    gg.gain.exponentialRampToValueAtTime(0.0001, tt + 0.11);
+    nn.connect(bp); bp.connect(gg); saida(gg, 0.55);
+    pararEm(nn, tt, 0.14);
+  }
+}
+
+/* espada cortando o ar: whoosh varrendo o espectro */
+function sEspadaCorta(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 600, 2.2);
+  bp.frequency.setValueAtTime(500, t);
+  bp.frequency.exponentialRampToValueAtTime(2600, t + 0.09);
+  bp.frequency.exponentialRampToValueAtTime(900, t + 0.24);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.16, t + 0.045);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+  n.connect(bp); bp.connect(g); saida(g, 0.45);
+  parar(n, 0.3);
+}
+
+/* impacto de espada: clang metálico + ressonância + baque de corpo */
+function sEspadaAcerta(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 2600, 5);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.32, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.03, t + 0.06);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+  n.connect(bp); bp.connect(g); saida(g, 0.75);
+  parar(n, 0.4);
+  const o = ac.createOscillator();
+  o.type = 'triangle';
+  o.frequency.setValueAtTime(720, t);
+  o.frequency.exponentialRampToValueAtTime(310, t + 0.32);
+  const og = ac.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.11, t + 0.004);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+  o.connect(og); saida(og, 0.7);
+  parar(o, 0.36);
+  const o2 = ac.createOscillator();
+  o2.type = 'sine';
+  o2.frequency.setValueAtTime(115, t);
+  o2.frequency.exponentialRampToValueAtTime(52, t + 0.16);
+  const o2g = ac.createGain();
+  o2g.gain.setValueAtTime(0.0001, t);
+  o2g.gain.exponentialRampToValueAtTime(0.36, t + 0.008);
+  o2g.gain.exponentialRampToValueAtTime(0.0001, t + 0.21);
+  o2.connect(o2g); saida(o2g, 0.28);
+  parar(o2, 0.24);
+}
+
+/* vocalização humana por formantes (base para grunhidos, gritos, tosse) */
+function vocalizar(cfg){
+  const t = ac.currentTime, dur = cfg.dur;
+  const o = ac.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(cfg.f0, t);
+  if(cfg.subida) o.frequency.exponentialRampToValueAtTime(cfg.f0 * cfg.subida, t + dur*0.15);
+  o.frequency.exponentialRampToValueAtTime(cfg.f0 * (cfg.queda || 0.6), t + dur);
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = cfg.vibrato || 5;
+  const lfoG = ac.createGain(); lfoG.gain.value = cfg.f0 * 0.05;
+  lfo.connect(lfoG); lfoG.connect(o.frequency);
+  parar(lfo, dur);
+  const mix = ac.createGain(); mix.gain.value = 1;
+  (cfg.formantes || [[600,1],[1200,0.6],[2500,0.4]]).forEach(([f, amp]) => {
+    const bp = filtro('bandpass', f, 12);
+    const g = ac.createGain(); g.gain.value = amp;
+    o.connect(bp); bp.connect(g); g.connect(mix);
+  });
+  const nz = ruido(), nzBp = filtro('bandpass', 1800, 1.4);
+  const nzG = ac.createGain(); nzG.gain.value = (cfg.rugosidade || 0.4) * 0.11;
+  nz.connect(nzBp); nzBp.connect(nzG); nzG.connect(mix);
+  parar(nz, dur);
+  const env = ac.createGain();
+  env.gain.setValueAtTime(0.0001, t);
+  env.gain.exponentialRampToValueAtTime(cfg.ganho, t + (cfg.ataque || 0.04));
+  env.gain.setValueAtTime(cfg.ganho, t + dur*0.55);
+  env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  mix.connect(env);
+  saida(env, cfg.molhado != null ? cfg.molhado : 0.5);
+  parar(o, dur);
+}
+
+/* grunhido de dor do Gladiador — grave, gutural */
+function sDorChefe(){
+  if(!iniAudio()) return;
+  vocalizar({f0:92, dur:0.55, formantes:[[500,1],[1060,0.6],[2400,0.3]],
+             vibrato:5.5, rugosidade:0.65, ganho:0.28, subida:1.12, queda:0.55});
+}
+
+/* grito de dor do jogador — mais jovem, sobe rápido */
+function sDorJog(){
+  if(!iniAudio()) return;
+  vocalizar({f0:215, dur:0.4, formantes:[[730,1],[1220,0.72],[2650,0.5]],
+             vibrato:9, rugosidade:0.35, ganho:0.24, subida:1.35, queda:0.7, ataque:0.025});
+}
+
+/* tosse do idoso — burst ruidoso + vocal curta */
+function sTosse(){
+  if(!iniAudio()) return;
+  const n = 1 + Math.floor(Math.random()*2);
+  for(let i=0;i<n;i++){
+    setTimeout(() => {
+      const t = ac.currentTime;
+      const nz = ruido(), bp = filtro('bandpass', 650 + Math.random()*250, 3.2);
+      const g = ac.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.32, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.19);
+      nz.connect(bp); bp.connect(g); saida(g, 0.55);
+      parar(nz, 0.22);
+      vocalizar({f0:98 + Math.random()*20, dur:0.2,
+                 formantes:[[540,0.9],[1420,0.5]],
+                 vibrato:3, rugosidade:0.95, ganho:0.14, queda:0.5, molhado:0.4});
+    }, i * (260 + Math.random()*80));
+  }
+}
+
+/* elos de ferro batendo/tinindo */
+function sFerro(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const golpes = 2 + Math.floor(Math.random()*3);
+  for(let i=0;i<golpes;i++){
+    const tt = t + i*(0.022 + Math.random()*0.03);
+    const n = ruido(), bp = filtro('bandpass', 2700 + Math.random()*1600, 14);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, tt);
+    g.gain.exponentialRampToValueAtTime(0.17, tt + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.0001, tt + 0.13);
+    n.connect(bp); bp.connect(g); saida(g, 0.8);
+    pararEm(n, tt, 0.16);
+    const o = ac.createOscillator();
+    o.type = 'triangle';
+    const f = 1700 + Math.random()*1500;
+    o.frequency.setValueAtTime(f, tt);
+    o.frequency.exponentialRampToValueAtTime(f*0.7, tt + 0.22);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.0001, tt);
+    og.gain.exponentialRampToValueAtTime(0.05, tt + 0.004);
+    og.gain.exponentialRampToValueAtTime(0.0001, tt + 0.26);
+    o.connect(og); saida(og, 0.8);
+    pararEm(o, tt, 0.3);
+  }
+}
+
+/* corrente esticando: metal geme sob tensão */
+function sRanger(t01){
+  if(!iniAudio()) return;
+  const t = ac.currentTime, dur = 0.5 + t01*0.4;
+  const o = ac.createOscillator();
+  o.type = 'sawtooth';
+  const base = 82 + t01*40;
+  o.frequency.setValueAtTime(base, t);
+  o.frequency.linearRampToValueAtTime(base*(1.18 + t01*0.28), t + dur*0.6);
+  o.frequency.linearRampToValueAtTime(base*0.88, t + dur);
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 4.5 + t01*4;
+  const lfoG = ac.createGain(); lfoG.gain.value = base*0.18;
+  lfo.connect(lfoG); lfoG.connect(o.frequency);
+  const hp = filtro('highpass', 130, 0.6);
+  const peak = filtro('peaking', 780 + t01*450, 6, 12);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.075, t + 0.05);
+  g.gain.linearRampToValueAtTime(0.05, t + dur*0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(hp); hp.connect(peak); peak.connect(g); saida(g, 0.55);
+  parar(o, dur); parar(lfo, dur);
+  const n = ruido(), nbp = filtro('bandpass', 1600 + t01*900, 3.5);
+  const ng = ac.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(0.045 + t01*0.05, t + 0.03);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + dur*0.9);
+  n.connect(nbp); nbp.connect(ng); saida(ng, 0.4);
+  parar(n, dur);
+}
+
+/* corrente estoura: snap violento */
+function sQuebrarCorrente(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 2200, 6);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.42, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.05, t + 0.08);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+  n.connect(bp); bp.connect(g); saida(g, 0.85);
+  parar(n, 0.55);
+  const o = ac.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(160, t);
+  o.frequency.exponentialRampToValueAtTime(45, t + 0.4);
+  const og = ac.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.22, t + 0.005);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+  o.connect(og); saida(og, 0.6);
+  parar(o, 0.5);
+  // elos caindo depois
+  setTimeout(sFerro, 90);
+  setTimeout(sFerro, 260);
+}
+
+/* portão pesado: fricção prolongada em trilhos + baque final */
+function sPortao(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime, dur = 1.2;
+  const n = ruido(true), lp = filtro('lowpass', 320, 1.1);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.28, t + 0.15);
+  g.gain.linearRampToValueAtTime(0.18, t + dur*0.7);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  n.connect(lp); lp.connect(g); saida(g, 0.55);
+  parar(n, dur);
+  const o = ac.createOscillator();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(82, t);
+  o.frequency.linearRampToValueAtTime(56, t + dur);
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 6.5;
+  const lfoG = ac.createGain(); lfoG.gain.value = 9;
+  lfo.connect(lfoG); lfoG.connect(o.frequency);
+  const peak = filtro('peaking', 420, 4, 12);
+  const og = ac.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.09, t + 0.1);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(peak); peak.connect(og); saida(og, 0.5);
+  parar(o, dur); parar(lfo, dur);
+  setTimeout(() => {
+    const tt = ac.currentTime;
+    const oo = ac.createOscillator();
+    oo.type = 'sine';
+    oo.frequency.setValueAtTime(62, tt);
+    oo.frequency.exponentialRampToValueAtTime(36, tt + 0.28);
+    const gg = ac.createGain();
+    gg.gain.setValueAtTime(0.0001, tt);
+    gg.gain.exponentialRampToValueAtTime(0.5, tt + 0.008);
+    gg.gain.exponentialRampToValueAtTime(0.0001, tt + 0.38);
+    oo.connect(gg); saida(gg, 0.55);
+    parar(oo, 0.4);
+  }, dur*1000);
+}
+
+/* portão travado: baque abafado + rangido curto */
+function sPortaoTravado(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(90, t);
+  o.frequency.exponentialRampToValueAtTime(52, t + 0.2);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.28, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+  o.connect(g); saida(g, 0.6);
+  parar(o, 0.3);
+  const n = ruido(), bp = filtro('bandpass', 1500, 3);
+  const ng = ac.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(0.05, t + 0.02);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+  n.connect(bp); bp.connect(ng); saida(ng, 0.5);
+  parar(n, 0.2);
+}
+
+/* golpe do jogador — swing rápido de lâmina */
+function sGolpe(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 500, 2);
+  bp.frequency.setValueAtTime(500, t);
+  bp.frequency.exponentialRampToValueAtTime(1700, t + 0.07);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.11, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+  n.connect(bp); bp.connect(g); saida(g, 0.3);
+  parar(n, 0.16);
+}
+
+/* escudo do Gladiador batendo no chão — thud metálico + terra */
+function sEscudoBate(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(true), lp = filtro('lowpass', 180, 1.3);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.55, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+  n.connect(lp); lp.connect(g); saida(g, 0.4);
+  parar(n, 0.32);
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(65, t);
+  o.frequency.exponentialRampToValueAtTime(32, t + 0.22);
+  const og = ac.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.5, t + 0.008);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  o.connect(og); saida(og, 0.4);
+  parar(o, 0.34);
+  const n2 = ruido(), bp = filtro('bandpass', 2200, 8);
+  const g2 = ac.createGain();
+  g2.gain.setValueAtTime(0.0001, t);
+  g2.gain.exponentialRampToValueAtTime(0.15, t + 0.003);
+  g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+  n2.connect(bp); bp.connect(g2); saida(g2, 0.7);
+  parar(n2, 0.15);
+}
+
+/* rugido/grito da investida do Gladiador */
+function sInvestida(){
+  if(!iniAudio()) return;
+  vocalizar({f0:78, dur:0.55, formantes:[[440,1],[900,0.55],[1900,0.28]],
+             vibrato:3.5, rugosidade:0.85, ganho:0.22, subida:1.4, queda:1.05, ataque:0.06, molhado:0.55});
+}
+
+/* Gladiador choca com a parede — colisão pesada com armadura */
+function sBaterParede(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(true), lp = filtro('lowpass', 220, 1.2);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.6, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.05, t + 0.15);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+  n.connect(lp); lp.connect(g); saida(g, 0.55);
+  parar(n, 0.65);
+  const o = ac.createOscillator();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(58, t);
+  o.frequency.exponentialRampToValueAtTime(28, t + 0.45);
+  const og = ac.createGain();
+  og.gain.setValueAtTime(0.0001, t);
+  og.gain.exponentialRampToValueAtTime(0.55, t + 0.008);
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+  o.connect(og); saida(og, 0.55);
+  parar(o, 0.6);
+  // armadura e escudo se sacudindo
+  for(let i=0;i<4;i++) setTimeout(sFerro, 60 + i*140);
+  setTimeout(() => vocalizar({f0:88, dur:0.35, formantes:[[520,0.9],[1200,0.5]],
+    vibrato:5, rugosidade:0.8, ganho:0.18, queda:0.5}), 120);
+}
+
+/* rolagem/esquiva — atrito de tecido e couro no chão */
+function sRolar(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 700, 1.6);
+  bp.frequency.setValueAtTime(500, t);
+  bp.frequency.exponentialRampToValueAtTime(1400, t + 0.12);
+  bp.frequency.exponentialRampToValueAtTime(600, t + 0.28);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.09, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+  n.connect(bp); bp.connect(g); saida(g, 0.3);
+  parar(n, 0.32);
+}
+
+/* trapo/curativo — pano rasgando e presa suave */
+function sTrapo(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 1900, 2);
+  bp.frequency.setValueAtTime(2400, t);
+  bp.frequency.exponentialRampToValueAtTime(1300, t + 0.2);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.1, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+  n.connect(bp); bp.connect(g); saida(g, 0.35);
+  parar(n, 0.3);
+}
+
+/* morrer — grunhido longo + queda pesada */
+function sMorrer(){
+  if(!iniAudio()) return;
+  vocalizar({f0:170, dur:1.0, formantes:[[600,1],[1180,0.55],[2500,0.3]],
+             vibrato:5.5, rugosidade:0.7, ganho:0.26, subida:1.15, queda:0.35, molhado:0.55});
+  setTimeout(() => {
+    const t = ac.currentTime;
+    const n = ruido(true), lp = filtro('lowpass', 180, 1.3);
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.55, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    n.connect(lp); lp.connect(g); saida(g, 0.5);
+    parar(n, 0.45);
+  }, 550);
+}
+
+/* fala: leve sopro (sem tom, para não parecer beep) */
+function sFala(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 1300 + Math.random()*400, 5);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.045, t + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+  n.connect(bp); bp.connect(g); saida(g, 0.25);
+  parar(n, 0.08);
+}
+
+/* dano genérico — usa dor do jogador */
+function sDano(){ sDorJog(); }
+
+/* vitória: acorde suave com harmônico (sem beeps) */
+function sVitoria(){
+  if(!iniAudio()) return;
+  [220, 330, 440, 660].forEach((f, i) => setTimeout(() => {
+    const t = ac.currentTime;
+    const o1 = ac.createOscillator(); o1.type = 'triangle'; o1.frequency.value = f;
+    const o2 = ac.createOscillator(); o2.type = 'sine'; o2.frequency.value = f*2;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.08, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
+    o1.connect(g); o2.connect(g); saida(g, 0.7);
+    parar(o1, 1); parar(o2, 1);
+  }, i*180));
+}
+
+/* tarefa: pequeno duplo-clique tonal, curto */
+function sTarefa(){
+  if(!iniAudio()) return;
+  [660, 990].forEach((f, i) => setTimeout(() => {
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.055, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+    o.connect(g); saida(g, 0.5);
+    parar(o, 0.35);
+  }, i*90));
+}
+
+/* voz: síntese de fala do aparelho, com escolha por gênero/perfil */
+function escolherVoz(voz){
+  if(!window.speechSynthesis) return null;
+  const vs = speechSynthesis.getVoices();
+  if(!vs || !vs.length) return null;
+  const pt = vs.filter(v => v.lang && /^pt/i.test(v.lang));
+  const pool = pt.length ? pt : vs;
+  const rxFem = /luciana|helena|joana|paulina|maria|female|feminina|mulher|catarina|ines|in[eê]s/i;
+  const rxMas = /felipe|daniel|jorge|thiago|male|masculino|homem|joaquim|ricardo|diogo|eddy/i;
+  if(voz.genero === 'f'){
+    const f = pool.find(v => rxFem.test(v.name)); if(f) return f;
+    const nf = pool.find(v => !rxMas.test(v.name)); if(nf) return nf;
+  }
+  if(voz.genero === 'm'){
+    const m = pool.find(v => rxMas.test(v.name)); if(m) return m;
+    const nm = pool.find(v => !rxFem.test(v.name)); if(nm) return nm;
+  }
+  return pool[0];
+}
 function falarVoz(texto, voz){
   try{
     if(!somOk || !window.speechSynthesis) return;
     speechSynthesis.cancel();
+    if(voz.tosse){ sTosse(); setTimeout(() => _falarAgora(texto, voz), 620); }
+    else _falarAgora(texto, voz);
+  }catch(e){}
+}
+function _falarAgora(texto, voz){
+  try{
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = 'pt-BR'; u.pitch = voz.pitch; u.rate = voz.rate; u.volume = 1;
-    const vs = speechSynthesis.getVoices();
-    const v = vs.find(x => x.lang && x.lang.toLowerCase().indexOf('pt-br') === 0)
-           || vs.find(x => x.lang && x.lang.toLowerCase().indexOf('pt') === 0);
-    if(v) u.voice = v;
+    const v = escolherVoz(voz); if(v) u.voice = v;
     speechSynthesis.speak(u);
   }catch(e){}
 }
@@ -465,7 +999,7 @@ function dirLivre(c, ax, ay){
 }
 function bateEscudo(c){
   c.bateu++; c.escudoBate = .22;
-  beep(58, .22, 'sawtooth', .1); setTimeout(()=>beep(180,.05,'square',.05), 25);
+  sEscudoBate();
   tremor = 8;
   const ea = c.angulo + Math.PI/2.1;
   const bx = c.x + Math.cos(ea)*1.0, by = c.y + Math.sin(ea)*1.0 + .4;
@@ -533,7 +1067,7 @@ function atualizarChefe(dt){
       if(c.t <= 0){
         c.estado = 'investida'; c.t = f.investidaT; c.investindo = true; c.bateuParede = false;
         c.vx = Math.cos(c.mira)*f.investidaVel; c.vy = Math.sin(c.mira)*f.investidaVel;
-        beep(120,.25,'sawtooth',.06);
+        sInvestida();
       }
       break;
 
@@ -545,7 +1079,7 @@ function atualizarChefe(dt){
       if(d < c.raio + jog.raio + .3){ machucar(f.investidaDano); jog.vx += (dx/d)*14; jog.vy += (dy/d)*14; }
       if(c.bateuParede){
         c.estado = 'zonzo'; c.t = f.zonzoT; c.investindo = false; c.vx = c.vy = 0;
-        tremor = 16; beep(90,.4,'sawtooth',.08);
+        tremor = 16; sBaterParede();
         for(let k=0;k<18;k++) faisca(c.x, c.y, '#d8cdb8', .16);
       } else if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; c.investindo = false; }
       break;
@@ -611,7 +1145,7 @@ function venceu(){
 function morrer(){
   jog.hp = 0; vivo = false;
   for(let k=0;k<30;k++) faisca(jog.x, jog.y, '#c0455a', .16);
-  [220,170,130,90].forEach((f,i)=>setTimeout(()=>beep(f,.32,'sawtooth',.07), i*150));
+  sMorrer();
   setTimeout(() => mostrarVeu(piso.textos.derrota()), 1100);
 }
 function usarTrapo(){
@@ -620,7 +1154,7 @@ function usarTrapo(){
   jog.hp = Math.min(jog.hpMax, jog.hp + 40);
   flutuar(jog.x, jog.y, '+40', '#8fc48a');
   for(let k=0;k<12;k++) faisca(jog.x, jog.y, '#8fc48a', .09);
-  beep(540,.09,'sine',.06); setTimeout(()=>beep(820,.12,'sine',.05),80);
+  sTrapo();
   atualizarHUD();
 }
 function rolar(){
@@ -952,7 +1486,7 @@ function iniciarPiso(p){
   if(p.aoIniciar) p.aoIniciar();
 }
 el('comecar').addEventListener('click', () => {
-  beep(1,.01,'sine',.001);
+  iniAudio(); try{ if(ac && ac.state === 'suspended') ac.resume(); }catch(e){}
   try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
   iniciarPiso(PISOS[pisoAtual]);
 });
@@ -1032,14 +1566,14 @@ function forcarCorrente(){
     for(let k=0;k<26;k++) faisca(ancora.x, ancora.y, '#f0e2bc', .22);
     estilhacarElos(ancora.x, ancora.y, 7);
     tremor = 10;
-    beep(1800,.05,'square',.06); setTimeout(()=>beep(300,.35,'sawtooth',.06),60);
+    sQuebrarCorrente();
   }
 }
 function abrirPortao(){
   const sabidos = informantes.filter(p => p.feito).length;
   if(sabidos < informantes.length){
     const falta = informantes.length - sabidos;
-    beep(70, .18, 'sawtooth', .07);
+    sPortaoTravado();
     tremor = 4;
     avisar('O portão não cede',
       falta === 1 ? 'falta ouvir 1 preso' : 'faltam ouvir ' + falta + ' presos');
@@ -1307,21 +1841,21 @@ const PISO_CALABOUCO = {
     tarefaChefe:'t-chefe'
   },
   informantes:[
-    { nome:'O Velho', chave:'ritmo', cor:'#b9a98e', voz:{pitch:.55, rate:.82},
+    { nome:'O Velho', chave:'ritmo', cor:'#b9a98e', voz:{pitch:.5, rate:.78, genero:'m', tosse:true},
       x:CAL.CELAS[0]+1.5, y:3.65,
       falas:[
         'Você é o quinto este mês. Os outros quatro entraram gritando.',
         'O Gladiador bate três vezes. Sempre três. Ele aprendeu assim e nunca desaprendeu.',
         'Depois do terceiro, o braço dele cai. É curto, mas é ali que ele é gente como nós.'
       ], ganho:'Você vai enxergar quando ele ficar sem fôlego.' },
-    { nome:'A Ladra', chave:'flanco', cor:'#c98f9c', voz:{pitch:1.3, rate:1.04},
+    { nome:'A Ladra', chave:'flanco', cor:'#c98f9c', voz:{pitch:1.35, rate:1.08, genero:'f'},
       x:CAL.CELAS[1]+1.5, y:3.65,
       falas:[
         'Não me olhe assim. Eu roubei do templo, você provavelmente roubou pão.',
         'O elmo dele é bonito e é burro: cobre o olho esquerdo inteiro.',
         'Fique atrás dele. Pelas costas ele é só um homem grande e lento.'
       ], ganho:'Golpes pelas costas doem muito mais nele.' },
-    { nome:'O Ferreiro', chave:'investida', cor:'#9aa8b8', voz:{pitch:.75, rate:.9},
+    { nome:'O Ferreiro', chave:'investida', cor:'#9aa8b8', voz:{pitch:.72, rate:.88, genero:'m'},
       x:CAL.CELAS[2]+1.5, y:3.65,
       falas:[
         'Fui eu que fiz aquele escudo. Me arrependo todo dia.',
