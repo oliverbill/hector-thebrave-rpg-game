@@ -2634,6 +2634,11 @@ const PISO_CALABOUCO = {
     trapos.forEach(tp => {
       if(tp.pego || Math.hypot(tp.x-jog.x, tp.y-jog.y) > .6) return;
       tp.pego = true; jog.pocoes++;
+      const cura = Math.round(jog.hpMax*.15);
+      if(jog.hp < jog.hpMax){
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        flutuar(tp.x, tp.y-.6, '+' + cura, '#8fc48a');
+      }
       sTrapo();
       flutuar(tp.x, tp.y-.3, '+1 trapo', '#8fc48a');
       for(let k=0;k<10;k++) faisca(tp.x, tp.y, '#8fc48a', .09);
