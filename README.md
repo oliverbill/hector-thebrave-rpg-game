@@ -8,10 +8,10 @@ O jogo inteiro se passa num castelo medieval. **Cada fase é um piso do castelo*
 |---|---|---|
 | 1 | Calabouço | O Gladiador ✅ |
 | 2 | Cozinhas e adega | O Açougueiro |
-| 3 | Pátio de armas | O Capitão |
-| 4 | Salão de banquetes | O Chanceler |
-| 5 | Biblioteca do alquimista | O Alquimista |
-| 6 | Torre | O Rei |
+| 3 | Salas de Funeral | O Coveiro |
+| 4 | Lab do Alchimista | O Alquimista |
+| 5 | Dormitórios | O Zelador |
+| 6 | Torre | O Dragão |
 
 ## Jogar online
 

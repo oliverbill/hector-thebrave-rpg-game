@@ -127,8 +127,19 @@
   @keyframes invEntra{ from{transform:scale(.85); opacity:0;} to{transform:scale(1); opacity:1;} }
   #invCard h2{font-family:var(--mono); font-weight:400; color:var(--brasa); letter-spacing:.28em;
     text-transform:uppercase; font-size:12px; margin-bottom:16px;}
-  #invImg{width:120px; height:150px; object-fit:contain; image-rendering:pixelated;
-    display:block; margin:0 auto 12px; filter:drop-shadow(0 0 14px #e8a13c66);}
+  #invImg{width:160px; height:200px; object-fit:contain; image-rendering:pixelated;
+    display:block; margin:0 auto 12px; background:transparent; filter:drop-shadow(0 0 14px #e8a13c66);}
+  #invLista{display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:16px;}
+  #invLista .invTh{width:52px; height:66px; background:#1a1424; border:1px solid #3b2f4d;
+    border-radius:3px; position:relative; display:flex; align-items:center; justify-content:center;}
+  #invLista .invTh.sel{border-color:var(--brasa); box-shadow:0 0 10px #e8a13c55;}
+  #invLista .invTh img{max-width:44px; max-height:58px; object-fit:contain; image-rendering:pixelated;}
+  #invLista .invTh .tag{position:absolute; bottom:2px; left:0; right:0; font-family:var(--mono);
+    font-size:6px; letter-spacing:.08em; color:var(--brasa); text-align:center;}
+  #invBotoes{display:flex; gap:10px; justify-content:center;}
+  #invAcao{background:var(--brasa); border:1px solid var(--brasa); color:#120d06;
+    font-family:var(--mono); font-size:12px; letter-spacing:.2em; padding:11px 26px; text-transform:uppercase;}
+  #invAcao:active{background:transparent; color:var(--brasa);}
   #invNome{font-family:var(--serifa); font-size:19px; color:var(--osso); margin-bottom:8px;}
   #invDesc{font-size:11px; color:#9d94ad; line-height:1.7; margin-bottom:18px;}
   #invFechar{background:transparent; border:1px solid var(--brasa); color:var(--brasa);
@@ -138,6 +149,7 @@
   #btnGolpe{width:70px; height:70px; border-color:#8a4a3a; background:#241410d9; display:none;}
   #btnGolpe.on{display:flex;}
   #btnGolpe .n{color:#e8b48a;}
+  #btnBolsa{width:58px; height:58px;}
 </style>
 </head>
 <body>
@@ -159,6 +171,7 @@
   <div id="aviso"></div>
 
   <div id="acoes">
+    <div class="circ" id="btnBolsa"><span class="n">☰</span><span>BOLSA</span></div>
     <div class="circ" id="btnPocao"><span class="n" id="sPocoes">2</span><span>TRAPO</span></div>
     <div class="circ" id="btnDash"><span class="n">»</span><span>ROLAR</span><div class="carga" id="cargaDash"></div></div>
     <div class="circ" id="btnGolpe"><span class="n">⚔</span><span>GOLPE</span><div class="carga" id="cargaGolpe"></div></div>
@@ -191,7 +204,11 @@
       <img id="invImg" alt="">
       <div id="invNome"></div>
       <div id="invDesc"></div>
-      <button id="invFechar">Empunhar</button>
+      <div id="invLista"></div>
+      <div id="invBotoes">
+        <button id="invAcao">Pegar</button>
+        <button id="invFechar">Fechar</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1433,13 +1450,14 @@ function dirLivre(c, ax, ay){
   }
   return [ax, ay];
 }
-function bateEscudo(c){
+function bateEscudo(c){       // hoje é a corrente açoitando o chão antes da investida
   c.bateu++; c.escudoBate = .22;
   sEscudoBate();
+  sFerro();
   tremor = 8;
-  const ea = c.angulo + Math.PI/2.1;
-  const bx = c.x + Math.cos(ea)*1.0, by = c.y + Math.sin(ea)*1.0 + .4;
-  for(let k=0;k<8;k++) faisca(bx, by, '#cbb98e', .13);
+  const mira = c.mira != null ? c.mira : c.angulo;
+  const bx = c.x + Math.cos(mira)*1.5, by = c.y + Math.sin(mira)*1.5 + .5;
+  for(let k=0;k<10;k++) faisca(bx, by, '#cbb98e', .14);
 }
 function golpeChefe(dano, alcance){
   const dx = jog.x-chefe.x, dy = jog.y-chefe.y, d = Math.hypot(dx,dy);
@@ -1655,6 +1673,7 @@ window.addEventListener('keydown', e => {
   if(e.key.toLowerCase() === 'e'){ if(dialogo) avancarDialogo(); else agir(); }
   if(e.key.toLowerCase() === 'q') usarTrapo();
   if(e.key.toLowerCase() === 'f' && piso.acaoGolpe) piso.acaoGolpe();
+  if(e.key.toLowerCase() === 'i') abrirInventario();
 });
 window.addEventListener('keyup', e => { teclas[e.key.toLowerCase()] = false; });
 function lerEntrada(){
@@ -2030,21 +2049,76 @@ function renderizarBolsa(mostrar){
   }).join('');
   setTimeout(() => inventario.forEach(i => i.novo = false), 3500);
 }
-/* popup de item novo: pausa o jogo e mostra a conquista */
-function abrirPopupInventario(item, rotulo){
-  pausado = true;
-  calarVoz();
-  el('invImg').src = item.img || '';
+/* popup do inventário: modo conquista (um item) e modo bolsa (lista, escolher o que pegar) */
+let invSelecionado = null, invModoLista = false;
+function mostrarItemPopup(item){
+  const img = el('invImg');
+  img.style.display = item.img ? '' : 'none';
+  img.src = item.img || '';
   el('invNome').textContent = item.nome;
   el('invDesc').textContent = item.desc || '';
+}
+function abrirPopupInventario(item, rotulo){
+  invModoLista = false;
+  pausado = true;
+  calarVoz();
+  mostrarItemPopup(item);
+  el('invLista').innerHTML = '';
+  el('invAcao').style.display = 'none';
   el('invFechar').textContent = rotulo || 'Guardar';
   el('popupInv').classList.remove('oculto');
 }
+function abrirInventario(){
+  if(!jog || etapa === 'menu' || dialogo) return;
+  if(!el('popupInv').classList.contains('oculto')){ fecharPopupInventario(); return; }
+  invModoLista = true;
+  pausado = true;
+  calarVoz();
+  el('invFechar').textContent = 'Fechar';
+  renderizarListaInv();
+  el('popupInv').classList.remove('oculto');
+}
+function renderizarListaInv(){
+  const lista = el('invLista');
+  if(inventario.length === 0){
+    el('invImg').style.display = 'none';
+    el('invNome').textContent = 'Bolsa vazia';
+    el('invDesc').textContent = 'O que você achar pelo caminho aparece aqui.';
+    lista.innerHTML = '';
+    el('invAcao').style.display = 'none';
+    return;
+  }
+  if(!invSelecionado || !inventario.some(i => i.id === invSelecionado.id))
+    invSelecionado = inventario.find(i => i.id === jog.arma) || inventario[0];
+  mostrarItemPopup(invSelecionado);
+  lista.innerHTML = inventario.map(it =>
+    '<div class="invTh' + (invSelecionado.id === it.id ? ' sel' : '') + '" data-id="' + it.id + '">'
+    + (it.img ? '<img src="' + it.img + '" alt="">' : '')
+    + (jog.arma === it.id ? '<span class="tag">NA MÃO</span>' : '')
+    + '</div>').join('');
+  lista.querySelectorAll('.invTh').forEach(d => d.addEventListener('click', () => {
+    invSelecionado = inventario.find(i => i.id === d.dataset.id);
+    renderizarListaInv();
+  }));
+  const a = el('invAcao');
+  const empunhavel = piso.pegarItem && jog.arma !== invSelecionado.id;
+  a.style.display = empunhavel ? '' : 'none';
+  a.textContent = 'Pegar';
+}
+el('invAcao').addEventListener('click', () => {
+  if(invModoLista && invSelecionado && piso.pegarItem){
+    piso.pegarItem(invSelecionado);
+    renderizarListaInv();
+  }
+});
 function fecharPopupInventario(){
   el('popupInv').classList.add('oculto');
+  invModoLista = false;
   if(!dialogo) pausado = false;
 }
 el('invFechar').addEventListener('click', fecharPopupInventario);
+el('btnBolsa').addEventListener('touchstart', e => { e.preventDefault(); abrirInventario(); }, {passive:false});
+el('btnBolsa').addEventListener('mousedown', abrirInventario);
 
 function iniciarPiso(p){
   piso = p;
@@ -2393,9 +2467,19 @@ function desenharFacao(ox, oy){
   }
 }
 
-/* --- facão empunhado: desenho na mão e golpe manual --- */
-function desenharFacaoNaMao(px, py, r){
-  if(!(imgFacao.complete && imgFacao.naturalWidth > 0)) return;
+/* --- arma empunhada (facão ou machado): desenho na mão e golpe manual --- */
+const imgMachado = new Image(); imgMachado.src = 'img/machado.png';
+const ARMAS = {
+  // facão: cabo no topo da imagem, lâmina desce -> pivô perto do topo, gira ang - 90°
+  'facao-catacumbas':  {img: () => imgFacao,   alt:.85, rot:-Math.PI/2, pivo:.18},
+  // machado: cabeça no topo, cabo desce -> pivô perto da base do cabo, gira ang + 90°
+  'machado-gladiador': {img: () => imgMachado, alt:1.25, rot:Math.PI/2, pivo:.82}
+};
+function desenharArmaNaMao(px, py, r){
+  const cfgA = ARMAS[jog.arma];
+  if(!cfgA) return;
+  const im = cfgA.img();
+  if(!(im.complete && im.naturalWidth > 0)) return;
   const p = jog.golpe > 0 ? jog.golpe/.2 : 0;              // 1 -> 0 durante o golpe
   const ang = jog.angulo + (p > 0 ? -.9 + (1-p)*1.9 : .62); // varre o arco; em repouso fica ao lado
   // o cabo fica exatamente na mão direita do sprite (fim do braço, na linha do quadril),
@@ -2411,17 +2495,16 @@ function desenharFacaoNaMao(px, py, r){
   } else {
     mx = px + Math.cos(ang)*r*.5; my = py + Math.sin(ang)*r*.5 + r*.22;
   }
-  const alt = tam*.85, lar = imgFacao.naturalWidth*(alt/imgFacao.naturalHeight);
+  const alt = tam*cfgA.alt, lar = im.naturalWidth*(alt/im.naturalHeight);
   ctx.save();
   ctx.translate(mx, my);
-  // na imagem o cabo fica no topo e a lâmina desce: girando ang - 90° a lâmina aponta
-  // para fora (na direção do golpe), nunca para o jogador
-  ctx.rotate(ang - Math.PI/2 + (p > 0 ? 0 : .35));
-  ctx.drawImage(imgFacao, -lar/2, -alt*.18, lar, alt);     // pivô na empunhadura, junto à mão
+  // a rotação leva a parte "de ataque" da imagem para fora, na direção do golpe
+  ctx.rotate(ang + cfgA.rot + (p > 0 ? 0 : .35));
+  ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);     // pivô na empunhadura, junto à mão
   ctx.restore();
 }
-function golpeDeFacao(){
-  if(!vivo || pausado || !jog.temFacao || jog.recarga > 0) return;
+function golpeDeArma(){
+  if(!vivo || pausado || !jog.arma || jog.recarga > 0) return;
   jog.recarga = .36; jog.golpe = .2;
   sEspadaCorta();
   if(chefe && chefe.hp > 0){
@@ -2588,11 +2671,14 @@ function desenharBarraForca(ox, oy){
 }
 
 /* --- o Gladiador: números e desenho --- */
+const imgGladiador = new Image(); imgGladiador.src = 'img/gladiador.png';
 function desenharGladiador(c, ox, oy){
   const px = ox + c.x*tam, py = oy + c.y*tam, r = c.raio*tam;
+  const f = c.cfg;
 
+  // linha telegrafada da investida
   if(c.estado === 'preparo' && intel.investida){
-    const p = 1 - c.t/c.cfg.preparoT;
+    const p = 1 - c.t/f.preparoT;
     ctx.strokeStyle = 'rgba(226,74,74,' + (.18 + p*.5) + ')';
     ctx.lineWidth = tam*.55;
     ctx.beginPath();
@@ -2601,119 +2687,86 @@ function desenharGladiador(c, ox, oy){
     ctx.stroke();
   }
 
+  // sombra
   ctx.fillStyle = 'rgba(0,0,0,.42)';
   ctx.beginPath(); ctx.ellipse(px, py + r*.92, r*1.0, r*.34, 0, 0, TAU); ctx.fill();
 
-  const bal = c.estado === 'aproxima' ? Math.sin(c.pisada*7)*r*.06 : 0;
-  const zon = c.estado === 'zonzo' ? Math.sin(tempo*9)*r*.12 : 0;
-  const exausto = c.estado === 'exausto';
-  const resp = exausto ? Math.sin(tempo*8)*r*.06 : Math.sin(tempo*2.1)*r*.02;
-  const X = px + zon, Y = py + bal + (exausto ? r*.13 : 0);
-  const flash = c.flash > .5;
+  const exausto = c.estado === 'exausto', zonzo = c.estado === 'zonzo';
+  const golpe = c.golpeAnim > 0 ? c.golpeAnim/.22 : 0;   // 1 -> 0 durante o golpe de espada
+  const flip = Math.cos(c.angulo) > 0;                   // a arte olha para a esquerda
 
-  ctx.fillStyle = flash ? '#fff' : '#7c5a44';
-  ctx.fillRect(X - r*.46, Y + r*.35, r*.34, r*.55);
-  ctx.fillRect(X + r*.12, Y + r*.35, r*.34, r*.55);
-  ctx.fillStyle = flash ? '#fff' : '#a99f8e';
-  ctx.fillRect(X - r*.46, Y + r*.6, r*.34, r*.3);
-  ctx.fillRect(X + r*.12, Y + r*.6, r*.34, r*.3);
+  // de joelhos: ao levar golpe (flash), zonzo e quando fica ofegante
+  let ajoelha = 0;
+  if(c.flash > 0) ajoelha = Math.max(ajoelha, Math.min(1, c.flash*1.1));
+  if(zonzo) ajoelha = Math.max(ajoelha, .85 + Math.sin(tempo*9)*.1);
+  if(exausto) ajoelha = Math.max(ajoelha, .7);
 
-  ctx.fillStyle = flash ? '#fff' : '#6e3434';
-  for(let i=-2;i<=2;i++)
-    ctx.fillRect(X + i*r*.19 - r*.08, Y + r*.28, r*.16, r*.34 + (i%2 ? r*.05 : 0));
-  ctx.fillStyle = 'rgba(0,0,0,.25)';
-  ctx.fillRect(X - r*.5, Y + r*.28, r, r*.07);
+  // inclinação do tronco: corre para atacar; passo pesado; arremetida no golpe
+  let incl = 0;
+  if(c.estado === 'investida') incl = .42;
+  else if(c.estado === 'aproxima') incl = .2 + Math.sin(c.pisada*7)*.09;
+  if(golpe) incl += Math.sin((1-golpe)*Math.PI)*.3;
 
-  const g = ctx.createLinearGradient(X - r*.8, Y, X + r*.8, Y);
-  g.addColorStop(0, flash ? '#fff' : '#6d452f');
-  g.addColorStop(.45, flash ? '#fff' : '#a2704e');
-  g.addColorStop(1, flash ? '#fff' : '#7c5138');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.ellipse(X, Y - r*.1 + resp*.4, r*.72, r*.62, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = 'rgba(40,22,14,.5)'; ctx.lineWidth = Math.max(1, r*.04);
-  ctx.beginPath(); ctx.moveTo(X, Y - r*.5 + resp*.4); ctx.lineTo(X, Y + resp*.4); ctx.stroke();
-  ctx.beginPath(); ctx.arc(X - r*.3, Y - r*.18 + resp*.4, r*.26, .3, 2.4); ctx.stroke();
-  ctx.beginPath(); ctx.arc(X + r*.3, Y - r*.18 + resp*.4, r*.26, .75, 2.85); ctx.stroke();
-  ctx.strokeStyle = 'rgba(122,42,42,.75)'; ctx.lineWidth = Math.max(1, r*.05);
-  ctx.beginPath(); ctx.moveTo(X - r*.42, Y - r*.42); ctx.lineTo(X - r*.05, Y - r*.02); ctx.stroke();
+  // o corpo avança na direção do golpe
+  const lunge = golpe ? Math.sin((1-golpe)*Math.PI)*r*.5 : 0;
+  // corrida: o corpo sobe e desce a cada passada, para não ficar igual ao parado
+  const passo = c.estado === 'aproxima' ? Math.abs(Math.sin(c.pisada*7))*r*.11 : 0;
+  const lx = Math.cos(c.angulo)*lunge, ly = Math.sin(c.angulo)*lunge*.4 - passo;
 
-  ctx.fillStyle = flash ? '#fff' : '#3c2a20';
-  ctx.fillRect(X - r*.6, Y + r*.18, r*1.2, r*.16);
-  ctx.fillStyle = '#c8a95c';
-  ctx.fillRect(X - r*.1, Y + r*.17, r*.2, r*.18);
+  const base = py + r*.95, alt = r*2.8;
+  const iw = imgGladiador.naturalWidth, ih = imgGladiador.naturalHeight;
 
-  const ea = c.angulo + Math.PI/2.1;
-  const slam = c.escudoBate ? Math.sin((1 - c.escudoBate/.22)*Math.PI)*r*.5 : 0;
-  const sx2 = X + Math.cos(ea)*r*1.1;
-  const sy2 = Y + Math.sin(ea)*r*1.1 + (c.estado === 'preparo' ? -r*.18 + slam : 0);
-  ctx.lineCap = 'round';
-  ctx.strokeStyle = flash ? '#fff' : '#8a6a4c'; ctx.lineWidth = r*.2;
-  ctx.beginPath(); ctx.moveTo(X + Math.cos(ea)*r*.5, Y + Math.sin(ea)*r*.5 - r*.1);
-  ctx.lineTo(sx2, sy2); ctx.stroke();
-  ctx.save(); ctx.translate(sx2, sy2); ctx.rotate(ea);
-  ctx.fillStyle = flash ? '#fff' : '#8d857a';
-  ctx.beginPath(); ctx.ellipse(0, 0, r*.5, r*.68, 0, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#3a3129'; ctx.lineWidth = r*.07;
-  ctx.beginPath(); ctx.ellipse(0, 0, r*.5, r*.68, 0, 0, TAU); ctx.stroke();
-  ctx.strokeStyle = 'rgba(240,235,225,.4)'; ctx.lineWidth = r*.05;
-  ctx.beginPath(); ctx.ellipse(-r*.06, -r*.08, r*.4, r*.56, 0, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
-  ctx.fillStyle = '#b5ad9f';
-  ctx.beginPath(); ctx.arc(0, 0, r*.14, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#5c554b';
-  for(let a=0;a<6;a++){
-    ctx.beginPath(); ctx.arc(Math.cos(a*TAU/6)*r*.34, Math.sin(a*TAU/6)*r*.5, r*.035, 0, TAU); ctx.fill();
+  if(imgGladiador.complete && iw > 0){
+    const lar = alt*iw/ih;
+    const resp = exausto ? Math.sin(tempo*8)*.05 : Math.sin(tempo*2.1)*.015;  // arqueja ofegante
+    ctx.save();
+    ctx.translate(px + lx, base + ly);
+    if(flip) ctx.scale(-1, 1);
+    ctx.rotate(-incl);                                   // inclina para onde olha
+    ctx.translate(0, ajoelha*r*.34);                     // joelhos dobram: corpo desce...
+    ctx.scale(1 + ajoelha*.06, (1 - ajoelha*.22)*(1 + resp));   // ...e comprime
+    if(c.flash > .5) ctx.filter = 'brightness(2.1) saturate(.4)';
+    ctx.drawImage(imgGladiador, -lar/2, -alt, lar, alt);
+    ctx.filter = 'none';
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#7c5a44';
+    ctx.beginPath(); ctx.ellipse(px, py - r*.1, r*.72, r*.9, 0, 0, TAU); ctx.fill();
   }
-  ctx.restore();
 
-  const sa = c.angulo - Math.PI/2.4;
-  const ergue = (c.estado === 'combo' && c.t < .18) ? -r*.5 : 0;
-  const alcance = c.golpeAnim ? r*1.85 : r*1.1;
-  const bx = X + Math.cos(sa)*r*.6, by = Y + Math.sin(sa)*r*.6 + (exausto ? r*.3 : ergue*.4);
-  const px2 = X + Math.cos(c.angulo)*alcance + Math.cos(sa)*r*.35;
-  const py2 = Y + Math.sin(c.angulo)*alcance + Math.sin(sa)*r*.35 + (exausto ? r*.75 : ergue);
-  ctx.strokeStyle = flash ? '#fff' : '#8a6a4c'; ctx.lineWidth = r*.18;
-  ctx.beginPath(); ctx.moveTo(X + Math.cos(sa)*r*.45, Y + Math.sin(sa)*r*.45 - r*.1); ctx.lineTo(bx, by); ctx.stroke();
-  ctx.strokeStyle = '#d9d4c8'; ctx.lineWidth = Math.max(3, r*.13);
-  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px2, py2); ctx.stroke();
-  ctx.strokeStyle = 'rgba(60,52,44,.8)'; ctx.lineWidth = Math.max(1, r*.035);
-  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(px2, py2); ctx.stroke();
-  ctx.strokeStyle = '#5c4a34'; ctx.lineWidth = r*.09;
-  ctx.beginPath();
-  ctx.moveTo(bx - Math.cos(c.angulo)*r*.14, by - Math.sin(c.angulo)*r*.14);
-  ctx.lineTo(bx + Math.cos(c.angulo)*r*.1, by + Math.sin(c.angulo)*r*.1);
-  ctx.stroke();
+  // golpe de espada: a lâmina risca um arco
+  if(golpe){
+    ctx.strokeStyle = 'rgba(255,238,196,' + (golpe*.85) + ')';
+    ctx.lineWidth = Math.max(1, r*.22*golpe);
+    ctx.beginPath();
+    ctx.arc(px, py, r*1.7, c.angulo - 1.1 + (1-golpe)*1.6, c.angulo + .45 + (1-golpe)*1.6);
+    ctx.stroke();
+  }
 
-  ctx.fillStyle = flash ? '#fff' : '#b3a996';
-  ctx.beginPath(); ctx.ellipse(X - r*.72, Y - r*.42 + resp*.6, r*.34, r*.26, -.3, 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(X + r*.72, Y - r*.42 + resp*.6, r*.34, r*.26, .3, 0, TAU); ctx.fill();
-  ctx.fillStyle = '#6b6355';
-  [[-1,-.08],[-1,.08],[1,-.08],[1,.08]].forEach(([k,o]) => {
-    ctx.beginPath(); ctx.arc(X + k*r*.72 + o*r, Y - r*.42 + resp*.6, r*.035, 0, TAU); ctx.fill();
-  });
+  // corrente: gira sobre a cabeça no preparo e açoita o chão nas batidas
+  const maoX = px + (flip ? 1 : -1)*r*.6, maoY = base - alt*.6;   // punho, na altura do ombro
+  const topoY = base - alt*1.02;                                  // eixo do giro, acima do elmo
+  const mira = c.mira != null ? c.mira : c.angulo;
+  if(c.estado === 'preparo'){
+    if(c.escudoBate > 0){
+      // açoita: a corrente desce do punho até o ponto de impacto no chão
+      const bx = px + Math.cos(mira)*r*1.7, by = py + Math.sin(mira)*r*1.7 + r*.6;
+      const angC = Math.atan2(by-maoY, bx-maoX);
+      for(let i=1;i<=7;i++)
+        elo(maoX + (bx-maoX)*i/7, maoY + (by-maoY)*i/7, angC, r*.1, r*.062, r*.03, .3);
+    } else {
+      // roda sobre a cabeça, abrindo conforme carrega
+      const t01 = 1 - c.t/f.preparoT, giro = tempo*17, len = r*(.8 + t01*.7);
+      for(let i=1;i<=7;i++){
+        const rr = len*i/7;
+        elo(px + Math.cos(giro)*rr, topoY + Math.sin(giro)*rr*.4,
+            giro + Math.PI/2, r*.1, r*.062, r*.03, .3);
+      }
+    }
+  }
 
-  const hy = Y - r*.78 + resp;
-  ctx.fillStyle = flash ? '#fff' : '#c9bfae';
-  ctx.beginPath(); ctx.arc(X, hy, r*.4, 0, TAU); ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,.25)';
-  ctx.beginPath(); ctx.arc(X - r*.1, hy - r*.12, r*.22, Math.PI, TAU); ctx.fill();
-  ctx.fillStyle = '#1c1512';
-  ctx.fillRect(X - r*.36, hy - r*.06, r*.72, r*.13);
-  ctx.fillStyle = '#e8d9c0';
-  ctx.beginPath();
-  ctx.arc(X + Math.cos(c.angulo)*r*.12 + Math.cos(c.angulo + Math.PI/2)*r*.1, hy, r*.05, 0, TAU);
-  ctx.fill();
-  const la = c.angulo - Math.PI/2;
-  ctx.fillStyle = flash ? '#fff' : '#8f8674';
-  ctx.beginPath(); ctx.ellipse(X + Math.cos(la)*r*.22, hy + Math.sin(la)*r*.1, r*.2, r*.3, la, 0, TAU); ctx.fill();
-  ctx.strokeStyle = '#4c453a'; ctx.lineWidth = Math.max(1, r*.03);
-  ctx.beginPath(); ctx.ellipse(X + Math.cos(la)*r*.22, hy + Math.sin(la)*r*.1, r*.2, r*.3, la, 0, TAU); ctx.stroke();
-  ctx.fillStyle = flash ? '#fff' : '#b8433a';
-  ctx.beginPath();
-  ctx.moveTo(X - r*.3, hy - r*.28);
-  ctx.quadraticCurveTo(X, hy - r*.85, X + r*.3, hy - r*.28);
-  ctx.quadraticCurveTo(X, hy - r*.5, X - r*.3, hy - r*.28);
-  ctx.fill();
-
+  // suor e aviso quando ofegante; estrelas quando zonzo
+  const hy = base - alt*.85 + ajoelha*r*.5;
   if(exausto && Math.random() < .25)
     particulas.push({x:c.x + Math.cos(c.angulo)*.5, y:c.y - .55,
       vx:(Math.random()-.5)*.4, vy:-.7 - Math.random()*.4, vida:.7, cor:'rgba(220,214,228,.55)', tam:.09});
@@ -2721,14 +2774,14 @@ function desenharGladiador(c, ox, oy){
     ctx.fillStyle = 'rgba(255,240,200,' + (.45 + Math.sin(tempo*8)*.25) + ')';
     ctx.font = '600 ' + Math.round(tam*.3) + 'px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('ofegante', px, py - r*1.75);
+    ctx.fillText('ofegante', px, py - r*2.1);
   }
-  if(c.estado === 'zonzo'){
+  if(zonzo){
     for(let i=0;i<3;i++){
       const a2 = tempo*4 + i*TAU/3;
       ctx.fillStyle = '#ffe08a';
       ctx.beginPath();
-      ctx.arc(X + Math.cos(a2)*r*.55, hy - r*.7 + Math.sin(a2)*r*.18, Math.max(1.5, r*.08), 0, TAU);
+      ctx.arc(px + Math.cos(a2)*r*.55, hy + Math.sin(a2)*r*.18, Math.max(1.5, r*.08), 0, TAU);
       ctx.fill();
     }
   }
@@ -2894,8 +2947,9 @@ const PISO_CALABOUCO = {
                  fase:Math.random()*TAU, morde:0, flash:0, guincho:0}));
     facao = livre(41.5, 54.5) || livre(22.5, 53.5);
     if(facao) facao.pego = false;
-    jog.temFacao = inventario.some(i => i.id === 'facao-catacumbas');
-    if(facao && jog.temFacao) facao.pego = true;   // já é seu: não reaparece no chão
+    const jaTemFacao = inventario.some(i => i.id === 'facao-catacumbas');
+    jog.arma = jaTemFacao ? 'facao-catacumbas' : null;
+    if(facao && jaTemFacao) facao.pego = true;     // já é seu: não reaparece no chão
     etapa = 'preso';
     jog.lento = true; jog.dashOff = true;
     avisar('Acorrentado', 'force até arrebentar');
@@ -2972,11 +3026,11 @@ const PISO_CALABOUCO = {
         jog.golpe = .2; jog.recarga = .36;
         jog.angulo = Math.atan2(dy, dx);
         sGolpe();
-        const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
-        const dano = Math.round((jog.dano + irand(5)) * (temFacao ? 2 : 1));
+        const cortante = !!ARMAS[jog.arma];
+        const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
         rz.hp -= dano; rz.flash = 1;
         sEspadaAcerta();
-        flutuar(rz.x, rz.y-.4, dano, temFacao ? '#ffd88a' : '#f4e2b4');
+        flutuar(rz.x, rz.y-.4, dano, cortante ? '#ffd88a' : '#f4e2b4');
         for(let k=0;k<6;k++) faisca(rz.x, rz.y, '#a34040', .1);
         if(rz.hp <= 0){
           sRato();
@@ -2991,15 +3045,15 @@ const PISO_CALABOUCO = {
         desc:'Lâmina curva achada entre os ossos. Fica na sua mão a partir de agora — use o botão GOLPE (ou F) para atacar.'
       };
       adicionarAoInventario(item);
-      jog.temFacao = true;
+      jog.arma = 'facao-catacumbas';
       sEspadaAcerta();
       flutuar(facao.x, facao.y-.4, '+ facão', '#e8a13c');
       for(let k=0;k<14;k++) faisca(facao.x, facao.y, '#e8a13c', .14);
       abrirPopupInventario(item, 'Empunhar');
     }
     const bg = el('btnGolpe');
-    bg.classList.toggle('on', !!jog.temFacao);
-    if(jog.temFacao){
+    bg.classList.toggle('on', !!jog.arma);
+    if(jog.arma){
       bg.classList.toggle('off', jog.recarga > 0);
       el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
     }
@@ -3021,7 +3075,13 @@ const PISO_CALABOUCO = {
     if(i.tipo === 'forcar') forcarCorrente();
     else if(i.tipo === 'portao') abrirPortao();
   },
-  acaoGolpe: golpeDeFacao,
+  acaoGolpe: golpeDeArma,
+  /* "pegar" um item da bolsa = empunhar (chamado pelo popup do inventário) */
+  pegarItem(item){
+    if(!ARMAS[item.id]) return;
+    jog.arma = item.id;
+    avisar('Na mão', item.nome);
+  },
   desenharCenario(ox, oy){
     desenharEspinhos(ox, oy);
     desenharTrapos(ox, oy);
@@ -3047,7 +3107,7 @@ const PISO_CALABOUCO = {
             r*.22, i%2 ? r*.09 : r*.16, r*.055, .6);
       }
     }
-    if(jog.temFacao) desenharFacaoNaMao(px, py, r);
+    if(jog.arma) desenharArmaNaMao(px, py, r);
   }
 };
 
