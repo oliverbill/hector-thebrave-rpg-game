@@ -2018,16 +2018,20 @@ function construirCalabouco(){
   cavar(38,7,38,8); cavar(38,17,38,17); cavar(38,26,38,27);
   cavar(27,12,27,13);
 
-  /* ---- descida do depósito para as catacumbas ---- */
+  /* ---- descidas para as catacumbas: pelo depósito (oeste) e pela forja (leste) ---- */
   cavar(8,33,9,34);
+  cavar(40,32,41,34);
 
-  /* ---- o fosso: abismo cortado por pontes de tábuas ---- */
-  cavar(3,35,30,35);            // beirada norte
-  cavar(3,36,30,42,FOSSO);      // o abismo
-  cavar(3,43,30,43);            // beirada sul
-  cavar(12,36,13,38,PONTE);     // ponte alta
-  cavar(10,39,16,39,CHAO2);     // plataforma de pedra antiga no meio do vão
-  cavar(15,40,16,42,PONTE);     // ponte baixa
+  /* ---- o fosso: abismo de ponta a ponta, com duas travessias ---- */
+  cavar(3,35,43,35);            // beirada norte
+  cavar(3,36,43,42,FOSSO);      // o abismo
+  cavar(3,43,43,43);            // beirada sul
+  cavar(12,36,13,38,PONTE);     // travessia oeste: ponte alta...
+  cavar(10,39,16,39,CHAO2);     // ...plataforma de pedra antiga...
+  cavar(15,40,16,42,PONTE);     // ...ponte baixa
+  cavar(38,36,39,38,PONTE);     // travessia leste (da forja): ponte...
+  cavar(37,39,40,39,CHAO2);     // ...ilhota de pedra...
+  cavar(38,40,39,42,PONTE);     // ...e o resto do vão
   cavar(6,36,7,37,PONTE);       // ponte quebrada: não chega ao outro lado
   cavar(6,41,7,42,PONTE);
   cavar(25,38,26,40,PONTE);     // ruína solta no meio do abismo
@@ -2040,7 +2044,8 @@ function construirCalabouco(){
     if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
     if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
   }
-  cavar(19,44,20,44);           // entrada, na beirada sul do fosso
+  cavar(19,44,20,44);           // entrada oeste, na beirada sul do fosso
+  cavar(37,44,38,44);           // entrada leste, vindo da forja
   cavar(4,54,8,55);             // câmara da Ladra, no canto mais fundo
 
   /* ---- luzes ---- */
@@ -2053,8 +2058,9 @@ function construirCalabouco(){
    [41,6],[41,17],                                  // arsenal e guarda
    [27,23],[24,30],                                 // salão
    [41,28],[42,29],[40.5,29.5],                     // forja (brilho forte)
-   [8.5,34],[6,35.5],[20,35.5],                     // descida e beirada norte do fosso
-   [13,39.5],[8,43.5],[24,43.5],                    // plataforma e beirada sul
+   [8.5,34],[6,35.5],[20,35.5],                     // descida oeste e beirada norte do fosso
+   [40.5,33.5],[36,35.5],                           // descida da forja
+   [13,39.5],[38.5,39.5],[8,43.5],[24,43.5],[40,43.5], // plataformas e beirada sul
    [20.5,46.5],[28.5,48.5],[10.5,51.5],[40.5,46.5], // labirinto das catacumbas
    [7.5,54.5]                                       // câmara da Ladra
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
@@ -2094,6 +2100,8 @@ function construirCalabouco(){
   dec.push({tipo:'poca', x:17, y:35.6}); dec.push({tipo:'rachadura', x:5, y:35.4});
   dec.push({tipo:'osso', x:6.5, y:36.8}); dec.push({tipo:'caveira', x:11, y:39.4});
   dec.push({tipo:'osso', x:14.8, y:39.3}); dec.push({tipo:'rachadura', x:21, y:43.4});
+  dec.push({tipo:'rachadura', x:41, y:35.4}); dec.push({tipo:'osso', x:39.5, y:39.3});
+  dec.push({tipo:'sangue', x:38.5, y:43.6});
   // labirinto das catacumbas
   dec.push({tipo:'teia', x:4.4, y:45.4, flip:false});
   dec.push({tipo:'caveira', x:13.5, y:48.5}); dec.push({tipo:'sangue', x:19.5, y:48.6});
@@ -2126,6 +2134,21 @@ function gerarLabirinto(cols, linhas, semente){
     const j = (cy+dy[d])*cols + (cx+dx[d]);
     cel[i].portas[d] = true; cel[j].portas[(d+2)%4] = true;
     cel[j].v = true; pilha.push(j);
+  }
+  /* braiding: abre paredes extras nos becos sem saída — o labirinto ganha voltas e atalhos */
+  for(let i=0;i<cel.length;i++){
+    const c = cel[i];
+    if(c.portas.filter(Boolean).length !== 1) continue;
+    if(rnd() < .2) continue;                       // sobram uns poucos becos, para os tesouros
+    const cx = i%cols, cy = (i/cols)|0, ops = [];
+    for(let d=0;d<4;d++){
+      const nx = cx+dx[d], ny = cy+dy[d];
+      if(!c.portas[d] && nx>=0 && ny>=0 && nx<cols && ny<linhas) ops.push(d);
+    }
+    if(!ops.length) continue;
+    const d = ops[(rnd()*ops.length)|0];
+    c.portas[d] = true;
+    cel[(cy+dy[d])*cols + (cx+dx[d])].portas[(d+2)%4] = true;
   }
   return cel;
 }
@@ -2564,6 +2587,7 @@ const PISO_CALABOUCO = {
       {x:35.5, y:13.5, fase:.7},                                 // corredor da guarnição
       {x:12.5, y:36.5, fase:0},   {x:13.5, y:38.5, fase:1.3},   // ponte alta
       {x:15.5, y:40.5, fase:.65}, {x:16.5, y:41.5, fase:1.95},  // ponte baixa
+      {x:38.5, y:37.5, fase:.9},  {x:39.5, y:41.5, fase:2.2},   // travessia da forja
       {x:18.5, y:43.5, fase:.4},                                 // beirada sul do fosso
       {x:19.5, y:45.5, fase:0},   {x:25.5, y:45.5, fase:1.6},   // labirinto
       {x:10.5, y:54.5, fase:1.0}

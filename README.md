@@ -50,7 +50,7 @@ O arquivo é dividido em duas metades demarcadas. O **motor não conhece nenhum 
 ### CONTEÚDO — Piso 1: O Calabouço
 
 - Constantes geográficas (largura, altura, posições das celas, do portão, da arena de areia)
-- Construtor de mapa (tiles, braseiros, pilares) — celas, guarnição, **fosso com pontes de tábuas** (uma quebrada) e **labirinto de catacumbas** (gerado por backtracker com semente fixa: sempre o mesmo mapa)
+- Construtor de mapa (tiles, braseiros, pilares) — celas, guarnição, **fosso com duas travessias de pontes** (mais uma quebrada) e **labirinto de catacumbas com duas entradas** (backtracker com semente fixa + braiding: becos sem saída viram voltas e atalhos)
 - **Espinhos cíclicos** (armadilhas nas pontes, corredores e catacumbas) e **trapos coletáveis** nos becos sem saída do labirinto
 - Roteiro da corrente (forçar até arrebentar, efeitos, tremor)
 - Lógica do portão (bloqueia se não ouviu 3/3 presos, sela a luta ao atravessar)
