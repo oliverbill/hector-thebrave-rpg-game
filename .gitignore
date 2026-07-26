@@ -1,0 +1,4 @@
+.env
+.claude/settings.local.json
+output.bin
+output.aiff
