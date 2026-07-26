@@ -1693,7 +1693,10 @@ function desenharInformante(p, ox, oy){
   const foto = p.retrato && imgRetrato(p.retrato);
   let topo = py - r*2.0;
   if(foto && foto.complete && foto.naturalWidth > 0){
-    const alt = tam*1.05, lar = foto.naturalWidth*(alt/foto.naturalHeight);
+    /* mesma altura em tela do sprite do jogador (largura tam*.9) */
+    const alt = imgJogador.naturalWidth > 0
+      ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2;
+    const lar = foto.naturalWidth*(alt/foto.naturalHeight);
     topo = py + r*1.2 - alt + resp;
     ctx.drawImage(foto, px - lar/2, topo, lar, alt);
     topo -= tam*.18;
