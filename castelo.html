@@ -2043,6 +2043,10 @@ function iniciarPiso(p){
 el('comecar').addEventListener('click', () => {
   iniAudio(); try{ if(ac && ac.state === 'suspended') ac.resume(); }catch(e){}
   try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
+  if(piso.retomar && piso.retomar()){   // morte com progresso: o piso decide onde reerguer o jogador
+    tocarBgm(piso.bgm);
+    return;
+  }
   iniciarPiso(PISOS[pisoAtual]);
   tocarBgm(PISOS[pisoAtual].bgm);
 });
@@ -2789,11 +2793,34 @@ const PISO_CALABOUCO = {
         + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
       mostrarBolsa:true
     }),
-    derrota: () => ({
-      titulo:"A areia bebe<em>você não passou</em>",
-      texto:"Você sabia tudo sobre ele. Use o que os presos contaram: recue no combo, ataque na exaustão, saia da linha da investida.",
-      botao:"De novo", placar:''
-    })
+    derrota: () => (etapa === 'livre' || etapa === 'chefe'
+      ? {
+        titulo:"A areia bebe<em>mas você respira</em>",
+        texto:"Os presos te arrastaram para trás do portão antes que a multidão pedisse o fim. Nada se perdeu: os segredos, a bolsa e o caminho continuam seus.<br><br>Use o que aprendeu: recue no combo, ataque na exaustão, saia da linha da investida.",
+        botao:"Levantar", placar:''
+      }
+      : {
+        titulo:"A areia bebe<em>você não passou</em>",
+        texto:"Você sabia tudo sobre ele. Use o que os presos contaram: recue no combo, ataque na exaustão, saia da linha da investida.",
+        botao:"De novo", placar:''
+      })
+  },
+
+  /* morte com progresso: reergue atrás do portão da arena, mantendo tudo que foi conquistado */
+  retomar(){
+    if(etapa !== 'livre' && etapa !== 'chefe') return false;
+    etapa = 'livre'; vivo = true; pausado = false; dialogo = null;
+    chefe = null; el('chefeBarra').classList.remove('on');
+    jog.hp = jog.hpMax;
+    jog.pocoes = Math.max(jog.pocoes, 2);
+    jog.x = CAL.PORTAO.x + .5; jog.y = CAL.PORTAO.y + 2.2;   // corredor, atrás do portão
+    jog.vx = jog.vy = 0; jog.invul = 1;
+    jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
+    camX = jog.x; camY = jog.y;
+    el('veu').classList.add('oculto');
+    atualizarHUD();
+    avisar('De pé outra vez', 'o portão espera');
+    return true;
   },
 
   aoIniciar(){
