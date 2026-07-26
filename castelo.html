@@ -1229,6 +1229,7 @@ function marcarTarefa(id){
 function abrirDialogo(p){
   dialogo = {inf:p, i:0};
   pausado = true;
+  fundirBgm(BGM_VOL_FALA);
   el('dialogo').classList.add('on');
   mostrarFala();
 }
@@ -1260,6 +1261,7 @@ function avancarDialogo(){
     atualizarHUD();
   }
   dialogo = null; pausado = false;
+  fundirBgm(BGM_VOL);
   calarVoz();
   el('dialogo').classList.remove('on');
 }
@@ -1875,7 +1877,8 @@ el('comecar').addEventListener('click', () => {
 });
 
 /* ---------- música de fundo (loop por piso) ---------- */
-let bgmAudio = null, bgmSrc = null;
+let bgmAudio = null, bgmSrc = null, bgmFade = null;
+const BGM_VOL = .35, BGM_VOL_FALA = .08;
 function tocarBgm(url){
   if(!url){ pararBgm(); return; }
   if(bgmSrc === url && bgmAudio){
@@ -1886,10 +1889,20 @@ function tocarBgm(url){
   try{
     bgmAudio = new Audio(url);
     bgmAudio.loop = true;
-    bgmAudio.volume = .35;
+    bgmAudio.volume = dialogo ? BGM_VOL_FALA : BGM_VOL;
     bgmSrc = url;
     bgmAudio.play().catch(() => {});
   }catch(e){}
+}
+/* abaixa/levanta a música aos poucos (fala dos presos) */
+function fundirBgm(alvo){
+  clearInterval(bgmFade);
+  bgmFade = setInterval(() => {
+    if(!bgmAudio){ clearInterval(bgmFade); return; }
+    const d = alvo - bgmAudio.volume;
+    if(Math.abs(d) < .02){ bgmAudio.volume = alvo; clearInterval(bgmFade); }
+    else bgmAudio.volume += d*.25;
+  }, 50);
 }
 function pararBgm(){
   if(bgmAudio){ try{ bgmAudio.pause(); bgmAudio.currentTime = 0; }catch(e){} }
