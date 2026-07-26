@@ -1308,6 +1308,18 @@ function avancarDialogo(){
 }
 
 /* ---------- chefe genérico (máquina de estados dirigida por cfg) ---------- */
+/* vozes gravadas do chefe — cada clipe só recomeça depois de terminar */
+const vozesChefe = {};
+function vozChefe(nome){
+  let a = vozesChefe[nome];
+  if(!a){
+    a = new Audio('audio/' + nome + '.mp3');
+    a.volume = .9;
+    vozesChefe[nome] = a;
+  }
+  if(!a.paused && !a.ended) return;
+  try{ a.currentTime = 0; a.play().catch(() => {}); }catch(e){}
+}
 function criarChefe(){
   const f = piso.chefe.cfg;
   chefe = {
@@ -1318,6 +1330,7 @@ function criarChefe(){
   el('chefeNome').textContent = f.nome;
   el('chefeBarra').classList.add('on');
   if(f.entrada) setTimeout(() => avisar(f.entrada[0], f.entrada[1]), 900);
+  vozChefe('gladiador-entrada');
 }
 function dirLivre(c, ax, ay){
   const base = Math.atan2(ay, ax);
@@ -1341,6 +1354,7 @@ function golpeChefe(dano, alcance){
   const ang = Math.atan2(dy,dx);
   const dif = Math.abs(((ang - chefe.angulo + Math.PI*3) % TAU) - Math.PI);
   chefe.golpeAnim = .22;
+  vozChefe('gladiador-golpe');
   sEspadaCorta();
   for(let k=0;k<6;k++) faisca(chefe.x + Math.cos(chefe.angulo)*1.4, chefe.y + Math.sin(chefe.angulo)*1.4, '#e0d0b0', .12);
   if(d < alcance && dif < 1.25){ sEspadaAcerta(); machucar(dano); jog.vx += Math.cos(ang)*10; jog.vy += Math.sin(ang)*10; }
@@ -1450,7 +1464,7 @@ function golpear(alvo){
 
   alvo.hp -= dano; alvo.flash = 1;
   sEspadaAcerta();
-  if(Math.random() < .6) setTimeout(sDorChefe, 45);
+  if(Math.random() < .6) setTimeout(() => vozChefe('gladiador-levagolpe'), 45);
   flutuar(alvo.x, alvo.y-.5, dano, dano > jog.dano*1.8 ? '#ffd88a' : '#f4e2b4');
   faisca(alvo.x - dx/d*alvo.raio, alvo.y - dy/d*alvo.raio, '#f0c070', .12);
   tremor = 4;
