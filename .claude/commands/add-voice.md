@@ -22,12 +22,20 @@ Execute em uma única passada (sem perguntar ao usuário):
 
 1. Separe `categoria` (primeiro token de `$ARGUMENTS`, lowercase, aceitando "crianca" sem cedilha como sinônimo de "criança") e `texto` (o resto). Se algum estiver vazio, aborte com uso: `/add-voice <idoso|mulher|criança|homem> <texto>`.
 2. Faça o mapeamento acima. Se a categoria não for reconhecida, aborte listando as 4 opções válidas.
-3. Gere AIFF: `say -v "$VOZ" -o output.aiff "$TEXTO"` (onde `$VOZ` é o nome completo, ex: `Grandpa (Portuguese (Brazil))`). Se falhar, aborte e sugira `say -v '?' | grep pt_BR`.
-4. Converta para MP3:
+3. **Valide que a voz existe** (crítico: o `say` NÃO reclama de voz inexistente — ele silenciosamente cai na voz padrão do sistema e sai com código 0):
+   ```
+   if ! say -v '?' | grep -qF "$VOZ"; then
+     echo "ERRO: voz '$VOZ' não encontrada no sistema. Vozes pt_BR/pt_PT disponíveis:"
+     say -v '?' | grep -iE 'pt_BR|pt_PT'
+     exit 1
+   fi
+   ```
+4. Gere AIFF: `say -v "$VOZ" -o output.aiff "$TEXTO"` (onde `$VOZ` é o nome completo, ex: `Grandpa (Portuguese (Brazil))`).
+5. Converta para MP3:
    - **Se categoria ≠ criança**: `ffmpeg -y -hide_banner -loglevel error -i output.aiff -codec:a libmp3lame -qscale:a 2 -f mp3 output.bin`
    - **Se categoria = criança**: aplique pitch-shift subindo ~30% e ajuste tempo pra não ficar acelerado: `ffmpeg -y -hide_banner -loglevel error -i output.aiff -af "asetrate=44100*1.35,aresample=44100,atempo=1/1.15" -codec:a libmp3lame -qscale:a 2 -f mp3 output.bin`
    - **Importante**: `-f mp3` é obrigatório porque a extensão `.bin` não permite ao ffmpeg inferir o formato.
    - Fallback se `ffmpeg` faltar: `lame output.aiff output.bin` (sem pitch-shift; avise).
-5. Remova o AIFF intermediário: `rm -f output.aiff`.
-6. Verifique com `file output.bin` que a saída é MPEG audio.
-7. Reporte categoria, voz usada (com idioma), tamanho, caminho, e um comando pronto para mover o arquivo (ex: `mv output.bin audio/ferreiro-1.mp3`).
+6. Remova o AIFF intermediário: `rm -f output.aiff`.
+7. Verifique com `file output.bin` que a saída é MPEG audio.
+8. Reporte categoria, voz usada (com idioma), tamanho, caminho, e um comando pronto para mover o arquivo (ex: `mv output.bin audio/ferreiro-1.mp3`).
