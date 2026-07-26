@@ -230,6 +230,22 @@ let particulas = [], riscos = [], destrocos = [];
 const tela = el('tela'), ctx = tela.getContext('2d');
 const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('2d');
 const imgJogador = new Image(); imgJogador.src = 'img/jogador.png';
+let fatiasJog = null;               // avatar fatiado: tronco + pernas animadas
+function montarFatiasJog(){
+  const iw = imgJogador.naturalWidth, ih = imgJogador.naturalHeight;
+  const corte = Math.round(ih*.62);                    // altura do quadril na foto
+  const cv = (sx,sy,sw,sh) => {
+    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    c.getContext('2d').drawImage(imgJogador, sx, sy, sw, sh, 0, 0, sw, sh);
+    return c;
+  };
+  fatiasJog = {
+    corte,
+    tronco: cv(0, 0, iw, corte + 2),                   // 2px de sobra cobre a emenda
+    pernaE: cv(0, corte, Math.ceil(iw/2), ih - corte),
+    pernaD: cv(Math.floor(iw/2), corte, iw - Math.floor(iw/2), ih - corte)
+  };
+}
 const luzCv = document.createElement('canvas'), lcx = luzCv.getContext('2d');
 
 /* ---------- som (síntese realista via Web Audio) ---------- */
@@ -1693,20 +1709,42 @@ function desenharJogador(ox, oy){
     ctx.arc(px, py, tam*.8, jog.angulo - 1.0 + (1-p)*1.5, jog.angulo + .5 + (1-p)*1.5);
     ctx.stroke();
   }
-  const bal = Math.sin(jog.passo*3.2)*tam*.04;
+  const mov = Math.min(1, Math.hypot(jog.vx, jog.vy)/5.5);
+  const bal = Math.sin(jog.passo*3.2)*tam*.04*mov;
   if(imgJogador.complete && imgJogador.naturalWidth > 0){
-    const sW = tam*.9, sH = sW * (imgJogador.naturalHeight/imgJogador.naturalWidth);
-    const dx = px - sW/2, dy = py + r*.95 - sH;
+    if(!fatiasJog) montarFatiasJog();
+    const f = fatiasJog;
+    const iw = imgJogador.naturalWidth, ih = imgJogador.naturalHeight;
+    const sW = tam*.9, esc = sW/iw;
+    const base = py + r*.95 + bal;                       // pés no chão + quique do passo
+    const quadY = base - (ih - f.corte)*esc;             // linha do quadril na tela
     ctx.save();
     const virado = Math.cos(jog.angulo) < 0;
     if(virado){ ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
-    if(jog.flash > .5){
-      ctx.filter = 'brightness(2.4) saturate(0)';
-      ctx.drawImage(imgJogador, dx, dy + bal, sW, sH);
-      ctx.filter = 'none';
-    } else {
-      ctx.drawImage(imgJogador, dx, dy + bal, sW, sH);
-    }
+    if(jog.flash > .5) ctx.filter = 'brightness(2.4) saturate(0)';
+    // pernas: balançam em fases opostas ao caminhar
+    const abre = Math.sin(jog.passo*3.2)*.55*mov;
+    const perna = (c, x0, a) => {
+      const pw = c.width*esc, ph = c.height*esc;
+      ctx.save();
+      ctx.translate(x0 + pw/2, quadY);
+      ctx.rotate(a);
+      ctx.drawImage(c, -pw/2, -ph*.08, pw, ph*1.08);
+      ctx.restore();
+    };
+    perna(f.pernaE, px - sW/2, abre);
+    perna(f.pernaD, px - sW/2 + f.pernaE.width*esc, -abre);
+    // tronco: respira parado, inclina ao andar, no dash e no golpe
+    const respira = (1-mov)*Math.sin(tempo*2.2)*.02;
+    const incl = mov*.09 + (jog.dash > 0 ? .30 : 0)
+               + (jog.golpe > 0 ? (jog.golpe/.2)*.22 : 0);
+    ctx.save();
+    ctx.translate(px, quadY);
+    ctx.rotate(incl);
+    ctx.scale(1, 1 + respira);
+    ctx.drawImage(f.tronco, -sW/2, -(f.corte + 2)*esc, sW, (f.corte + 2)*esc);
+    ctx.restore();
+    ctx.filter = 'none';
     ctx.restore();
   } else {
     ctx.fillStyle = jog.flash > .5 ? '#fff' : '#6c5a48';
