@@ -2029,6 +2029,7 @@ function abrirPortao(){
   for(let x=9;x<=11;x++) mapa[idx(x,CAL.PORTAO.y)] = CHAO;
   desenharCache();
   sPortao(); tremor = 8;
+  tocarBgm('audio/portao-gladiador.mp3');
   avisar('O portão sobe', 'a areia está do outro lado');
 }
 function fecharPortao(){
