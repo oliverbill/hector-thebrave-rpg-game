@@ -239,9 +239,17 @@ function montarFatiasJog(){
     c.getContext('2d').drawImage(imgJogador, sx, sy, sw, sh, 0, 0, sw, sh);
     return c;
   };
+  const ombro = Math.round(ih*.33);                    // linha dos ombros na foto
+  const larE = Math.round(iw*.41), x0D = Math.round(iw*.69);
+  const tronco = cv(0, 0, iw, corte + 2);              // 2px de sobra cobre a emenda
+  const tcx = tronco.getContext('2d');
+  tcx.clearRect(0, ombro, larE, tronco.height - ombro);
+  tcx.clearRect(x0D, ombro, iw - x0D, tronco.height - ombro);
   fatiasJog = {
-    corte,
-    tronco: cv(0, 0, iw, corte + 2),                   // 2px de sobra cobre a emenda
+    corte, ombro, x0D,
+    tronco,
+    bracoE: cv(0, ombro, larE, corte - ombro),
+    bracoD: cv(x0D, ombro, iw - x0D, corte - ombro),
     pernaE: cv(0, corte, Math.ceil(iw/2), ih - corte),
     pernaD: cv(Math.floor(iw/2), corte, iw - Math.floor(iw/2), ih - corte)
   };
@@ -1734,6 +1742,19 @@ function desenharJogador(ox, oy){
     };
     perna(f.pernaE, px - sW/2, abre);
     perna(f.pernaD, px - sW/2 + f.pernaE.width*esc, -abre);
+    // braços: fases opostas às pernas do mesmo lado; o da frente sobe no golpe
+    const ombroY = base - (ih - f.ombro)*esc;
+    const braco = (c, x0, pivX, a) => {
+      const bw = c.width*esc, bh = c.height*esc;
+      ctx.save();
+      ctx.translate(px - sW/2 + pivX*esc, ombroY);
+      ctx.rotate(a);
+      ctx.drawImage(c, (x0 - pivX)*esc, -bh*.06, bw, bh*1.06);
+      ctx.restore();
+    };
+    const golpeBr = jog.golpe > 0 ? (jog.golpe/.2)*.9 : 0;
+    braco(f.bracoE, 0, f.bracoE.width*.7, -abre*.8);
+    braco(f.bracoD, f.x0D, f.x0D + f.bracoD.width*.3, abre*.8 + golpeBr);
     // tronco: respira parado, inclina ao andar, no dash e no golpe
     const respira = (1-mov)*Math.sin(tempo*2.2)*.02;
     const incl = mov*.09 + (jog.dash > 0 ? .30 : 0)
