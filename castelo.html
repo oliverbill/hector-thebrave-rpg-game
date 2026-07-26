@@ -1814,85 +1814,99 @@ function quadro(t){
    Tudo abaixo desta linha é dado e roteiro. O motor não muda.
    ================================================================ */
 
-const CAL = {                      // geografia do piso
-  LARG:40, ALT:22,
-  DIVISOR:28,                      // coluna do portão entre calabouço e arena
-  CELAS:[7,14,21],                 // x inicial de cada cela
-  PORTAO_Y:11.5
+const CAL = {                      // geografia do piso (planta: torre + celas + guarnição)
+  LARG:46, ALT:34,
+  TORRE:{x:10, y:8, raio:5.4},     // arena circular
+  PORTAO:{x:10, y:14}              // grade entre o corredor das celas e a torre
 };
 let ancora = null, portao = null;
 
 function construirCalabouco(){
-  const t = new Uint8Array(CAL.LARG*CAL.ALT).fill(CHAO);
-  const bra = [];
+  const t = new Uint8Array(CAL.LARG*CAL.ALT).fill(PAREDE);
+  const bra = [], dec = [];
   const ix = (x,y) => y*CAL.LARG + x;
-  for(let x=0;x<CAL.LARG;x++) for(let y=0;y<5;y++) t[ix(x,y)] = PAREDE;
-  for(let x=0;x<CAL.LARG;x++){ t[ix(x,CAL.ALT-1)] = PAREDE; t[ix(x,CAL.ALT-2)] = PAREDE; }
-  for(let y=0;y<CAL.ALT;y++){ t[ix(0,y)] = PAREDE; t[ix(1,y)] = PAREDE;
-                              t[ix(CAL.LARG-1,y)] = PAREDE; t[ix(CAL.LARG-2,y)] = PAREDE; }
-  CAL.CELAS.forEach(cx => {
-    for(let x=cx; x<cx+3; x++){ t[ix(x,2)] = CHAO; t[ix(x,3)] = CHAO; t[ix(x,4)] = GRADE; }
+  const cavar = (x1,y1,x2,y2,tile) => {
+    for(let y=y1;y<=y2;y++) for(let x=x1;x<=x2;x++) t[ix(x,y)] = (tile===undefined?CHAO:tile);
+  };
+
+  /* ---- torre circular (arena de areia) ---- */
+  for(let y=1;y<=15;y++) for(let x=3;x<=17;x++){
+    const d = Math.hypot(x+.5-CAL.TORRE.x-.5, y+.5-CAL.TORRE.y);
+    if(d < CAL.TORRE.raio) t[ix(x,y)] = CHAO2;
+  }
+  /* garganta entre o círculo e o portão, portão, e corredor das celas */
+  cavar(9,12,11,13,CHAO2);
+  cavar(9,14,11,14,GRADE);
+  cavar(9,15,11,29);
+
+  /* ---- bloco de celas: 3 à esquerda, 3 à direita ---- */
+  [16,20,24].forEach(cy => {
+    cavar(4,cy,7,cy+2);   t[ix(8,cy+1)]  = GRADE;   // celas E
+    cavar(13,cy,15,cy+2); t[ix(12,cy+1)] = GRADE;   // celas D
   });
-  for(let y=0;y<CAL.ALT;y++) t[ix(CAL.DIVISOR,y)] = PAREDE;
-  for(let y=10;y<=13;y++) t[ix(CAL.DIVISOR,y)] = GRADE;
-  // arena de areia
-  for(let y=0;y<CAL.ALT;y++) for(let x=CAL.DIVISOR+1;x<CAL.LARG;x++)
-    if(t[ix(x,y)] === CHAO) t[ix(x,y)] = CHAO2;
-  // pilares
-  [[6,10],[6,16],[13,17],[20,10],[24,16]].forEach(([px,py]) => {
-    t[ix(px,py)] = PAREDE; t[ix(px+1,py)] = PAREDE;
-    t[ix(px,py+1)] = PAREDE; t[ix(px+1,py+1)] = PAREDE;
-    bra.push({x:px+1, y:py+1.7, fase:Math.random()*TAU});
-  });
-  [[31,5],[36,5],[31,17],[36,17]].forEach(([px,py]) => {
-    t[ix(px,py)] = PAREDE; t[ix(px+1,py)] = PAREDE;
-    bra.push({x:px+1, y:py+1.4, fase:Math.random()*TAU});
-  });
-  [[4,7],[26,7],[4,19],[26,19],[30,11],[37,11]].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
-  const dec = [];
-  CAL.CELAS.forEach((cx, i) => {
-    dec.push({tipo:'palha', x:cx+1.5, y:2.7});
-    dec.push({tipo:'caveira', x:cx+2.3, y:3.3});
-    if(i !== 1) dec.push({tipo:'tigela', x:cx+.5, y:3.6});
-    dec.push({tipo:'corrente_parede', x:cx+.7, y:1.5});
-    dec.push({tipo:'corrente_parede', x:cx+2.3, y:1.5});
-    dec.push({tipo:'rachadura', x:cx+1.5, y:1.4});
-  });
-  dec.push({tipo:'barril', x:2.5, y:6.5});
-  dec.push({tipo:'barril', x:2.5, y:7.3});
-  dec.push({tipo:'barril', x:3.4, y:7.3});
-  dec.push({tipo:'barril', x:26.5, y:5.5});
-  dec.push({tipo:'barril', x:26.5, y:19.4});
-  dec.push({tipo:'barril', x:25.5, y:19.4});
-  dec.push({tipo:'caixote', x:3.5, y:5.5});
-  dec.push({tipo:'caixote', x:2.5, y:18.3});
-  dec.push({tipo:'caixote', x:26.5, y:6.5});
-  dec.push({tipo:'caixote', x:3.5, y:19.4});
-  dec.push({tipo:'poca', x:11.5, y:7.4});
-  dec.push({tipo:'poca', x:18.5, y:15.6});
-  dec.push({tipo:'poca', x:5.5, y:15.5});
-  dec.push({tipo:'poca', x:23.5, y:8.5});
-  dec.push({tipo:'sangue', x:15.5, y:8.2});
-  dec.push({tipo:'sangue', x:19.5, y:12.5});
-  dec.push({tipo:'sangue', x:10.5, y:18.5});
-  dec.push({tipo:'sangue', x:5.5, y:11.5});
-  dec.push({tipo:'osso', x:6.5, y:12.5});
-  dec.push({tipo:'osso', x:23.5, y:15.5});
-  dec.push({tipo:'osso', x:12.5, y:6.5});
-  dec.push({tipo:'osso', x:16.5, y:14.5});
-  dec.push({tipo:'osso', x:22.5, y:18.5});
-  dec.push({tipo:'rachadura', x:8.5, y:11.5});
-  dec.push({tipo:'rachadura', x:17.5, y:16.5});
-  dec.push({tipo:'rachadura', x:5.5, y:8.5});
-  dec.push({tipo:'rachadura', x:24.5, y:12.5});
-  dec.push({tipo:'estandarte', x:6.5, y:9.5, cor:'#a01818'});
-  dec.push({tipo:'estandarte', x:20.5, y:9.5, cor:'#a01818'});
-  dec.push({tipo:'estandarte', x:13.5, y:16.5, cor:'#7a2020'});
-  dec.push({tipo:'teia', x:2.5, y:5.5});
-  dec.push({tipo:'teia', x:26.5, y:5.5, flip:true});
-  dec.push({tipo:'teia', x:2.5, y:19.5});
-  dec.push({tipo:'bau', x:25.5, y:13.5});
-  dec.push({tipo:'bau', x:3.5, y:14.5});
+  t[ix(8,21)] = CHAO;                                // a cela do jogador está com a porta aberta
+
+  /* ---- depósito (barris) e ponte para a guarnição ---- */
+  cavar(3,28,14,32);
+  cavar(15,29,21,30);
+
+  /* ---- guarnição (complexo à direita) ---- */
+  cavar(22,4,32,11,CHAO2);   // caserna, piso de madeira
+  cavar(24,14,30,19,CHAO2);  // gabinete, tapete
+  cavar(34,4,37,31);         // corredor central
+  cavar(22,22,32,31);        // salão baixo (beliches)
+  cavar(39,4,43,11);         // arsenal
+  cavar(39,14,43,20);        // sala da guarda
+  cavar(39,23,43,31);        // forja
+  /* portas */
+  cavar(33,7,33,8); cavar(31,16,33,16); cavar(33,26,33,27);
+  cavar(38,7,38,8); cavar(38,17,38,17); cavar(38,26,38,27);
+  cavar(27,12,27,13);
+
+  /* ---- luzes ---- */
+  [[10,3.5],[5.5,8],[14.5,8],                       // torre
+   [10,18],[10,24],                                 // corredor
+   [5,17],[14.5,21],                                // celas com gente
+   [4,29],[13,31],                                  // depósito
+   [25,5],[31,10],[27,15],                          // caserna e gabinete
+   [35.5,10],[35.5,20],[35.5,28],                   // corredor central
+   [41,6],[41,17],                                  // arsenal e guarda
+   [27,23],[24,30],                                 // salão
+   [41,28],[42,29],[40.5,29.5]                      // forja (brilho forte)
+  ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
+
+  /* ---- decoração ---- */
+  // celas habitadas
+  [[13.8,20.6],[5.2,24.8]].forEach(([x,y]) => { dec.push({tipo:'palha',x,y}); dec.push({tipo:'tigela',x:x+.8,y:y+.9}); });
+  dec.push({tipo:'caveira', x:6.6, y:16.6}); dec.push({tipo:'palha', x:5.4, y:16.8});
+  dec.push({tipo:'corrente_parede', x:5.5, y:20.3});     // a do jogador
+  dec.push({tipo:'palha', x:6.4, y:21.6});
+  dec.push({tipo:'rachadura', x:10, y:20}); dec.push({tipo:'poca', x:10.4, y:26.4});
+  dec.push({tipo:'teia', x:4.4, y:16.4, flip:false});
+  // depósito
+  [[4.5,29.5],[5.4,29.5],[4.9,30.4],[12.6,31.4],[13.4,31.4]].forEach(([x,y]) => dec.push({tipo:'barril',x,y}));
+  dec.push({tipo:'caixote', x:12.8, y:28.8}); dec.push({tipo:'caixote', x:3.8, y:31.6});
+  dec.push({tipo:'bau', x:8.5, y:31.6}); dec.push({tipo:'teia', x:3.5, y:28.5, flip:false});
+  // torre: marcas das lutas antigas
+  dec.push({tipo:'sangue', x:9, y:6.5}); dec.push({tipo:'sangue', x:12, y:9.8});
+  dec.push({tipo:'osso', x:7.2, y:10.6}); dec.push({tipo:'caveira', x:13.2, y:5.8});
+  dec.push({tipo:'rachadura', x:10.5, y:8.2});
+  // caserna e gabinete
+  dec.push({tipo:'caixote', x:23, y:5}); dec.push({tipo:'caixote', x:23.9, y:5.2});
+  dec.push({tipo:'estandarte', x:27, y:4.4, cor:'#a01818'});
+  dec.push({tipo:'teia', x:32.5, y:4.4, flip:true});
+  dec.push({tipo:'bau', x:29.4, y:18.4}); dec.push({tipo:'estandarte', x:27, y:14.4, cor:'#1d3a6e'});
+  // salão baixo: beliches de palha
+  [[23,23],[26,23],[29,23],[23,30.4],[26,30.4]].forEach(([x,y]) => dec.push({tipo:'palha',x,y}));
+  dec.push({tipo:'osso', x:31.4, y:29}); dec.push({tipo:'poca', x:28, y:27});
+  // corredor central e forja
+  dec.push({tipo:'poca', x:35, y:14}); dec.push({tipo:'rachadura', x:36.5, y:23});
+  dec.push({tipo:'sangue', x:37.2, y:27.5});
+  dec.push({tipo:'corrente_parede', x:40.2, y:23.3}); dec.push({tipo:'corrente_parede', x:41.8, y:23.3});
+  dec.push({tipo:'caixote', x:42.6, y:24.6}); dec.push({tipo:'osso', x:39.6, y:30.6});
+  // ponte
+  dec.push({tipo:'rachadura', x:18, y:29.6});
+
   return {larg:CAL.LARG, alt:CAL.ALT, tiles:t, braseiros:bra, decor:dec};
 }
 
@@ -1928,14 +1942,14 @@ function abrirPortao(){
     return;
   }
   portao.aberto = true;
-  for(let y=10;y<=13;y++) mapa[idx(CAL.DIVISOR,y)] = CHAO;
+  for(let x=9;x<=11;x++) mapa[idx(x,CAL.PORTAO.y)] = CHAO;
   desenharCache();
   sPortao(); tremor = 8;
   avisar('O portão sobe', 'a areia está do outro lado');
 }
 function fecharPortao(){
   portao.aberto = false;
-  for(let y=10;y<=13;y++) mapa[idx(CAL.DIVISOR,y)] = GRADE;
+  for(let x=9;x<=11;x++) mapa[idx(x,CAL.PORTAO.y)] = GRADE;
   desenharCache();
   sPortao(); tremor = 14;
   avisar('O portão desce', 'não há mais para onde voltar');
@@ -2171,7 +2185,7 @@ const PISO_CALABOUCO = {
     luzAmbiente:'#9d94ad'  // salão claro; braseiros são destaque, não visibilidade
   },
   construir: construirCalabouco,
-  spawn:{x:16, y:12},
+  spawn:{x:5.8, y:21.2},
   trapos:2,
   intro:{
     titulo:"O Calabouço<em>piso 1</em>",
@@ -2192,7 +2206,7 @@ const PISO_CALABOUCO = {
     { nome:'O Velho', chave:'ritmo', cor:'#b9a98e',
       voz:{pitch:.5, rate:.78, genero:'m', tosse:true,
            audios:['audio/velho-1.mp3','audio/velho-2.mp3','audio/velho-3.mp3']},
-      x:CAL.CELAS[0]+1.5, y:3.65,
+      x:14, y:21,        // cela em frente à do jogador
       falas:[
         'Você é o quinto este mês. Os outros quatro entraram gritando.',
         'O Gladiador bate três vezes. Sempre três. Ele aprendeu assim e nunca desaprendeu.',
@@ -2202,7 +2216,7 @@ const PISO_CALABOUCO = {
       retrato:'img/ladra.png',
       voz:{pitch:1.35, rate:1.08, genero:'f',
            audios:['audio/ladra-1.mp3','audio/ladra-2.mp3','audio/ladra-3.mp3']},
-      x:CAL.CELAS[1]+1.5, y:3.65,
+      x:5.5, y:30.5,     // no depósito, entre os barris
       falas:[
         'Não me olhe assim. Eu roubei do templo, você provavelmente roubou pão.',
         'O elmo dele é bonito e é burro: cobre o olho esquerdo inteiro.',
@@ -2212,7 +2226,7 @@ const PISO_CALABOUCO = {
       retrato:'img/ferreiro.png',
       voz:{pitch:.72, rate:.88, genero:'m',
            audios:['audio/ferreiro-1.mp3','audio/ferreiro-2.mp3','audio/ferreiro-3.mp3']},
-      x:CAL.CELAS[2]+1.5, y:3.65,
+      x:41, y:27.5,      // acorrentado na forja da guarnição
       falas:[
         'Fui eu que fiz aquele escudo. Me arrependo todo dia.',
         'Ele bate o escudo no chão antes de correr. Duas batidas, e vem como um touro.',
@@ -2221,7 +2235,7 @@ const PISO_CALABOUCO = {
   ],
   chefe:{
     cfg:{
-      nome:'O Gladiador', x:34, y:11, hp:560, raio:.75,
+      nome:'O Gladiador', x:10, y:6.5, hp:560, raio:.75,
       esperaT:1.2, aproximaT:1.6, velAproxima:2.6,
       comboDist:2.1, comboIntervalo:.42, comboGolpes:3,
       comboDano:[18,18,28], comboAlcance:[2.2,2.2,2.7],
@@ -2262,7 +2276,7 @@ const PISO_CALABOUCO = {
   },
 
   aoIniciar(){
-    ancora = {x:16, y:12, forca:0, alvo:100, tensao:0, puxada:0};
+    ancora = {x:5.5, y:21, forca:0, alvo:100, tensao:0, puxada:0};
     portao = {aberto:false};
     etapa = 'preso';
     jog.lento = true; jog.dashOff = true;
@@ -2285,7 +2299,7 @@ const PISO_CALABOUCO = {
         }
       }
     }
-    if(etapa === 'livre' && portao.aberto && jog.x > CAL.DIVISOR + 1.1){
+    if(etapa === 'livre' && portao.aberto && jog.y < CAL.PORTAO.y - .9){
       fecharPortao();
       criarChefe();
       etapa = 'chefe';
@@ -2295,7 +2309,7 @@ const PISO_CALABOUCO = {
   interacao(){
     if(etapa === 'preso') return {tipo:'forcar', rotulo:'FORÇAR', icone:'✥'};
     if(etapa === 'livre' && !portao.aberto
-       && Math.hypot(CAL.DIVISOR-jog.x, CAL.PORTAO_Y-jog.y) < 2.6)
+       && Math.hypot(CAL.PORTAO.x+.5-jog.x, CAL.PORTAO.y+.5-jog.y) < 2.6)
       return {tipo:'portao', rotulo:'ABRIR', icone:'⇧'};
     return null;
   },
