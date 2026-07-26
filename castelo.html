@@ -1675,6 +1675,11 @@ function desenhar(){
     const tr = .88 + Math.sin(tempo*7 + b.fase)*.07 + Math.sin(tempo*16 + b.fase)*.04;
     luzRadial((ox + b.x*tam)*k, (oy + b.y*tam)*k, tam*3.6*tr*k, 'rgba(226,146,58,.85)');
   });
+  informantes.forEach(p => {   // facho dourado sobre quem ainda tem segredo para contar
+    if(p.feito || (piso.falarLiberado && !piso.falarLiberado())) return;
+    const tr = .75 + Math.sin(tempo*3 + p.fase)*.25;
+    luzRadial((ox + p.x*tam)*k, (oy + p.y*tam)*k, tam*3.0*tr*k, 'rgba(240,190,90,.6)');
+  });
   luzRadial((ox + jog.x*tam)*k, (oy + jog.y*tam)*k, tam*2.4*k, 'rgba(255,214,160,.45)');
   lcx.globalCompositeOperation = 'source-over';
   ctx.globalCompositeOperation = 'multiply';
@@ -1758,6 +1763,10 @@ function desenharInformante(p, ox, oy){
   }
   if(!p.feito && (!piso.falarLiberado || piso.falarLiberado())){
     const bob = Math.sin(p.fase*3)*tam*.08;
+    const hy = topo + bob - tam*.18;
+    const hg = ctx.createRadialGradient(px, hy, 0, px, hy, Math.max(1, tam*.6));
+    hg.addColorStop(0, 'rgba(232,161,60,.5)'); hg.addColorStop(1, 'rgba(232,161,60,0)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(px, hy, tam*.6, 0, TAU); ctx.fill();
     ctx.fillStyle = '#e8a13c';
     ctx.font = '600 ' + Math.round(tam*.5) + 'px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
@@ -2646,7 +2655,7 @@ const PISO_CALABOUCO = {
     });
     if(!vistoCata && jog.y > 34.5){
       vistoCata = true;
-      avisar('As catacumbas', 'cuidado onde pisa');
+      avisar('As catacumbas', 'a Ladra se esconde no fundo — siga a luz dourada');
     }
     if(jog.y > 43.1) marcarTarefa('t-ponte');
   },
