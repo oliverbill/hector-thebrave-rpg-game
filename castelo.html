@@ -226,6 +226,7 @@ let etapa = 'menu', vivo = false, pausado = false;
 let intel = {}, dialogo = null, interacao = null;
 let tempo = 0, tremor = 0, camX = 0, camY = 0;
 let particulas = [], riscos = [], destrocos = [];
+let coracoes = [], proxCoracao = 0;
 
 const tela = el('tela'), ctx = tela.getContext('2d');
 const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('2d');
@@ -433,10 +434,11 @@ function vocalizar(cfg){
   parar(o, dur);
 }
 
-/* grunhido de dor do Gladiador — grave, gutural */
+/* grunhido de dor do Gladiador — grave, gutural, com tom variado a cada golpe */
 function sDorChefe(){
   if(!iniAudio()) return;
-  vocalizar({f0:92, dur:0.55, formantes:[[500,1],[1060,0.6],[2400,0.3]],
+  vocalizar({f0:84 + Math.random()*18, dur:0.5 + Math.random()*0.15,
+             formantes:[[500,1],[1060,0.6],[2400,0.3]],
              vibrato:5.5, rugosidade:0.65, ganho:0.28, subida:1.12, queda:0.55});
 }
 
@@ -723,6 +725,21 @@ function sTrapo(){
   g.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
   n.connect(bp); bp.connect(g); saida(g, 0.35);
   parar(n, 0.3);
+}
+
+/* coração recolhido — arpejo quente e curto */
+function sCoracao(){
+  if(!iniAudio()) return;
+  [440, 660, 880].forEach((f, i) => setTimeout(() => {
+    const t = ac.currentTime;
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = f;
+    const g = ac.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.06, t + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    o.connect(g); saida(g, 0.5);
+    parar(o, 0.46);
+  }, i*70));
 }
 
 /* morrer — grunhido longo + queda pesada */
@@ -1154,6 +1171,32 @@ function faisca(x,y,cor,v){
   particulas.push({x, y, vx:Math.cos(a)*s*60, vy:Math.sin(a)*s*60, vida:1, cor, tam:.05+Math.random()*.06});
 }
 function flutuar(x,y,txt,cor){ riscos.push({x, y, txt:String(txt), cor, vida:1}); }
+/* mancha permanente de sangue: carimbada direto no cache do mapa, só em piso pisável */
+function mancharChao(wx, wy, tamanho, alfa){
+  const cx0 = Math.floor(wx), cy0 = Math.floor(wy);
+  if(!dentro(cx0, cy0)) return;
+  const t = mapa[idx(cx0, cy0)];
+  if(t === PAREDE || t === GRADE) return;
+  const T = 48, h = hash(wx*31.7, wy*17.3);
+  cmx.fillStyle = 'rgba(' + (96 + Math.floor(h*44)) + ',' + (9 + Math.floor(h*9)) + ',13,' + alfa + ')';
+  cmx.beginPath();
+  cmx.ellipse(wx*T, wy*T, T*tamanho*(.7 + h*.6), T*tamanho*(.5 + h*.5), h*TAU, 0, TAU);
+  cmx.fill();
+}
+/* jorro de sangue: gotas voando (viram mancha ao cair) + poça imediata no ponto do golpe */
+function jorrarSangue(x, y, qtd, ang){
+  for(let k=0;k<qtd;k++){
+    const dir = (ang != null && Math.random() < .65)
+      ? ang + (Math.random()-.5)*1.4
+      : Math.random()*TAU;
+    const s = 1.2 + Math.random()*5;
+    particulas.push({x, y, vx:Math.cos(dir)*s, vy:Math.sin(dir)*s,
+      vida:.55 + Math.random()*.55,
+      cor: Math.random() < .5 ? '#a11220' : '#7c0e18',
+      tam:.06 + Math.random()*.1, sangue:true});
+  }
+  mancharChao(x, y, .26 + Math.random()*.14, .6);
+}
 function avisar(t, sub){
   const a = el('aviso');
   a.innerHTML = t + (sub ? '<small>' + sub + '</small>' : '');
@@ -1185,7 +1228,10 @@ function estilhacarElos(x, y, qtd){
   }
 }
 function atualizarParticulas(dt){
-  particulas.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .93; p.vy *= .93; p.vida -= dt*1.7; });
+  particulas.forEach(p => {
+    p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .93; p.vy *= .93; p.vida -= dt*1.7;
+    if(p.sangue && p.vida <= 0) mancharChao(p.x, p.y, .06 + p.tam, .5);
+  });
   particulas = particulas.filter(p => p.vida > 0);
   destrocos.forEach(d => {
     d.x += d.vx*dt; d.y += d.vy*dt;
@@ -1264,6 +1310,7 @@ function criarChefe(){
     estado:'espera', t:f.esperaT, golpes:0, angulo:Math.PI, flash:0,
     investindo:false, bateuParede:false, pisada:0, escudoBate:0, bateu:0, golpeAnim:0, fase:0
   };
+  coracoes = []; proxCoracao = 5;
   el('chefeNome').textContent = f.nome;
   el('chefeBarra').classList.add('on');
   if(f.entrada) setTimeout(() => avisar(f.entrada[0], f.entrada[1]), 900);
@@ -1399,8 +1446,9 @@ function golpear(alvo){
 
   alvo.hp -= dano; alvo.flash = 1;
   sEspadaAcerta();
-  if(Math.random() < .6) setTimeout(sDorChefe, 45);
+  setTimeout(sDorChefe, 45);
   flutuar(alvo.x, alvo.y-.5, dano, dano > jog.dano*1.8 ? '#ffd88a' : '#f4e2b4');
+  jorrarSangue(alvo.x - dx/d*alvo.raio*.6, alvo.y - dy/d*alvo.raio*.6, 20, jog.angulo);
   faisca(alvo.x - dx/d*alvo.raio, alvo.y - dy/d*alvo.raio, '#f0c070', .12);
   tremor = 4;
   if(alvo.hp <= 0) venceu();
@@ -1410,12 +1458,16 @@ function machucar(dano){
   jog.hp -= dano; jog.invul = .45; jog.flash = 1; tremor = 11;
   sDorJog();
   flutuar(jog.x, jog.y-.4, dano, '#ff8a96');
+  jorrarSangue(jog.x, jog.y, 16);
   atualizarHUD();
   if(jog.hp <= 0) morrer();
 }
 function venceu(){
   chefe.hp = 0; etapa = 'fim'; vivo = true;
+  coracoes = [];
   marcarTarefa(piso.missao.tarefaChefe);
+  jorrarSangue(chefe.x, chefe.y, 40);
+  mancharChao(chefe.x, chefe.y, .85, .7);
   for(let k=0;k<40;k++) faisca(chefe.x, chefe.y, '#e8a13c', .2);
   sVitoria();
   el('chefeBarra').classList.remove('on');
@@ -1425,6 +1477,8 @@ function venceu(){
 }
 function morrer(){
   jog.hp = 0; vivo = false;
+  jorrarSangue(jog.x, jog.y, 30);
+  mancharChao(jog.x, jog.y, .7, .7);
   for(let k=0;k<30;k++) faisca(jog.x, jog.y, '#c0455a', .16);
   sMorrer();
   setTimeout(() => mostrarVeu(piso.textos.derrota()), 1100);
@@ -1438,6 +1492,59 @@ function usarTrapo(){
   sTrapo();
   atualizarHUD();
 }
+/* ---------- corações de cura (aparecem durante a luta com o chefe) ---------- */
+function acharChaoLivre(){
+  for(let n=0;n<40;n++){
+    const a = Math.random()*TAU, d = 2 + Math.random()*4;
+    const x = jog.x + Math.cos(a)*d, y = jog.y + Math.sin(a)*d;
+    if(livre(x, y, .3) && Math.hypot(x-chefe.x, y-chefe.y) > chefe.raio + 1.2) return {x, y};
+  }
+  return null;
+}
+function atualizarCoracoes(dt){
+  proxCoracao -= dt;
+  if(proxCoracao <= 0){
+    if(coracoes.length < 2){
+      const pos = acharChaoLivre();
+      if(pos) coracoes.push({x:pos.x, y:pos.y, fase:Math.random()*TAU});
+    }
+    proxCoracao = 8 + Math.random()*4;
+  }
+  coracoes.forEach(co => co.fase += dt);
+  if(jog.hp >= jog.hpMax) return;   // com vida cheia, o coração espera no chão
+  for(let i=coracoes.length-1;i>=0;i--){
+    const co = coracoes[i];
+    if(Math.hypot(co.x-jog.x, co.y-jog.y) < jog.raio + .45){
+      coracoes.splice(i,1);
+      const cura = Math.round(jog.hpMax*.25);
+      jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+      flutuar(jog.x, jog.y-.6, '+' + cura, '#ff7d8e');
+      for(let k=0;k<14;k++) faisca(jog.x, jog.y, '#ff96a6', .1);
+      sCoracao();
+      atualizarHUD();
+    }
+  }
+}
+function desenharCoracao(co, ox, oy){
+  const px = ox + co.x*tam, py = oy + co.y*tam + Math.sin(co.fase*2.6)*tam*.06;
+  const r = tam*.22*(1 + Math.sin(co.fase*5.2)*.06);   // pulsa como batimento
+  const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, r*2.6));
+  g.addColorStop(0, 'rgba(255,90,110,.35)');
+  g.addColorStop(1, 'rgba(255,60,80,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r*2.6, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(px, py + r*1.3, r*.9, r*.32, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#e8465c';
+  ctx.beginPath();
+  ctx.moveTo(px, py + r);
+  ctx.bezierCurveTo(px - r*1.4, py - r*.1, px - r*.7, py - r*1.1, px, py - r*.35);
+  ctx.bezierCurveTo(px + r*.7, py - r*1.1, px + r*1.4, py - r*.1, px, py + r);
+  ctx.fill();
+  ctx.strokeStyle = '#7d1524'; ctx.lineWidth = Math.max(1, r*.14); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,.5)';
+  ctx.beginPath(); ctx.ellipse(px - r*.4, py - r*.45, r*.22, r*.14, -.6, 0, TAU); ctx.fill();
+}
+
 function rolar(){
   if(!vivo || pausado || jog.dashOff || jog.dashCd > 0) return;
   const m = Math.hypot(entrada.x, entrada.y);
@@ -1539,6 +1646,7 @@ function atualizar(dt){
       jog.vx *= .6; jog.vy *= .6;
     }
     atualizarChefe(dt);
+    atualizarCoracoes(dt);
   }
 
   if(piso.atualizar) piso.atualizar(dt);
@@ -1600,6 +1708,7 @@ function desenhar(){
     ctx.globalAlpha = 1;
   });
 
+  coracoes.forEach(co => desenharCoracao(co, ox, oy));
   informantes.forEach(p => desenharInformante(p, ox, oy));
   if(chefe && chefe.hp > 0) piso.chefe.desenhar(chefe, ox, oy);
   if(vivo) desenharJogador(ox, oy);
@@ -1810,7 +1919,7 @@ function renderizarBolsa(mostrar){
 function iniciarPiso(p){
   piso = p;
   etapa = 'inicio'; vivo = true; pausado = false;
-  particulas = []; riscos = []; destrocos = [];
+  particulas = []; riscos = []; destrocos = []; coracoes = [];
   chefe = null; dialogo = null; interacao = null;
   intel = {};
   jog = {x:p.spawn.x, y:p.spawn.y, vx:0, vy:0, raio:.30, hp:100, hpMax:100, dano:10,
