@@ -1564,10 +1564,11 @@ function venceu(){
   for(let k=0;k<40;k++) faisca(chefe.x, chefe.y, '#e8a13c', .2);
   sVitoria();
   el('chefeBarra').classList.remove('on');
-  if(piso.recompensa) adicionarAoInventario(piso.recompensa);
+  const premioNovo = piso.recompensa && adicionarAoInventario(piso.recompensa);
   if(piso.aoVencer) piso.aoVencer();
   pararBgm();
   setTimeout(() => mostrarVeu(piso.textos.vitoria()), 1500);
+  if(premioNovo) setTimeout(() => abrirPopupInventario(piso.recompensa, 'Guardar'), 1600);
 }
 function morrer(){
   jog.hp = 0; vivo = false;
@@ -2006,12 +2007,13 @@ function renderizarBolsa(mostrar){
   setTimeout(() => inventario.forEach(i => i.novo = false), 3500);
 }
 /* popup de item novo: pausa o jogo e mostra a conquista */
-function abrirPopupInventario(item){
+function abrirPopupInventario(item, rotulo){
   pausado = true;
   calarVoz();
   el('invImg').src = item.img || '';
   el('invNome').textContent = item.nome;
   el('invDesc').textContent = item.desc || '';
+  el('invFechar').textContent = rotulo || 'Guardar';
   el('popupInv').classList.remove('oculto');
 }
 function fecharPopupInventario(){
@@ -2957,7 +2959,7 @@ const PISO_CALABOUCO = {
       sEspadaAcerta();
       flutuar(facao.x, facao.y-.4, '+ facão', '#e8a13c');
       for(let k=0;k<14;k++) faisca(facao.x, facao.y, '#e8a13c', .14);
-      abrirPopupInventario(item);
+      abrirPopupInventario(item, 'Empunhar');
     }
     const bg = el('btnGolpe');
     bg.classList.toggle('on', !!jog.temFacao);
