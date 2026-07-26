@@ -818,12 +818,18 @@ function escolherVoz(voz){
   return pool[0];
 }
 let audioFala = null;
+/* a música abaixa enquanto um preso fala, para a voz ficar na frente */
+function abaixarBgm(falando){
+  if(bgmAudio){ try{ bgmAudio.volume = falando ? .1 : .35; }catch(e){} }
+}
 function falarVoz(texto, voz, url){
   try{
     calarVoz();
     if(url){
       audioFala = new Audio(url);
       audioFala.volume = 1;
+      abaixarBgm(true);
+      audioFala.addEventListener('ended', () => abaixarBgm(false), {once:true});
       const seguir = voz.tosse
         ? () => { sTosse(); setTimeout(() => audioFala && audioFala.play().catch(() => _falarSintese(texto, voz)), 620); }
         : () => audioFala.play().catch(() => _falarSintese(texto, voz));
@@ -843,12 +849,15 @@ function _falarSintese(texto, voz){
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = 'pt-BR'; u.pitch = voz.pitch; u.rate = voz.rate; u.volume = 1;
     const v = escolherVoz(voz); if(v) u.voice = v;
+    abaixarBgm(true);
+    u.onend = () => abaixarBgm(false);
     speechSynthesis.speak(u);
   }catch(e){}
 }
 function calarVoz(){
   try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
   if(audioFala){ try{ audioFala.pause(); audioFala.currentTime = 0; }catch(e){} audioFala = null; }
+  abaixarBgm(false);
 }
 
 /* ---------- mapa e cache do cenário ---------- */
