@@ -1680,28 +1680,42 @@ function luzRadial(x,y,r,cor){
   g.addColorStop(1, 'rgba(0,0,0,0)');
   lcx.fillStyle = g; lcx.beginPath(); lcx.arc(x,y,r,0,TAU); lcx.fill();
 }
+const imgsRetrato = {};
+function imgRetrato(url){
+  if(!imgsRetrato[url]){ const im = new Image(); im.src = url; imgsRetrato[url] = im; }
+  return imgsRetrato[url];
+}
 function desenharInformante(p, ox, oy){
   const px = ox + p.x*tam, py = oy + p.y*tam, r = tam*.26;
   const resp = Math.sin(p.fase*1.6)*tam*.03;
   ctx.fillStyle = 'rgba(0,0,0,.35)';
   ctx.beginPath(); ctx.ellipse(px, py + r*1.2, r*.9, r*.3, 0, 0, TAU); ctx.fill();
-  ctx.fillStyle = p.cor;
-  ctx.beginPath();
-  ctx.moveTo(px, py - r*.9 + resp);
-  ctx.quadraticCurveTo(px + r*1.1, py + r*.4, px + r*.7, py + r*1.0);
-  ctx.lineTo(px - r*.7, py + r*1.0);
-  ctx.quadraticCurveTo(px - r*1.1, py + r*.4, px, py - r*.9 + resp);
-  ctx.fill();
-  ctx.beginPath(); ctx.arc(px, py - r*.75 + resp, r*.45, 0, TAU); ctx.fill();
-  ctx.fillStyle = 'rgba(20,14,26,.85)';
-  ctx.beginPath(); ctx.arc(px - r*.16, py - r*.8 + resp, Math.max(1, r*.09), 0, TAU); ctx.fill();
-  ctx.beginPath(); ctx.arc(px + r*.16, py - r*.8 + resp, Math.max(1, r*.09), 0, TAU); ctx.fill();
+  const foto = p.retrato && imgRetrato(p.retrato);
+  let topo = py - r*2.0;
+  if(foto && foto.complete && foto.naturalWidth > 0){
+    const alt = tam*1.05, lar = foto.naturalWidth*(alt/foto.naturalHeight);
+    topo = py + r*1.2 - alt + resp;
+    ctx.drawImage(foto, px - lar/2, topo, lar, alt);
+    topo -= tam*.18;
+  }else{
+    ctx.fillStyle = p.cor;
+    ctx.beginPath();
+    ctx.moveTo(px, py - r*.9 + resp);
+    ctx.quadraticCurveTo(px + r*1.1, py + r*.4, px + r*.7, py + r*1.0);
+    ctx.lineTo(px - r*.7, py + r*1.0);
+    ctx.quadraticCurveTo(px - r*1.1, py + r*.4, px, py - r*.9 + resp);
+    ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py - r*.75 + resp, r*.45, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(20,14,26,.85)';
+    ctx.beginPath(); ctx.arc(px - r*.16, py - r*.8 + resp, Math.max(1, r*.09), 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(px + r*.16, py - r*.8 + resp, Math.max(1, r*.09), 0, TAU); ctx.fill();
+  }
   if(!p.feito && (!piso.falarLiberado || piso.falarLiberado())){
     const bob = Math.sin(p.fase*3)*tam*.08;
     ctx.fillStyle = '#e8a13c';
     ctx.font = '600 ' + Math.round(tam*.5) + 'px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('!', px, py - r*2.0 + bob);
+    ctx.fillText('!', px, topo + bob);
   }
 }
 function desenharJogador(ox, oy){
