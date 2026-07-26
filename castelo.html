@@ -759,23 +759,39 @@ function escolherVoz(voz){
   }
   return pool[0];
 }
-function falarVoz(texto, voz){
+let audioFala = null;
+function falarVoz(texto, voz, url){
   try{
+    calarVoz();
+    if(url){
+      audioFala = new Audio(url);
+      audioFala.volume = 1;
+      const seguir = voz.tosse
+        ? () => { sTosse(); setTimeout(() => audioFala && audioFala.play().catch(() => _falarSintese(texto, voz)), 620); }
+        : () => audioFala.play().catch(() => _falarSintese(texto, voz));
+      audioFala.addEventListener('error', () => _falarSintese(texto, voz), {once:true});
+      seguir();
+      return;
+    }
     if(!somOk || !window.speechSynthesis) return;
-    speechSynthesis.cancel();
-    if(voz.tosse){ sTosse(); setTimeout(() => _falarAgora(texto, voz), 620); }
-    else _falarAgora(texto, voz);
+    if(voz.tosse){ sTosse(); setTimeout(() => _falarSintese(texto, voz), 620); }
+    else _falarSintese(texto, voz);
   }catch(e){}
 }
-function _falarAgora(texto, voz){
+function _falarSintese(texto, voz){
   try{
+    if(!window.speechSynthesis) return;
+    speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(texto);
     u.lang = 'pt-BR'; u.pitch = voz.pitch; u.rate = voz.rate; u.volume = 1;
     const v = escolherVoz(voz); if(v) u.voice = v;
     speechSynthesis.speak(u);
   }catch(e){}
 }
-function calarVoz(){ try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){} }
+function calarVoz(){
+  try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
+  if(audioFala){ try{ audioFala.pause(); audioFala.currentTime = 0; }catch(e){} audioFala = null; }
+}
 
 /* ---------- mapa e cache do cenário ---------- */
 function definirMapa(m){
@@ -947,7 +963,7 @@ function mostrarFala(){
   el('dFala').textContent = p.falas[dialogo.i];
   el('dSeguir').textContent = dialogo.i < p.falas.length-1 ? 'tocar para continuar' : 'tocar para encerrar';
   sFala();
-  falarVoz(p.falas[dialogo.i], p.voz);
+  falarVoz(p.falas[dialogo.i], p.voz, p.voz.audios && p.voz.audios[dialogo.i]);
 }
 function avancarDialogo(){
   if(!dialogo) return;
@@ -1835,7 +1851,9 @@ const PISO_CALABOUCO = {
     tarefaChefe:'t-chefe'
   },
   informantes:[
-    { nome:'O Velho', chave:'ritmo', cor:'#b9a98e', voz:{pitch:.5, rate:.78, genero:'m', tosse:true},
+    { nome:'O Velho', chave:'ritmo', cor:'#b9a98e',
+      voz:{pitch:.5, rate:.78, genero:'m', tosse:true,
+           audios:['audio/velho-1.mp3','audio/velho-2.mp3','audio/velho-3.mp3']},
       x:CAL.CELAS[0]+1.5, y:3.65,
       falas:[
         'Você é o quinto este mês. Os outros quatro entraram gritando.',
