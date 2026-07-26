@@ -2368,12 +2368,14 @@ function desenharFacaoNaMao(px, py, r){
   if(!(imgFacao.complete && imgFacao.naturalWidth > 0)) return;
   const p = jog.golpe > 0 ? jog.golpe/.2 : 0;              // 1 -> 0 durante o golpe
   const ang = jog.angulo + (p > 0 ? -.9 + (1-p)*1.9 : .62); // varre o arco; em repouso fica ao lado
-  const mx = px + Math.cos(ang)*r*1.25, my = py + Math.sin(ang)*r*1.25 - r*.1;
+  const mx = px + Math.cos(ang)*r*.95, my = py + Math.sin(ang)*r*.95 - r*.05;
   const alt = tam*.85, lar = imgFacao.naturalWidth*(alt/imgFacao.naturalHeight);
   ctx.save();
   ctx.translate(mx, my);
-  ctx.rotate(ang + Math.PI/2 + (p > 0 ? 0 : .5));          // lâmina aponta para onde o golpe vai
-  ctx.drawImage(imgFacao, -lar/2, -alt*.92, lar, alt);     // pivô no cabo
+  // na imagem o cabo fica no topo e a lâmina desce: girando ang - 90° a lâmina aponta
+  // para fora (na direção do golpe), nunca para o jogador
+  ctx.rotate(ang - Math.PI/2 + (p > 0 ? 0 : .35));
+  ctx.drawImage(imgFacao, -lar/2, -alt*.18, lar, alt);     // pivô na empunhadura, junto à mão
   ctx.restore();
 }
 function golpeDeFacao(){
