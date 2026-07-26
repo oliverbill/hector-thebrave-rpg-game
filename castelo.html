@@ -2398,7 +2398,19 @@ function desenharFacaoNaMao(px, py, r){
   if(!(imgFacao.complete && imgFacao.naturalWidth > 0)) return;
   const p = jog.golpe > 0 ? jog.golpe/.2 : 0;              // 1 -> 0 durante o golpe
   const ang = jog.angulo + (p > 0 ? -.9 + (1-p)*1.9 : .62); // varre o arco; em repouso fica ao lado
-  const mx = px + Math.cos(ang)*r*.95, my = py + Math.sin(ang)*r*.95 - r*.05;
+  // o cabo fica exatamente na mão direita do sprite (fim do braço, na linha do quadril),
+  // espelhando quando o jogador olha para a esquerda
+  let mx, my;
+  if(fatiasJog && imgJogador.naturalWidth > 0){
+    const iw = imgJogador.naturalWidth, ih = imgJogador.naturalHeight;
+    const esc = (tam*.9)/iw, f = fatiasJog;
+    const virado = Math.cos(jog.angulo) < 0;
+    const offX = (f.x0D + (iw - f.x0D)*.55 - iw/2)*esc;
+    mx = px + (virado ? -offX : offX);
+    my = py + r*.95 - (ih - f.corte)*esc + r*.1;
+  } else {
+    mx = px + Math.cos(ang)*r*.5; my = py + Math.sin(ang)*r*.5 + r*.22;
+  }
   const alt = tam*.85, lar = imgFacao.naturalWidth*(alt/imgFacao.naturalHeight);
   ctx.save();
   ctx.translate(mx, my);
