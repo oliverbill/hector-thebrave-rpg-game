@@ -719,6 +719,24 @@ function sRolar(){
   parar(n, 0.32);
 }
 
+/* guincho de ratazana — chirp agudo curto */
+function sRato(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const o = ac.createOscillator();
+  o.type = 'triangle';
+  const f0 = 2400 + Math.random()*800;
+  o.frequency.setValueAtTime(f0, t);
+  o.frequency.exponentialRampToValueAtTime(f0*1.6, t + 0.05);
+  o.frequency.exponentialRampToValueAtTime(f0*.7, t + 0.13);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.09, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  o.connect(g); saida(g, 0.5);
+  parar(o, 0.18);
+}
+
 /* trapo/curativo — pano rasgando e presa suave */
 function sTrapo(){
   if(!iniAudio()) return;
@@ -1998,6 +2016,7 @@ const CAL = {                      // geografia do piso (planta: torre + celas +
   PORTAO:{x:10, y:14}              // grade entre o corredor das celas e a torre
 };
 let ancora = null, portao = null, espinhos = [], trapos = [], vistoCata = false;
+let ratazanas = [], facao = null;
 
 function construirCalabouco(){
   const t = new Uint8Array(CAL.LARG*CAL.ALT).fill(PAREDE);
@@ -2228,6 +2247,51 @@ function desenharTrapos(ox, oy){
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.fillRect(-tam*.16, -tam*.09, tam*.32, tam*.04);
     ctx.fillRect(-tam*.02, -tam*.09, tam*.03, tam*.18);
+    ctx.restore();
+  });
+}
+
+/* --- facão perdido nas catacumbas --- */
+const imgFacao = new Image(); imgFacao.src = 'img/facao.png';
+function desenharFacao(ox, oy){
+  if(!facao || facao.pego) return;
+  const px = ox + facao.x*tam, py = oy + facao.y*tam;
+  const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.55));
+  g.addColorStop(0, 'rgba(232,161,60,.30)'); g.addColorStop(1, 'rgba(232,161,60,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*.55, 0, TAU); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(px, py + tam*.12, tam*.28, tam*.08, 0, 0, TAU); ctx.fill();
+  if(imgFacao.complete && imgFacao.naturalWidth > 0){
+    const alt = tam*1.0, lar = imgFacao.naturalWidth*(alt/imgFacao.naturalHeight);
+    const fl = Math.sin(tempo*2.1)*tam*.04;
+    ctx.save(); ctx.translate(px, py + fl); ctx.rotate(2.2);
+    ctx.drawImage(imgFacao, -lar/2, -alt/2, lar, alt);
+    ctx.restore();
+  }
+}
+
+/* --- ratazanas --- */
+function desenharRatazanas(ox, oy){
+  ratazanas.forEach(rz => {
+    if(rz.hp <= 0) return;
+    const px = ox + rz.x*tam, py = oy + rz.y*tam, r = tam*.20;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px, py + r*.7, r*1.05, r*.4, 0, 0, TAU); ctx.fill();
+    ctx.save(); ctx.translate(px, py); ctx.rotate(rz.ang);
+    const ond = Math.sin(rz.fase*9)*r*.35;
+    ctx.strokeStyle = '#8a7770'; ctx.lineWidth = Math.max(1, r*.16);
+    ctx.beginPath(); ctx.moveTo(-r*.9, 0);
+    ctx.quadraticCurveTo(-r*1.7, ond, -r*2.3, -ond);
+    ctx.stroke();
+    ctx.fillStyle = rz.flash > 0 ? '#c9b6a4' : '#4e4148';
+    ctx.beginPath(); ctx.ellipse(0, 0, r*1.05, r*.62, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(r*.95, 0, r*.5, r*.38, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#6d5a60';
+    ctx.beginPath(); ctx.arc(r*.75, -r*.34, r*.18, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(r*.75, r*.34, r*.18, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c8403a';
+    ctx.beginPath(); ctx.arc(r*1.18, -r*.14, Math.max(1, r*.08), 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(r*1.18, r*.14, Math.max(1, r*.08), 0, TAU); ctx.fill();
     ctx.restore();
   });
 }
@@ -2619,6 +2683,21 @@ const PISO_CALABOUCO = {
       {x:10.5, y:39.5},   // plataforma entre as pontes
       {x:40.5, y:45.5}, {x:22.5, y:51.5}, {x:40.5, y:54.5}   // fundos do labirinto
     ];
+    /* ratazanas das catacumbas e o facão perdido (posições ajustadas ao chão livre) */
+    const livre = (x, y) => {
+      for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1],[2,0],[-2,0],[0,2],[0,-2]])
+        if(!solido(x+dx, y+dy)) return {x:x+dx, y:y+dy};
+      return null;
+    };
+    ratazanas = [
+      {x:12.5, y:37.5}, {x:16.5, y:42.5},     // pontes do fosso
+      {x:21.5, y:47.5}, {x:26.5, y:50.5},     // labirinto
+      {x:38.5, y:44.5}, {x:33.5, y:53.5}
+    ].map(p => livre(p.x, p.y)).filter(Boolean)
+     .map(p => ({...p, vx:0, vy:0, raio:.22, hp:18, ang:Math.random()*TAU,
+                 fase:Math.random()*TAU, morde:0, flash:0, guincho:0}));
+    facao = livre(41.5, 54.5) || livre(22.5, 53.5);
+    if(facao) facao.pego = false;
     etapa = 'preso';
     jog.lento = true; jog.dashOff = true;
     avisar('Acorrentado', 'force até arrebentar');
@@ -2667,6 +2746,57 @@ const PISO_CALABOUCO = {
       for(let k=0;k<10;k++) faisca(tp.x, tp.y, '#8fc48a', .09);
       atualizarHUD();
     });
+    ratazanas.forEach(rz => {
+      if(rz.hp <= 0) return;
+      rz.fase += dt;
+      rz.morde = Math.max(0, rz.morde - dt);
+      rz.flash = Math.max(0, rz.flash - dt*4);
+      rz.guincho = Math.max(0, rz.guincho - dt);
+      const dx = rz.x-jog.x, dy = rz.y-jog.y, d = Math.hypot(dx,dy);
+      if(etapa !== 'preso' && d < 5.5 && d > .001){
+        const v = 2.7;   // persegue o jogador
+        rz.vx += (-dx/d*v - rz.vx)*Math.min(1, dt*5);
+        rz.vy += (-dy/d*v - rz.vy)*Math.min(1, dt*5);
+        if(rz.guincho <= 0 && d < 4){ sRato(); rz.guincho = 1.2 + Math.random()*1.5; }
+      } else {           // vagueia farejando
+        const a = rz.ang + Math.sin(rz.fase*.9)*1.2;
+        rz.vx += (Math.cos(a)*.5 - rz.vx)*Math.min(1, dt*2);
+        rz.vy += (Math.sin(a)*.5 - rz.vy)*Math.min(1, dt*2);
+      }
+      mover(rz, rz.vx*dt, rz.vy*dt);
+      if(Math.hypot(rz.vx, rz.vy) > .15) rz.ang = Math.atan2(rz.vy, rz.vx);
+      if(d < rz.raio + jog.raio + .1 && rz.morde <= 0){
+        rz.morde = .8;
+        sRato();
+        machucar(6);
+      }
+      if(etapa !== 'preso' && jog.recarga <= 0 && d < 1.0){
+        jog.golpe = .2; jog.recarga = .36;
+        jog.angulo = Math.atan2(dy, dx);
+        sGolpe();
+        const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
+        const dano = Math.round((jog.dano + irand(5)) * (temFacao ? 2 : 1));
+        rz.hp -= dano; rz.flash = 1;
+        sEspadaAcerta();
+        flutuar(rz.x, rz.y-.4, dano, temFacao ? '#ffd88a' : '#f4e2b4');
+        for(let k=0;k<6;k++) faisca(rz.x, rz.y, '#a34040', .1);
+        if(rz.hp <= 0){
+          sRato();
+          for(let k=0;k<12;k++) faisca(rz.x, rz.y, '#6d5a60', .14);
+        }
+      }
+    });
+    if(facao && !facao.pego && Math.hypot(facao.x-jog.x, facao.y-jog.y) < .7){
+      facao.pego = true;
+      adicionarAoInventario({
+        id:'facao-catacumbas', nome:'Facão das Catacumbas', img:'img/facao.png',
+        desc:'Lâmina curva achada entre os ossos — abate ratazanas em um golpe.'
+      });
+      sEspadaAcerta();
+      flutuar(facao.x, facao.y-.4, '+ facão', '#e8a13c');
+      for(let k=0;k<14;k++) faisca(facao.x, facao.y, '#e8a13c', .14);
+      avisar('Um facão entre os ossos', 'guardado na bolsa — as ratazanas que se cuidem');
+    }
     if(!vistoCata && jog.y > 34.5){
       vistoCata = true;
       avisar('As catacumbas', 'a Ladra se esconde no fundo — siga a luz dourada');
@@ -2688,6 +2818,8 @@ const PISO_CALABOUCO = {
   desenharCenario(ox, oy){
     desenharEspinhos(ox, oy);
     desenharTrapos(ox, oy);
+    desenharFacao(ox, oy);
+    desenharRatazanas(ox, oy);
     if(etapa === 'preso' || ancora.forca > 0) desenharAncora(ox, oy);
     if(etapa === 'preso'){ desenharCorrente(ox, oy); desenharBarraForca(ox, oy); }
   },
