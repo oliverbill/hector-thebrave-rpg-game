@@ -13,6 +13,10 @@ O jogo inteiro se passa num castelo medieval. **Cada fase é um piso do castelo*
 | 5 | Biblioteca do alquimista | O Alquimista |
 | 6 | Torre | O Rei |
 
+## Jogar online
+
+**https://oliverbill.github.io/hector-thebrave-rpg-game/**
+
 ## Como jogar
 
 Abra `castelo.html` em qualquer navegador (ou adicione à tela inicial do iPhone).
