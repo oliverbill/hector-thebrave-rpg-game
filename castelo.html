@@ -478,14 +478,16 @@ function vocalizar(cfg){
 /* grunhido de dor do Gladiador — grave, gutural */
 function sDorChefe(){
   if(!iniAudio()) return;
-  vocalizar({f0:92, dur:0.55, formantes:[[500,1],[1060,0.6],[2400,0.3]],
+  vocalizar({f0:86 + Math.random()*16, dur:0.45 + Math.random()*.2,
+             formantes:[[500,1],[1060,0.6],[2400,0.3]],
              vibrato:5.5, rugosidade:0.65, ganho:0.28, subida:1.12, queda:0.55});
 }
 
 /* grito de dor do jogador — mais jovem, sobe rápido */
 function sDorJog(){
   if(!iniAudio()) return;
-  vocalizar({f0:215, dur:0.4, formantes:[[730,1],[1220,0.72],[2650,0.5]],
+  vocalizar({f0:195 + Math.random()*45, dur:0.34 + Math.random()*.12,
+             formantes:[[730,1],[1220,0.72],[2650,0.5]],
              vibrato:9, rugosidade:0.35, ganho:0.24, subida:1.35, queda:0.7, ataque:0.025});
 }
 
@@ -1274,6 +1276,23 @@ function faisca(x,y,cor,v){
   const a = Math.random()*TAU, s = (v||.08)*(.4+Math.random());
   particulas.push({x, y, vx:Math.cos(a)*s*60, vy:Math.sin(a)*s*60, vida:1, cor, tam:.05+Math.random()*.06});
 }
+/* sangue jorrando em cone na direção do golpe */
+const CORES_SANGUE = ['#8f1621','#b32030','#6d101a','#a11c28'];
+function jorrarSangue(x, y, ang, qtd){
+  for(let k=0;k<qtd;k++){
+    const a = ang + (Math.random()-.5)*1.15;
+    const v = 2.2 + Math.random()*4.8;
+    particulas.push({x, y:y-.15, vx:Math.cos(a)*v, vy:Math.sin(a)*v - Math.random()*1.4,
+      vida:.55 + Math.random()*.55, cor:CORES_SANGUE[irand(CORES_SANGUE.length)],
+      tam:.055 + Math.random()*.075});
+  }
+}
+/* mancha permanente: carimba respingo direto no cache do cenário */
+function mancharSangue(x, y){
+  const T = 48;
+  dSangue((x + (Math.random()-.5)*.7)*T, (y + (Math.random()-.5)*.7)*T,
+          T*(.3 + Math.random()*.4), Math.random());
+}
 function flutuar(x,y,txt,cor){ riscos.push({x, y, txt:String(txt), cor, vida:1}); }
 function avisar(t, sub){
   const a = el('aviso');
@@ -1389,8 +1408,9 @@ function vozChefe(nome){
     a.volume = 1;
     vozesChefe[nome] = a;
   }
-  if(!a.paused && !a.ended) return;
+  if(!a.paused && !a.ended) return false;   // clipe ocupado: quem chamou pode usar a síntese
   try{ a.currentTime = 0; a.play().catch(() => {}); }catch(e){}
+  return true;
 }
 function criarChefe(){
   const f = piso.chefe.cfg;
@@ -1432,7 +1452,7 @@ function golpeChefe(dano, alcance){
   if(d < alcance && dif < 1.25){
     if(jog.golpe > 0) sClash();    // o jogador também estava golpeando: aço contra aço
     else sCorte();                 // o gemido vem do machucar (sDorJog)
-    machucar(dano); jog.vx += Math.cos(ang)*10; jog.vy += Math.sin(ang)*10;
+    machucar(dano, ang); jog.vx += Math.cos(ang)*10; jog.vy += Math.sin(ang)*10;
   }
 }
 function atualizarChefe(dt){
@@ -1543,17 +1563,21 @@ function golpear(alvo){
     sClash();
   } else {
     sCorte();
-    setTimeout(() => vozChefe('gladiador-levagolpe'), 60);   // o gemido acompanha o corte
+    jorrarSangue(alvo.x, alvo.y, jog.angulo, 14);            // o corte abre carne
+    if(Math.random() < .6) mancharSangue(alvo.x, alvo.y + .5);
+    setTimeout(() => { if(!vozChefe('gladiador-levagolpe')) sDorChefe(); }, 60);
   }
   flutuar(alvo.x, alvo.y-.5, dano, dano > jog.dano*1.8 ? '#ffd88a' : '#f4e2b4');
   faisca(alvo.x - dx/d*alvo.raio, alvo.y - dy/d*alvo.raio, '#f0c070', .12);
   tremor = 4;
   if(alvo.hp <= 0) venceu();
 }
-function machucar(dano){
+function machucar(dano, ang){
   if(jog.invul > 0 || !vivo) return;
   jog.hp -= dano; jog.invul = .45; jog.flash = 1; tremor = 11;
   sDorJog();
+  jorrarSangue(jog.x, jog.y, ang != null ? ang : -Math.PI/2 + (Math.random()-.5)*.8, 10);
+  if(Math.random() < .5) mancharSangue(jog.x, jog.y + .3);
   flutuar(jog.x, jog.y-.4, dano, '#ff8a96');
   atualizarHUD();
   if(jog.hp <= 0) morrer();
