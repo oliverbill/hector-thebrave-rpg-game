@@ -98,6 +98,24 @@
   #comecar:active{background:var(--brasa); color:#120d06;}
   #placar{font-size:12px; color:#8b8299; line-height:2; margin-top:14px;}
   #placar b{color:var(--osso); font-weight:400;}
+  /* bolsa/inventário */
+  #bolsa{margin-top:22px; display:none;}
+  #bolsa.on{display:block;}
+  #bolsa .rot{font-family:var(--mono); font-size:10px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--brasa); margin-bottom:12px;}
+  #bolsa .itens{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  #bolsa .item{width:64px; height:88px; background:#1a1424; border:1px solid #3b2f4d; border-radius:3px;
+    display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding:6px 4px;
+    position:relative; overflow:hidden;}
+  #bolsa .item.novo{border-color:var(--brasa); box-shadow:0 0 14px #e8a13c66;
+    animation:brilhaNovo 1.6s ease-in-out infinite alternate;}
+  @keyframes brilhaNovo{ from{box-shadow:0 0 10px #e8a13c44;} to{box-shadow:0 0 20px #e8a13c99;} }
+  #bolsa .item img{width:46px; height:60px; object-fit:contain; image-rendering:pixelated; margin-top:2px;}
+  #bolsa .item .nm{font-family:var(--mono); font-size:8px; letter-spacing:.05em; color:#ccc2d8;
+    text-align:center; margin-top:4px; line-height:1.15;}
+  #bolsa .item .tag{position:absolute; top:2px; right:3px; font-family:var(--mono); font-size:7px;
+    color:var(--brasa); letter-spacing:.1em;}
+  #bolsa .vazio{color:#5a5266; font-size:11px; font-style:italic;}
 </style>
 </head>
 <body>
@@ -138,6 +156,10 @@
     <p id="vTexto"></p>
     <button id="comecar"></button>
     <div id="placar"></div>
+    <div id="bolsa">
+      <div class="rot">Bolsa</div>
+      <div class="itens" id="bolsaItens"></div>
+    </div>
   </div>
 </div>
 
@@ -197,6 +219,8 @@ const hash = (x,y) => { const n = Math.sin(x*127.1 + y*311.7)*43758.5453; return
 
 /* ---------- estado do motor ---------- */
 let piso = null, mapa = null, braseiros = [], decor = [];
+let inventario = []; /* itens ganhos de chefes, persistem entre pisos */
+const imgsItens = {};
 let jog = null, chefe = null, informantes = [];
 let etapa = 'menu', vivo = false, pausado = false;
 let intel = {}, dialogo = null, interacao = null;
@@ -1379,6 +1403,7 @@ function venceu(){
   for(let k=0;k<40;k++) faisca(chefe.x, chefe.y, '#e8a13c', .2);
   sVitoria();
   el('chefeBarra').classList.remove('on');
+  if(piso.recompensa) adicionarAoInventario(piso.recompensa);
   if(piso.aoVencer) piso.aoVencer();
   setTimeout(() => mostrarVeu(piso.textos.vitoria()), 1500);
 }
@@ -1716,7 +1741,33 @@ function mostrarVeu(t){
   el('vTexto').innerHTML = t.texto;
   el('comecar').textContent = t.botao;
   el('placar').innerHTML = t.placar || '';
+  renderizarBolsa(t.mostrarBolsa);
   el('veu').classList.remove('oculto');
+}
+function adicionarAoInventario(item){
+  if(!item || inventario.some(i => i.id === item.id)) return false;
+  if(item.img && !imgsItens[item.id]){
+    const im = new Image(); im.src = item.img; imgsItens[item.id] = im;
+  }
+  inventario.push({...item, novo:true});
+  return true;
+}
+function renderizarBolsa(mostrar){
+  const box = el('bolsa'), itens = el('bolsaItens');
+  if(!mostrar){ box.classList.remove('on'); itens.innerHTML = ''; return; }
+  box.classList.add('on');
+  if(inventario.length === 0){
+    itens.innerHTML = '<div class="vazio">vazia</div>';
+    return;
+  }
+  itens.innerHTML = inventario.map(it => {
+    const img = it.img ? '<img src="' + it.img + '" alt="">' : '';
+    const tag = it.novo ? '<span class="tag">NOVO</span>' : '';
+    return '<div class="item' + (it.novo ? ' novo' : '') + '">'
+      + tag + img
+      + '<span class="nm">' + it.nome + '</span></div>';
+  }).join('');
+  setTimeout(() => inventario.forEach(i => i.novo = false), 3500);
 }
 function iniciarPiso(p){
   piso = p;
@@ -2188,13 +2239,20 @@ const PISO_CALABOUCO = {
     },
     desenhar: desenharGladiador
   },
+  recompensa:{
+    id:'machado-gladiador',
+    nome:'Machado do Gladiador',
+    img:'img/machado.png',
+    desc:'Duplo corte com runas do Coliseu — serve para o próximo chefe.'
+  },
   textos:{
     vitoria: () => ({
       titulo:"O Gladiador cai<em>piso 1 concluído</em>",
-      texto:"A multidão para de gritar. Do outro lado da areia há uma escada — ela sobe para as cozinhas.",
+      texto:"A multidão para de gritar. Do outro lado da areia há uma escada — ela sobe para as cozinhas.<br><br>Você tirou o <b>machado</b> das mãos dele. Guarde na bolsa — vai precisar.",
       botao:"De novo",
       placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>'
-        + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>'
+        + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
+      mostrarBolsa:true
     }),
     derrota: () => ({
       titulo:"A areia bebe<em>você não passou</em>",
