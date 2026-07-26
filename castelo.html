@@ -1429,12 +1429,14 @@ function venceu(){
   el('chefeBarra').classList.remove('on');
   if(piso.recompensa) adicionarAoInventario(piso.recompensa);
   if(piso.aoVencer) piso.aoVencer();
+  pararBgm();
   setTimeout(() => mostrarVeu(piso.textos.vitoria()), 1500);
 }
 function morrer(){
   jog.hp = 0; vivo = false;
   for(let k=0;k<30;k++) faisca(jog.x, jog.y, '#c0455a', .16);
   sMorrer();
+  pararBgm();
   setTimeout(() => mostrarVeu(piso.textos.derrota()), 1100);
 }
 function usarTrapo(){
@@ -1852,7 +1854,30 @@ el('comecar').addEventListener('click', () => {
   iniAudio(); try{ if(ac && ac.state === 'suspended') ac.resume(); }catch(e){}
   try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
   iniciarPiso(PISOS[pisoAtual]);
+  tocarBgm(PISOS[pisoAtual].bgm);
 });
+
+/* ---------- música de fundo (loop por piso) ---------- */
+let bgmAudio = null, bgmSrc = null;
+function tocarBgm(url){
+  if(!url){ pararBgm(); return; }
+  if(bgmSrc === url && bgmAudio){
+    try{ bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
+    return;
+  }
+  pararBgm();
+  try{
+    bgmAudio = new Audio(url);
+    bgmAudio.loop = true;
+    bgmAudio.volume = .35;
+    bgmSrc = url;
+    bgmAudio.play().catch(() => {});
+  }catch(e){}
+}
+function pararBgm(){
+  if(bgmAudio){ try{ bgmAudio.pause(); bgmAudio.currentTime = 0; }catch(e){} }
+  bgmAudio = null; bgmSrc = null;
+}
 el('btnAcao').addEventListener('touchstart', e => { e.preventDefault(); agir(); }, {passive:false});
 el('btnAcao').addEventListener('mousedown', agir);
 el('btnDash').addEventListener('touchstart', e => { e.preventDefault(); rolar(); }, {passive:false});
@@ -2236,6 +2261,7 @@ function desenharGladiador(c, ox, oy){
 /* --- o piso, montado --- */
 const PISO_CALABOUCO = {
   id:'calabouco', nome:'O Calabouço',
+  bgm:'audio/fase1-bgm.mp3',
   paleta:{
     fundo:'#0f0c15',
     chao:[96,90,110],      // pedra do calabouço
