@@ -23,7 +23,7 @@ Abra `castelo.html` em qualquer navegador (ou adicione à tela inicial do iPhone
 
 - **Andar** — arraste o polegar esquerdo (joystick virtual) ou WASD/setas
 - **Rolar** — botão direito ou Espaço (invulnerabilidade breve, cooldown de 1s)
-- **Trapo** (cura +40) — botão menor ou Q (2 por partida)
+- **Trapo** (cura +40) — botão menor ou Q (2 iniciais; há mais 4 escondidos nas catacumbas)
 - **Ação contextual** (FORÇAR / FALAR / ABRIR) — botão âmbar ou E
 
 ## Arquitetura: MOTOR × CONTEÚDO
@@ -50,7 +50,8 @@ O arquivo é dividido em duas metades demarcadas. O **motor não conhece nenhum 
 ### CONTEÚDO — Piso 1: O Calabouço
 
 - Constantes geográficas (largura, altura, posições das celas, do portão, da arena de areia)
-- Construtor de mapa (tiles, braseiros, pilares)
+- Construtor de mapa (tiles, braseiros, pilares) — celas, guarnição, **fosso com pontes de tábuas** (uma quebrada) e **labirinto de catacumbas** (gerado por backtracker com semente fixa: sempre o mesmo mapa)
+- **Espinhos cíclicos** (armadilhas nas pontes, corredores e catacumbas) e **trapos coletáveis** nos becos sem saída do labirinto
 - Roteiro da corrente (forçar até arrebentar, efeitos, tremor)
 - Lógica do portão (bloqueia se não ouviu 3/3 presos, sela a luta ao atravessar)
 - Desenho da corrente (elos em 4 camadas, barriga dinâmica, grilhão permanente no tornozelo)
@@ -60,7 +61,7 @@ O arquivo é dividido em duas metades demarcadas. O **motor não conhece nenhum 
 - Paleta de cores (pedra, areia, paredes, luz ambiente)
 - Spawn do jogador, trapos iniciais
 - Textos (intro, vitória, derrota)
-- Missão com 3 tarefas (corrente, 3 presos, Gladiador)
+- Missão com 4 tarefas (corrente, cruzar o fosso, 3 presos, Gladiador)
 - 3 informantes (o Velho, a Ladra, o Ferreiro) com falas, vozes e segredos
 - Ganchos: `aoIniciar()`, `atualizar()`, `interacao()`, `agir()`, `desenharCenario()`, `desenharNoJogador()`
 

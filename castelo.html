@@ -207,7 +207,8 @@
 
 /* ---------- constantes e utilidades ---------- */
 const TAU = Math.PI*2, VISAO = 14;
-const PAREDE = 0, CHAO = 1, GRADE = 2, CHAO2 = 3;   // CHAO2: piso alternativo (areia, tapete...)
+const PAREDE = 0, CHAO = 1, GRADE = 2, CHAO2 = 3,   // CHAO2: piso alternativo (areia, tapete...)
+      FOSSO = 4, PONTE = 5;                         // FOSSO: abismo (sólido); PONTE: tábuas sobre o abismo
 let LARG = 1, ALT = 1;
 
 const el = id => document.getElementById(id);
@@ -887,6 +888,37 @@ function desenharCache(){
       cmx.fillRect(px, py + T*.78, T, T*.08);
       cmx.fillStyle = 'rgba(255,255,255,.16)';
       for(let k=0;k<4;k++) cmx.fillRect(px + T*(.1 + k*.24), py, T*.03, T);
+    } else if(t === PONTE){
+      cmx.fillStyle = '#070510'; cmx.fillRect(px, py, T, T);          // abismo por baixo das frestas
+      for(let k=0;k<4;k++){
+        const v = .8 + hash(x*3+k, y*7)*.35;
+        cmx.fillStyle = 'rgb(' + Math.round(122*v) + ',' + Math.round(82*v) + ',' + Math.round(48*v) + ')';
+        cmx.fillRect(px+1, py + k*T*.25 + 1, T-2, T*.25 - 3);
+        cmx.fillStyle = 'rgba(255,255,255,.05)';
+        cmx.fillRect(px+1, py + k*T*.25 + 1, T-2, 2);
+      }
+      if(dentro(x-1,y) && mapa[idx(x-1,y)] === FOSSO){                // viga lateral quando pende sobre o vazio
+        cmx.fillStyle = '#3a2a18'; cmx.fillRect(px, py, 4, T);
+        cmx.fillStyle = 'rgba(216,180,120,.35)'; cmx.fillRect(px+1, py, 1.5, T);
+      }
+      if(dentro(x+1,y) && mapa[idx(x+1,y)] === FOSSO){
+        cmx.fillStyle = '#3a2a18'; cmx.fillRect(px+T-4, py, 4, T);
+        cmx.fillStyle = 'rgba(216,180,120,.35)'; cmx.fillRect(px+T-2.5, py, 1.5, T);
+      }
+    } else if(t === FOSSO){
+      cmx.fillStyle = '#070510'; cmx.fillRect(px, py, T, T);
+      if(h > .78){
+        cmx.fillStyle = 'rgba(70,60,88,.16)';
+        cmx.beginPath(); cmx.arc(px + T*h, py + T*(.3 + h*.5), T*.09, 0, TAU); cmx.fill();
+      }
+      if(dentro(x,y-1)){
+        const v = mapa[idx(x,y-1)];
+        if(v !== FOSSO && v !== PAREDE){                              // paredão do penhasco sob a beirada
+          cmx.fillStyle = 'rgba(150,138,166,.45)'; cmx.fillRect(px, py, T, 3);
+          cmx.fillStyle = 'rgba(52,44,66,.7)'; cmx.fillRect(px, py+3, T, T*.3);
+          cmx.fillStyle = 'rgba(22,18,32,.7)'; cmx.fillRect(px, py + T*.3 + 3, T, T*.2);
+        }
+      }
     } else {
       cmx.fillStyle = rgb(P.parede, .92 + h*.18);
       cmx.fillRect(px, py, T, T);
@@ -1126,7 +1158,7 @@ function solido(x,y){
   const cx = Math.floor(x), cy = Math.floor(y);
   if(!dentro(cx,cy)) return true;
   const t = mapa[idx(cx,cy)];
-  return t === PAREDE || t === GRADE;
+  return t === PAREDE || t === GRADE || t === FOSSO;
 }
 function livre(x, y, r){
   return !solido(x-r, y-r) && !solido(x+r, y-r) && !solido(x-r, y+r) && !solido(x+r, y+r);
@@ -1928,12 +1960,12 @@ function quadro(t){
    Tudo abaixo desta linha é dado e roteiro. O motor não muda.
    ================================================================ */
 
-const CAL = {                      // geografia do piso (planta: torre + celas + guarnição)
-  LARG:46, ALT:34,
+const CAL = {                      // geografia do piso (planta: torre + celas + guarnição + fosso + catacumbas)
+  LARG:46, ALT:58,
   TORRE:{x:10, y:8, raio:5.4},     // arena circular
   PORTAO:{x:10, y:14}              // grade entre o corredor das celas e a torre
 };
-let ancora = null, portao = null;
+let ancora = null, portao = null, espinhos = [], trapos = [], vistoCata = false;
 
 function construirCalabouco(){
   const t = new Uint8Array(CAL.LARG*CAL.ALT).fill(PAREDE);
@@ -1977,6 +2009,31 @@ function construirCalabouco(){
   cavar(38,7,38,8); cavar(38,17,38,17); cavar(38,26,38,27);
   cavar(27,12,27,13);
 
+  /* ---- descida do depósito para as catacumbas ---- */
+  cavar(8,33,9,34);
+
+  /* ---- o fosso: abismo cortado por pontes de tábuas ---- */
+  cavar(3,35,30,35);            // beirada norte
+  cavar(3,36,30,42,FOSSO);      // o abismo
+  cavar(3,43,30,43);            // beirada sul
+  cavar(12,36,13,38,PONTE);     // ponte alta
+  cavar(10,39,16,39,CHAO2);     // plataforma de pedra antiga no meio do vão
+  cavar(15,40,16,42,PONTE);     // ponte baixa
+  cavar(6,36,7,37,PONTE);       // ponte quebrada: não chega ao outro lado
+  cavar(6,41,7,42,PONTE);
+  cavar(25,38,26,40,PONTE);     // ruína solta no meio do abismo
+
+  /* ---- labirinto das catacumbas: celas de 2x2 numa grade 13x4 ---- */
+  const lab = gerarLabirinto(13, 4, 20260726);
+  for(let ly=0; ly<4; ly++) for(let lx=0; lx<13; lx++){
+    const c = lab[ly*13+lx], gx = 4+lx*3, gy = 45+ly*3;
+    cavar(gx, gy, gx+1, gy+1);
+    if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
+    if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
+  }
+  cavar(19,44,20,44);           // entrada, na beirada sul do fosso
+  cavar(4,54,8,55);             // câmara da Ladra, no canto mais fundo
+
   /* ---- luzes ---- */
   [[10,3.5],[5.5,8],[14.5,8],                       // torre
    [10,18],[10,24],                                 // corredor
@@ -1986,7 +2043,11 @@ function construirCalabouco(){
    [35.5,10],[35.5,20],[35.5,28],                   // corredor central
    [41,6],[41,17],                                  // arsenal e guarda
    [27,23],[24,30],                                 // salão
-   [41,28],[42,29],[40.5,29.5]                      // forja (brilho forte)
+   [41,28],[42,29],[40.5,29.5],                     // forja (brilho forte)
+   [8.5,34],[6,35.5],[20,35.5],                     // descida e beirada norte do fosso
+   [13,39.5],[8,43.5],[24,43.5],                    // plataforma e beirada sul
+   [20.5,46.5],[28.5,48.5],[10.5,51.5],[40.5,46.5], // labirinto das catacumbas
+   [7.5,54.5]                                       // câmara da Ladra
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
 
   /* ---- decoração ---- */
@@ -2020,8 +2081,100 @@ function construirCalabouco(){
   dec.push({tipo:'caixote', x:42.6, y:24.6}); dec.push({tipo:'osso', x:39.6, y:30.6});
   // ponte
   dec.push({tipo:'rachadura', x:18, y:29.6});
+  // fosso e pontes: quem caiu, ficou
+  dec.push({tipo:'poca', x:17, y:35.6}); dec.push({tipo:'rachadura', x:5, y:35.4});
+  dec.push({tipo:'osso', x:6.5, y:36.8}); dec.push({tipo:'caveira', x:11, y:39.4});
+  dec.push({tipo:'osso', x:14.8, y:39.3}); dec.push({tipo:'rachadura', x:21, y:43.4});
+  // labirinto das catacumbas
+  dec.push({tipo:'teia', x:4.4, y:45.4, flip:false});
+  dec.push({tipo:'caveira', x:13.5, y:48.5}); dec.push({tipo:'sangue', x:19.5, y:48.6});
+  dec.push({tipo:'osso', x:31.5, y:51.5}); dec.push({tipo:'teia', x:41.5, y:45.4, flip:true});
+  dec.push({tipo:'caveira', x:34.5, y:54.6});
+  // câmara da Ladra
+  dec.push({tipo:'palha', x:5, y:55.2}); dec.push({tipo:'tigela', x:6.2, y:55.3});
+  dec.push({tipo:'teia', x:4.3, y:54.3, flip:false});
+  dec.push({tipo:'corrente_parede', x:7.6, y:54.2});
 
   return {larg:CAL.LARG, alt:CAL.ALT, tiles:t, braseiros:bra, decor:dec};
+}
+
+/* --- labirinto determinístico: backtracker com semente fixa (o mapa é sempre o mesmo) --- */
+function gerarLabirinto(cols, linhas, semente){
+  let s = semente >>> 0;
+  const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s/4294967296; };
+  const cel = Array.from({length: cols*linhas}, () => ({v:false, portas:[false,false,false,false]}));
+  const dx = [0,1,0,-1], dy = [-1,0,1,0];               // N, L, S, O
+  const pilha = [0]; cel[0].v = true;
+  while(pilha.length){
+    const i = pilha[pilha.length-1], cx = i%cols, cy = (i/cols)|0;
+    const viz = [];
+    for(let d=0; d<4; d++){
+      const nx = cx+dx[d], ny = cy+dy[d];
+      if(nx>=0 && ny>=0 && nx<cols && ny<linhas && !cel[ny*cols+nx].v) viz.push(d);
+    }
+    if(!viz.length){ pilha.pop(); continue; }
+    const d = viz[(rnd()*viz.length)|0];
+    const j = (cy+dy[d])*cols + (cx+dx[d]);
+    cel[i].portas[d] = true; cel[j].portas[(d+2)%4] = true;
+    cel[j].v = true; pilha.push(j);
+  }
+  return cel;
+}
+
+/* --- espinhos: armadilhas cíclicas nas pontes, corredores e catacumbas --- */
+function alturaEspinho(e){
+  const c = (tempo + e.fase) % 2.6;
+  if(c < .12) return c/.12;               // subindo
+  if(c < 1.0) return 1;                   // armado
+  if(c < 1.18) return 1 - (c-1.0)/.18;    // recolhendo
+  return 0;
+}
+function desenharEspinhos(ox, oy){
+  espinhos.forEach(e => {
+    const px = ox + e.x*tam, py = oy + e.y*tam;
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.beginPath(); ctx.ellipse(px, py, tam*.36, tam*.22, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(90,82,104,.5)';
+    for(let i=0;i<4;i++){
+      ctx.beginPath();
+      ctx.ellipse(px + (i-1.5)*tam*.17, py, tam*.05, tam*.035, 0, 0, TAU);
+      ctx.fill();
+    }
+    const h = alturaEspinho(e);
+    if(h <= 0) return;
+    for(let i=0;i<4;i++){
+      const sx = px + (i-1.5)*tam*.17, alt = tam*.5*h*(i%2 ? 1 : .85);
+      ctx.fillStyle = '#cdc8d4';
+      ctx.beginPath();
+      ctx.moveTo(sx - tam*.055, py + tam*.02);
+      ctx.lineTo(sx + tam*.055, py + tam*.02);
+      ctx.lineTo(sx, py + tam*.02 - alt);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(24,20,32,.65)'; ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  });
+}
+
+/* --- trapos perdidos: cura extra escondida nos cantos perigosos --- */
+function desenharTrapos(ox, oy){
+  trapos.forEach(tp => {
+    if(tp.pego) return;
+    const px = ox + tp.x*tam, py = oy + tp.y*tam;
+    const fl = Math.sin(tempo*2.4 + tp.x*3)*tam*.05;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.5));
+    g.addColorStop(0, 'rgba(143,196,138,.30)'); g.addColorStop(1, 'rgba(143,196,138,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.18, tam*.07, 0, 0, TAU); ctx.fill();
+    ctx.save(); ctx.translate(px, py - tam*.06 + fl); ctx.rotate(.5);
+    ctx.fillStyle = '#d8cfb8';
+    ctx.fillRect(-tam*.16, -tam*.09, tam*.32, tam*.18);
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.fillRect(-tam*.16, -tam*.09, tam*.32, tam*.04);
+    ctx.fillRect(-tam*.02, -tam*.09, tam*.03, tam*.18);
+    ctx.restore();
+  });
 }
 
 /* --- corrente e portão: roteiro do piso --- */
@@ -2305,13 +2458,14 @@ const PISO_CALABOUCO = {
   trapos:2,
   intro:{
     titulo:"O Calabouço<em>piso 1</em>",
-    texto:"Você acorda acorrentado ao chão. Lá fora, a multidão já grita o nome do <b>Gladiador</b> — o guarda que ninguém venceu.<br><br><b>Arraste o polegar esquerdo</b> para andar. Force a corrente até arrebentar, ouça os outros presos, e só então abra o portão.",
+    texto:"Você acorda acorrentado ao chão. Lá fora, a multidão já grita o nome do <b>Gladiador</b> — o guarda que ninguém venceu.<br><br><b>Arraste o polegar esquerdo</b> para andar. Force a corrente até arrebentar, desça às catacumbas, cruze o fosso, ache os presos no labirinto — e só então o portão da areia abre.",
     botao:"Acordar"
   },
   missao:{
     titulo:'Fugir do Calabouço',
     tarefas:[
       {id:'t-corrente', label:'Quebrar a corrente'},
+      {id:'t-ponte', label:'Cruzar o fosso'},
       {id:'t-presos', label:'Ouvir os presos', contador:3},
       {id:'t-chefe', label:'Derrotar o Gladiador'}
     ],
@@ -2332,7 +2486,7 @@ const PISO_CALABOUCO = {
       retrato:'img/ladra.png',
       voz:{pitch:1.35, rate:1.08, genero:'f',
            audios:['audio/ladra-1.mp3','audio/ladra-2.mp3','audio/ladra-3.mp3']},
-      x:5.5, y:30.5,     // no depósito, entre os barris
+      x:5, y:54.8,       // na câmara mais funda do labirinto das catacumbas
       falas:[
         'Não me olhe assim. Eu roubei do templo, você provavelmente roubou pão.',
         'O elmo dele é bonito e é burro: cobre o olho esquerdo inteiro.',
@@ -2394,6 +2548,20 @@ const PISO_CALABOUCO = {
   aoIniciar(){
     ancora = {x:5.5, y:21, forca:0, alvo:100, tensao:0, puxada:0};
     portao = {aberto:false};
+    vistoCata = false;
+    espinhos = [
+      {x:10.5, y:18.5, fase:0},   {x:10.5, y:25.5, fase:1.3},   // corredor das celas
+      {x:35.5, y:13.5, fase:.7},                                 // corredor da guarnição
+      {x:12.5, y:36.5, fase:0},   {x:13.5, y:38.5, fase:1.3},   // ponte alta
+      {x:15.5, y:40.5, fase:.65}, {x:16.5, y:41.5, fase:1.95},  // ponte baixa
+      {x:18.5, y:43.5, fase:.4},                                 // beirada sul do fosso
+      {x:19.5, y:45.5, fase:0},   {x:25.5, y:45.5, fase:1.6},   // labirinto
+      {x:10.5, y:54.5, fase:1.0}
+    ];
+    trapos = [
+      {x:10.5, y:39.5},   // plataforma entre as pontes
+      {x:40.5, y:45.5}, {x:22.5, y:51.5}, {x:40.5, y:54.5}   // fundos do labirinto
+    ];
     etapa = 'preso';
     jog.lento = true; jog.dashOff = true;
     avisar('Acorrentado', 'force até arrebentar');
@@ -2420,6 +2588,28 @@ const PISO_CALABOUCO = {
       criarChefe();
       etapa = 'chefe';
     }
+    espinhos.forEach(e => {
+      const h = alturaEspinho(e);
+      if(h >= 1 && !e.armado){
+        e.armado = true;
+        if(Math.hypot(e.x-jog.x, e.y-jog.y) < 8) sFerro();
+      }
+      if(h <= 0) e.armado = false;
+      if(h > .6 && Math.hypot(e.x-jog.x, e.y-jog.y) < .55) machucar(9);
+    });
+    trapos.forEach(tp => {
+      if(tp.pego || Math.hypot(tp.x-jog.x, tp.y-jog.y) > .6) return;
+      tp.pego = true; jog.pocoes++;
+      sTrapo();
+      flutuar(tp.x, tp.y-.3, '+1 trapo', '#8fc48a');
+      for(let k=0;k<10;k++) faisca(tp.x, tp.y, '#8fc48a', .09);
+      atualizarHUD();
+    });
+    if(!vistoCata && jog.y > 34.5){
+      vistoCata = true;
+      avisar('As catacumbas', 'cuidado onde pisa');
+    }
+    if(jog.y > 43.1) marcarTarefa('t-ponte');
   },
   falarLiberado(){ return etapa === 'livre'; },
   interacao(){
@@ -2434,6 +2624,8 @@ const PISO_CALABOUCO = {
     else if(i.tipo === 'portao') abrirPortao();
   },
   desenharCenario(ox, oy){
+    desenharEspinhos(ox, oy);
+    desenharTrapos(ox, oy);
     if(etapa === 'preso' || ancora.forca > 0) desenharAncora(ox, oy);
     if(etapa === 'preso'){ desenharCorrente(ox, oy); desenharBarraForca(ox, oy); }
   },
