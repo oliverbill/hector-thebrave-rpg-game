@@ -1717,11 +1717,8 @@ function atualizar(dt){
 
   const chefeAtivo = chefe && chefe.hp > 0;
 
-  // ataque automático
-  if(chefeAtivo && jog.recarga <= 0){
-    const d = Math.hypot(chefe.x-jog.x, chefe.y-jog.y) - chefe.raio;
-    if(d < 1.0) golpear(chefe);
-  }
+  // sem ataque automático: quem golpeia é o botão GOLPE / tecla F (golpeDeArma)
+
   // corpo do chefe empurra, respeitando colisão
   if(chefeAtivo){
     const dx = jog.x-chefe.x, dy = jog.y-chefe.y, d = Math.hypot(dx,dy);
@@ -2504,9 +2501,10 @@ function desenharArmaNaMao(px, py, r){
   ctx.restore();
 }
 function golpeDeArma(){
-  if(!vivo || pausado || !jog.arma || jog.recarga > 0) return;
+  if(!vivo || pausado || etapa === 'preso' || jog.recarga > 0) return;
+  const cortante = !!ARMAS[jog.arma];        // de mãos limpas ainda dá para bater, só que fraco
   jog.recarga = .36; jog.golpe = .2;
-  sEspadaCorta();
+  if(cortante) sEspadaCorta(); else sGolpe();
   if(chefe && chefe.hp > 0){
     const d = Math.hypot(chefe.x-jog.x, chefe.y-jog.y) - chefe.raio;
     if(d < 1.2){ golpear(chefe); return; }   // golpear cuida de dano, fraquezas e sons
@@ -2516,11 +2514,11 @@ function golpeDeArma(){
     const dx = rz.x-jog.x, dy = rz.y-jog.y, d = Math.hypot(dx,dy);
     if(d > 1.3) return;
     jog.angulo = Math.atan2(dy, dx);
-    const dano = Math.round((jog.dano + irand(5))*2);
+    const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
     rz.hp -= dano; rz.flash = 1;
     rz.vx += dx/Math.max(.01,d)*6; rz.vy += dy/Math.max(.01,d)*6;
-    sCorte();
-    flutuar(rz.x, rz.y-.4, dano, '#ffd88a');
+    if(cortante) sCorte(); else sEspadaAcerta();
+    flutuar(rz.x, rz.y-.4, dano, cortante ? '#ffd88a' : '#f4e2b4');
     for(let k=0;k<8;k++) faisca(rz.x, rz.y, '#a34040', .12);
     if(rz.hp <= 0){ sRato(); for(let k=0;k<12;k++) faisca(rz.x, rz.y, '#6d5a60', .14); }
   });
@@ -3022,21 +3020,6 @@ const PISO_CALABOUCO = {
         sRato();
         machucar(6);
       }
-      if(etapa !== 'preso' && jog.recarga <= 0 && d < 1.0){
-        jog.golpe = .2; jog.recarga = .36;
-        jog.angulo = Math.atan2(dy, dx);
-        sGolpe();
-        const cortante = !!ARMAS[jog.arma];
-        const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
-        rz.hp -= dano; rz.flash = 1;
-        sEspadaAcerta();
-        flutuar(rz.x, rz.y-.4, dano, cortante ? '#ffd88a' : '#f4e2b4');
-        for(let k=0;k<6;k++) faisca(rz.x, rz.y, '#a34040', .1);
-        if(rz.hp <= 0){
-          sRato();
-          for(let k=0;k<12;k++) faisca(rz.x, rz.y, '#6d5a60', .14);
-        }
-      }
     });
     if(facao && !facao.pego && Math.hypot(facao.x-jog.x, facao.y-jog.y) < .7){
       facao.pego = true;
@@ -3051,12 +3034,12 @@ const PISO_CALABOUCO = {
       for(let k=0;k<14;k++) faisca(facao.x, facao.y, '#e8a13c', .14);
       abrirPopupInventario(item, 'Empunhar');
     }
+    // o botão fica de pé mesmo sem arma: é o único jeito de atacar, já que não há
+    // mais golpe automático (e as ratazanas aparecem antes do facão)
     const bg = el('btnGolpe');
-    bg.classList.toggle('on', !!jog.arma);
-    if(jog.arma){
-      bg.classList.toggle('off', jog.recarga > 0);
-      el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
-    }
+    bg.classList.toggle('on', etapa !== 'preso');
+    bg.classList.toggle('off', jog.recarga > 0);
+    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
     if(!vistoCata && jog.y > 34.5){
       vistoCata = true;
       avisar('As catacumbas', 'a Ladra se esconde no fundo — siga a luz dourada');
