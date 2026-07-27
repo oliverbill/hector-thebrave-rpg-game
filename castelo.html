@@ -1382,6 +1382,15 @@ function abrirDialogo(p){
   el('dialogo').classList.add('on');
   mostrarFala();
 }
+/* mesma legenda dos prisioneiros, mas para uma fala avulsa (a abertura do chefe):
+   nada de intel/segredos no fim — só o callback, que é quem solta a luta */
+function abrirFala(p, aoFim){
+  dialogo = {inf:p, i:0, aoFim};
+  pausado = true;
+  fundirBgm(BGM_VOL_FALA);
+  el('dialogo').classList.add('on');
+  mostrarFala();
+}
 function mostrarFala(){
   const p = dialogo.inf;
   el('dNome').textContent = p.nome;
@@ -1397,7 +1406,15 @@ function avancarDialogo(){
   if(!dialogo) return;
   dialogo.i++;
   if(dialogo.i < dialogo.inf.falas.length){ mostrarFala(); return; }
-  const p = dialogo.inf;
+  const p = dialogo.inf, aoFim = dialogo.aoFim;
+  if(aoFim){
+    dialogo = null; pausado = false;
+    fundirBgm(bgmVolAtual);
+    calarVoz();
+    el('dialogo').classList.remove('on');
+    aoFim();
+    return;
+  }
   if(!p.feito){
     p.feito = true;
     intel[p.chave] = true;
@@ -1438,8 +1455,14 @@ function criarChefe(){
   };
   el('chefeNome').textContent = f.nome;
   el('chefeBarra').classList.add('on');
-  if(f.entrada) setTimeout(() => avisar(f.entrada[0], f.entrada[1]), 900);
-  vozChefe('gladiador-entrada');
+  const entrar = () => { if(f.entrada) avisar(f.entrada[0], f.entrada[1]); };
+  if(f.abertura){
+    // ele fala primeiro, com legenda; a luta só corre quando o jogador fecha
+    abrirFala({nome:f.nome, retrato:f.retrato, falas:f.abertura.falas, voz:f.abertura.voz}, entrar);
+  } else {
+    setTimeout(entrar, 900);
+    vozChefe('gladiador-entrada');
+  }
 }
 function dirLivre(c, ax, ay){
   const base = Math.atan2(ay, ax);
@@ -2856,7 +2879,12 @@ const PISO_CALABOUCO = {
       exaustoT:1.5,
       investidaDist:3.0, preparoT:1.5, batidasEm:[1.15,.55],
       investidaVel:17, investidaT:1.1, investidaDano:24, zonzoT:2.0,
-      entrada:['O Gladiador', 'ele não cumprimenta']
+      entrada:['O Gladiador', 'ele não cumprimenta'],
+      retrato:'img/gladiador.png',
+      abertura:{
+        falas:['Você chegou longe para morrer tão perto da saída.'],
+        voz:{pitch:.55, rate:.82, genero:'m', audios:['audio/gladiador-entrada.mp3']}
+      }
     },
     fraquezas:{
       costas:{chave:'flanco', com:2.1, sem:1.2},
