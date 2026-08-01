@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lição 0001 — A anatomia de um engagement</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <p class="kicker">tech-dd-pipeline · Lição 0001 · ~15 min</p>
+  <h1>A anatomia de um engagement</h1>
+  <p class="lede">Os 8 estágios do seu pipeline, do preflight ao purge — e a decisão de arquitetura que sustenta tudo: o funil de confiança.</p>
+
+  <aside class="note">
+    Ligação com a <strong>missão</strong>: antes do primeiro spot-check de €500, o T8 exige 2 dry-runs em ≤4h.
+    Você não fecha 4h de wall-clock consultando o design doc a cada passo — o fluxo precisa estar na memória.
+    Esta lição constrói essa espinha dorsal; as próximas penduram profundidade nela.
+  </aside>
+
+  <h2>A ideia central: um funil de confiança</h2>
+  <p>
+    O seu pipeline não é uma lista de ferramentas — é um <strong>funil que converte output bruto de ferramenta em afirmação defensável</strong>, estreitando o que cada camada pode ver:
+  </p>
+  <pre>ferramenta (JSON bruto, em disco)  →  skill (resumo estruturado ≤1k tokens)  →  report agent (só os resumos)  →  relatório (com trilha de auditoria)</pre>
+  <p>
+    A regra que faz o funil funcionar: <strong>o Report Agent nunca lê o output bruto</strong> — só os resumos.
+    Isso limita alucinação (o agente não pode "citar" o que nunca viu), mantém o contexto dentro do orçamento,
+    e garante que todo achado no relatório tenha um arquivo em <code>tool-outputs/</code> como evidência rastreável.
+    Quando uma skill falha, o funil não disfarça: o relatório mostra um bloco <code>SECTION UNAVAILABLE</code> visível, nomeando ferramenta e motivo.
+  </p>
+
+  <h2>Os 8 estágios</h2>
+  <div class="tablewrap">
+  <table>
+    <tr><th>#</th><th>Estágio</th><th>O que faz</th><th>Por que existe</th></tr>
+    <tr><td>1</td><td><strong>Preflight scan</strong></td><td><code>bin/preflight-scan</code> estima o runtime do repo alvo (via <code>cloc</code> etc.)</td><td>Gate de intake: ≤2h de runtime → aceita no tier; senão → upsell. Protege as 4h de wall-clock.</td></tr>
+    <tr><td>2</td><td><strong>Bootstrap</strong></td><td><code>bin/engagement-create</code> cria o workspace, pina o SHA do alvo, grava tier + tese + preocupação do buyer, e cria a tag <code>engagement-{hash-opaco}-{data}</code></td><td>Reprodutibilidade: a tag pina skills + rubric + template exatos. Hash opaco → git nunca vaza cliente.</td></tr>
+    <tr><td>3</td><td><strong>Execução do pipeline</strong></td><td>O <code>codebase-orchestrator</code> sequencia as skills <code>codebase-*</code> (history, tests-inventory, conventions, maintainability, scalability, ai-surface, ops-evidence, deps, secrets, license, cybersecurity, coverage)</td><td>Uma skill, um job, um tool. Cada uma escreve o bruto em disco e devolve resumo ≤1k tokens + status <code>OK/DEGRADED/FAILED</code>.</td></tr>
+    <tr><td>4</td><td><strong>Manifest assembly</strong></td><td>Monta <code>manifest.json</code> a partir da tag, tempos e status de cada skill</td><td>Registro do que rodou, quanto demorou e o que degradou — insumo do QA e da defesa posterior.</td></tr>
+    <tr><td>5</td><td><strong>Report render</strong></td><td><code>report-skill</code> sintetiza <em>só os resumos</em> num relatório do tier, com metadata (rubric, commit, tier) embutida</td><td>É a boca do funil de confiança. Seções não-OK viram <code>SECTION UNAVAILABLE</code> — nada é omitido em silêncio.</td></tr>
+    <tr><td>6</td><td><strong>Founder QA</strong></td><td>Você audita o draft com o checklist do <code>validation-spec.md</code> (30m / 4–6h / 8–12h conforme o tier) e preenche o <code>validation-log.md</code></td><td>O humano é a última camada do funil: pega o que o eval de alucinação não pegou. É o que você assina.</td></tr>
+    <tr><td>7</td><td><strong>Delivery</strong></td><td>Pandoc converte o relatório em PDF e entrega ao cliente</td><td>Artefato final com trilha: rubric + commit no rodapé permitem re-render idêntico anos depois.</td></tr>
+    <tr><td>8</td><td><strong>Purge</strong></td><td><code>bin/engagement-purge</code> destrói o workspace e emite atestado assinado (timestamp + diff de filesystem)</td><td>Obrigação contratual/GDPR: prova por e-mail de que o código do cliente não ficou com você.</td></tr>
+  </table>
+  </div>
+
+  <div class="win">
+    <strong>A sua vitória desta lição:</strong> feche esta página e narre o fluxo em voz alta em 90 segundos —
+    os 8 estágios na ordem, e uma frase sobre o funil de confiança. Se travar em algum estágio, releia só a linha dele e tente de novo.
+    (Recuperar da memória &gt; reler: é isso que constrói retenção de longo prazo.)
+  </div>
+
+  <h2>Teste-se</h2>
+  <p>Responda de memória — o feedback é imediato:</p>
+  <div class="quiz" data-quiz='[
+    {"stem":"O que o preflight-scan decide?","options":["Aceitar ou sugerir upsell","Escolher o tier final","Gerar o relatório draft","Clonar o repo alvo"],"answer":0,"why":"É o gate de intake: runtime estimado ≤2h aceita o engagement no tier; acima disso, upsell. Ele protege o orçamento de 4h de wall-clock."},
+    {"stem":"Por que o Report Agent consome apenas os resumos ≤1k tokens, nunca o output bruto?","options":["Limitar alucinação e contexto","Acelerar geração do PDF","Reduzir custo por engagement","Simplificar manutenção das skills"],"answer":0,"why":"O agente não pode citar o que nunca viu — todo achado rastreia a um resumo, que rastreia a um arquivo em tool-outputs/. Também mantém o contexto dentro do orçamento."},
+    {"stem":"Uma skill retorna status FAILED. O que o relatório faz?","options":["Mostra SECTION UNAVAILABLE nomeado","Aborta o pipeline inteiro","Reexecuta a skill automaticamente","Omite a seção silenciosamente"],"answer":0,"why":"Contrato do report-skill: todo status não-OK vira um bloco visível nomeando ferramenta e motivo. Omissão silenciosa quebraria a confiança do relatório."},
+    {"stem":"O que a tag engagement-{hash}-{data} pina?","options":["Skills, rubric e template","Somente o relatório final","Somente o SHA alvo","Somente a versão rubric"],"answer":0,"why":"git checkout da tag restaura o estado exato do suite que gerou o relatório — reprodutibilidade para defesa ou re-review. O SHA do alvo é pinado à parte, em SHA.txt."},
+    {"stem":"Por que hash opaco em vez do nome do cliente na tag?","options":["Histórico git nunca vaza cliente","Facilita ordenar tags por data","Evita conflitos entre as tags","Reduz o comprimento da tag"],"answer":0,"why":"Os hashes derivam de um segredo local e são irreversíveis — mesmo que o repo vá a público, a identidade do cliente não vai junto."}
+  ]'></div>
+
+  <h2>Fonte primária</h2>
+  <p>
+    Leia (ou releia) com olhos de aluno, não de autor: <a href="https://github.com/oliverbill/tech-due-diligence-report/blob/main/docs/pipeline-flow.html"><code>docs/pipeline-flow.html</code></a> no seu repo —
+    o diagrama clicável de cada estágio. Como fonte externa sobre a <em>disciplina</em> de DD, o melhor guia público é o
+    <a href="https://madewithlove.com/blog/the-ultimate-guide-to-technical-due-diligence/">Ultimate Guide to Technical Due Diligence, da madewithlove</a>.
+  </p>
+
+  <footer class="lesson-footer">
+    <p>Referência rápida desta lição: <a href="../reference/0001-ciclo-de-vida-engagement.html">Ciclo de vida do engagement (cheat sheet)</a> ·
+    Termos: <a href="https://github.com/oliverbill/tech-due-diligence-report/blob/main/GLOSSARY.md">GLOSSARY.md do projeto</a></p>
+    <p>Ficou algo pouco claro — por que 12 skills e não uma, o que exatamente o QA de 30 min cobre, como o hash opaco é derivado?
+    <strong>Pergunte ao seu professor</strong> (o agente, via <code>/teach</code>): é para isso que ele está aqui.</p>
+  </footer>
+</main>
+<script src="../assets/quiz.js"></script>
+</body>
+</html>

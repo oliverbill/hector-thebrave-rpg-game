@@ -1,0 +1,121 @@
+/* Stylesheet compartilhado do curso tech-dd-pipeline. Toda lição e referência linka este arquivo. */
+:root {
+  --ink: #1a1a1a;
+  --paper: #fffdf8;
+  --accent: #8a3324;
+  --muted: #6b6558;
+  --rule: #d8d2c4;
+  --ok: #2e6e3e;
+  --bad: #a03030;
+  --mark: #f3ead7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e8e4da;
+    --paper: #191713;
+    --accent: #e0876f;
+    --muted: #9a937f;
+    --rule: #3a362c;
+    --ok: #7dc98f;
+    --bad: #e08a8a;
+    --mark: #2a2619;
+  }
+}
+* { box-sizing: border-box; }
+html { font-size: 17px; }
+body {
+  margin: 0;
+  font-family: Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.6;
+}
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+}
+h1, h2, h3 { font-weight: 400; line-height: 1.25; }
+h1 { font-size: 2rem; margin: 0 0 .25rem; }
+h2 { font-size: 1.4rem; margin-top: 2.5rem; border-bottom: 1px solid var(--rule); padding-bottom: .3rem; }
+h3 { font-size: 1.1rem; margin-top: 1.8rem; }
+.kicker {
+  font-family: 'Gill Sans', 'Segoe UI', system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .75rem;
+  color: var(--accent);
+}
+.lede { font-size: 1.15rem; color: var(--muted); margin-top: .5rem; }
+a { color: var(--accent); }
+code, pre {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: .85em;
+  background: var(--mark);
+  border-radius: 3px;
+  padding: .1em .3em;
+}
+pre { padding: .8rem 1rem; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th {
+  font-family: 'Gill Sans', 'Segoe UI', system-ui, sans-serif;
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+}
+.tablewrap { overflow-x: auto; }
+aside.note {
+  border-left: 3px solid var(--accent);
+  padding: .2rem 0 .2rem 1rem;
+  margin: 1.5rem 0;
+  color: var(--muted);
+  font-size: .95rem;
+}
+.win {
+  background: var(--mark);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+}
+footer.lesson-footer {
+  margin-top: 3rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 1rem;
+  font-size: .9rem;
+  color: var(--muted);
+}
+/* Quiz (ver assets/quiz.js) */
+.quiz { margin: 1.5rem 0; }
+.quiz .q {
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+}
+.quiz .q p.stem { margin: 0 0 .7rem; font-weight: bold; }
+.quiz button.opt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: .95rem;
+  color: var(--ink);
+  background: none;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: .5rem .8rem;
+  margin: .35rem 0;
+  cursor: pointer;
+}
+.quiz button.opt:hover:not(:disabled) { border-color: var(--accent); }
+.quiz button.opt:disabled { cursor: default; opacity: .85; }
+.quiz button.opt.correct { border-color: var(--ok); color: var(--ok); font-weight: bold; }
+.quiz button.opt.wrong { border-color: var(--bad); color: var(--bad); }
+.quiz .why { font-size: .9rem; color: var(--muted); margin: .5rem 0 0; display: none; }
+.quiz .q.answered .why { display: block; }
+.quiz .score { font-weight: bold; }
+@media print {
+  body { background: #fff; color: #000; }
+  .quiz button.opt { border-color: #999; }
+  a { color: #000; text-decoration: none; }
+}

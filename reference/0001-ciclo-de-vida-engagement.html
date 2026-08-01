@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Referência — Ciclo de vida do engagement</title>
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body>
+<main>
+  <p class="kicker">tech-dd-pipeline · Referência 0001</p>
+  <h1>Ciclo de vida do engagement</h1>
+  <p class="lede">Cheat sheet dos 8 estágios, contratos de skill e tiers. Feita para imprimir e consultar durante um dry-run.</p>
+
+  <h2>Os 8 estágios em uma linha cada</h2>
+  <div class="tablewrap">
+  <table>
+    <tr><th>#</th><th>Estágio</th><th>Comando/ator</th><th>Saída-chave</th></tr>
+    <tr><td>1</td><td>Preflight</td><td><code>bin/preflight-scan</code></td><td>Veredito: aceitar (runtime ≤2h) ou upsell</td></tr>
+    <tr><td>2</td><td>Bootstrap</td><td><code>bin/engagement-create</code></td><td>Workspace + SHA.txt + TIER.txt + intake + tag <code>engagement-{hash}-{data}</code></td></tr>
+    <tr><td>3</td><td>Execução</td><td><code>codebase-orchestrator</code></td><td>Bruto em <code>tool-outputs/</code>, resumos ≤1k em <code>skill-summaries/</code>, status por skill</td></tr>
+    <tr><td>4</td><td>Manifest</td><td>automático</td><td><code>manifest.json</code> (tag + tempos + status)</td></tr>
+    <tr><td>5</td><td>Report</td><td><code>report-skill</code></td><td>Draft do tier com metadata (rubric, commit) — só a partir dos resumos</td></tr>
+    <tr><td>6</td><td>Founder QA</td><td>você + <code>validation-spec.md</code></td><td><code>validation-log.md</code> preenchido</td></tr>
+    <tr><td>7</td><td>Delivery</td><td>Pandoc</td><td>PDF final ao cliente</td></tr>
+    <tr><td>8</td><td>Purge</td><td><code>bin/engagement-purge</code></td><td>Workspace destruído + atestado assinado</td></tr>
+  </table>
+  </div>
+
+  <h2>Contrato de toda skill <code>codebase-*</code></h2>
+  <ul>
+    <li>Roda <strong>uma</strong> ferramenta. Uma skill, um job.</li>
+    <li>Declara orçamento de tokens (input/output) no frontmatter.</li>
+    <li>Escreve o output bruto <strong>em disco</strong>, nunca no contexto do pai.</li>
+    <li>Devolve resumo estruturado <strong>≤1k tokens</strong>.</li>
+    <li>Devolve status <code>OK</code> / <code>DEGRADED</code> / <code>FAILED</code> + motivo; respeita timeout do orquestrador.</li>
+  </ul>
+
+  <h2>Contrato do Report Agent</h2>
+  <ul>
+    <li>Consome <strong>só os resumos</strong> — nunca o bruto.</li>
+    <li>Todo status não-OK vira bloco <code>SECTION UNAVAILABLE</code> visível (ferramenta + motivo).</li>
+    <li>Aplica a si mesmo o checklist de validação do tier (trilha de auditoria T1).</li>
+  </ul>
+
+  <h2>Tiers</h2>
+  <div class="tablewrap">
+  <table>
+    <tr><th>Tier</th><th>Preço</th><th>Founder QA</th></tr>
+    <tr><td>Spot-check</td><td>€500</td><td>~30 min</td></tr>
+    <tr><td>Tier 1</td><td>—</td><td>4–6 h</td></tr>
+    <tr><td>Tier 2</td><td>—</td><td>8–12 h</td></tr>
+  </table>
+  </div>
+
+  <h2>Skills de execução (estágio 3)</h2>
+  <p><code>history</code> · <code>tests-inventory</code> · <code>conventions</code> · <code>maintainability</code> · <code>scalability</code> · <code>ai-surface</code> · <code>ops-evidence</code> · <code>deps</code> · <code>secrets</code> · <code>license</code> · <code>cybersecurity</code> · <code>coverage</code></p>
+
+  <footer class="lesson-footer">
+    <p>Lição de origem: <a href="../lessons/0001-anatomia-do-engagement.html">0001 — A anatomia de um engagement</a> ·
+    Termos: <a href="https://github.com/oliverbill/tech-due-diligence-report/blob/main/GLOSSARY.md">GLOSSARY.md do projeto</a></p>
+  </footer>
+</main>
+</body>
+</html>
