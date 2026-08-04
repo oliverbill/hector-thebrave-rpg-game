@@ -95,7 +95,7 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 | # | Requisito | Origem |
 |---|---|---|
 | F2-RF-18 | Camada sonora da cozinha: fogo crepitando, panelas, vapor — captado, não sintetizado | pilar herdado, proposta 04/08 |
-| F2-RF-19 | As **batidas de cutelo na mesa** precisam de som próprio e alto: são a telegrafia da investida (equivalente às batidas de escudo) | proposta 04/08 |
+| F2-RF-19 | As **batidas de faca na mesa** têm som próprio e alto — `audio/fase2/sons/cutelo-batida-1.mp3`, tocado **uma vez em cada uma das 3 batidas** (`batidasEm:[1.2,.8,.4]`): são a telegrafia da investida | 04/08 — *"Substitui o som da Batida de cutelo na mesa (repita esse 3x)"* |
 | F2-RF-20 | Trilha da fase em loop + trilha própria ao arrombar a câmara de carnes | herdado (RF-34/35) |
 | F2-RF-21 | Voz do Açougueiro em 3 eventos: entrada, ao golpear, ao levar golpe | herdado (RF-39) — **gravações pendentes do usuário** |
 
@@ -151,7 +151,7 @@ Herdadas em aberto da Fase 1, ainda valem:
 Próprias deste rascunho:
 
 - Todos os itens marcados ⚠ são propostas — confirmar com o usuário antes de codificar
-- Texto da fala de abertura do Açougueiro: a ditar pelo usuário (padrão da Fase 1)
+- ~~Texto da fala de abertura do Açougueiro~~ — fechado em F2-FALAS.md: *"Se eu cozinho, eu não lavo! Agora vou lhe mostrar um truque ou dois!"*
 
 ---
 
@@ -166,11 +166,12 @@ Pedir **antes** de começar o áudio — foi o que mais travou a Fase 1.
 | Retrato NPC | A Faxineira | PNG sem fundo | recebido — `img/fase2/faxineira.jpg`; idem |
 | Retrato chefe | O Açougueiro | PNG sem fundo | pendente |
 | Item | Avental de Aço do Açougueiro (popup + bolsa) | PNG sem fundo | recebido — `img/fase2/avental.jpg`; converter para PNG e recortar o fundo |
-| Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | pendente — textos fechados em F2-FALAS.md, gravar |
-| Voz chefe | entrada, golpe, leva golpe | idem | pendente — textos em F2-FALAS.md |
+| Item | Pão e caldo (cura, F2-RF-10) | PNG sem fundo | recebidos — `img/fase2/pao.jpg` e `caldo.jpg`; idem |
+| Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | recebidas — `audio/fase2/vozes/`, normalizadas (−15,4 a −17,1 LUFS) |
+| Voz chefe | entrada, golpe, leva golpe | idem | recebidas — `audio/fase2/vozes/acougueiro-*.mp3`, normalizadas |
 | Trilha | BGM das cozinhas (loop) | MP3 | recebida — `audio/fase2/trilha-fase2.mp3` |
 | Trilha | Luta na câmara de carnes | MP3 | recebida — `audio/fase2/portao-acougueiro.mp3` |
-| SFX | Batida de cutelo na mesa | MP3 | pendente (choque/corte reaproveitados da Fase 1) |
+| SFX | Batida de faca na mesa (tocar 3×) | MP3 | recebido — `audio/fase2/sons/cutelo-batida-1.mp3`; fogo, panelas e vapor idem (choque/corte reaproveitados da Fase 1) |
 
 ---
 
