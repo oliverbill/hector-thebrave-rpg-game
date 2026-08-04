@@ -855,8 +855,8 @@ function tocarSfx(url, vol, reserva){
     if(p && p.catch) p.catch(() => { if(reserva) reserva(); });
   }catch(e){ if(reserva) reserva(); }
 }
-const SFX_CLASH = 'audio/espada-clash.mp3';   // as lâminas se encontram
-const SFX_CORTE = 'audio/espada-corte.mp3';   // a lâmina acha carne
+const SFX_CLASH = 'audio/fase1/espada-clash.mp3';   // as lâminas se encontram
+const SFX_CORTE = 'audio/fase1/espada-corte.mp3';   // a lâmina acha carne
 let ultimoClash = -9;
 function sClash(){
   if(tempo - ultimoClash < .15) return;       // os dois lados detectam o mesmo choque
@@ -1468,7 +1468,7 @@ function criarChefe(){
     abrirFala({nome:f.nome, retrato:f.retrato, falas:f.abertura.falas, voz:f.abertura.voz}, entrar);
   } else {
     setTimeout(entrar, 900);
-    vozChefe('gladiador-entrada');
+    vozChefe('fase1/gladiador-entrada');
   }
 }
 function dirLivre(c, ax, ay){
@@ -1494,7 +1494,7 @@ function golpeChefe(dano, alcance){
   const ang = Math.atan2(dy,dx);
   const dif = Math.abs(((ang - chefe.angulo + Math.PI*3) % TAU) - Math.PI);
   chefe.golpeAnim = .22;
-  vozChefe('gladiador-golpe');
+  vozChefe('fase1/gladiador-golpe');
   sEspadaCorta();
   for(let k=0;k<6;k++) faisca(chefe.x + Math.cos(chefe.angulo)*1.4, chefe.y + Math.sin(chefe.angulo)*1.4, '#e0d0b0', .12);
   if(d < alcance && dif < 1.25){
@@ -1613,7 +1613,7 @@ function golpear(alvo){
     sCorte();
     jorrarSangue(alvo.x, alvo.y, jog.angulo, 14);            // o corte abre carne
     if(Math.random() < .6) mancharSangue(alvo.x, alvo.y + .5);
-    setTimeout(() => { if(!vozChefe('gladiador-levagolpe')) sDorChefe(); }, 60);
+    setTimeout(() => { if(!vozChefe('fase1/gladiador-levagolpe')) sDorChefe(); }, 60);
   }
   flutuar(alvo.x, alvo.y-.5, dano, dano > jog.dano*1.8 ? '#ffd88a' : '#f4e2b4');
   faisca(alvo.x - dx/d*alvo.raio, alvo.y - dy/d*alvo.raio, '#f0c070', .12);
@@ -2664,7 +2664,7 @@ function abrirPortao(){
   for(let x=9;x<=11;x++) mapa[idx(x,CAL.PORTAO.y)] = CHAO;
   desenharCache();
   sPortao(); tremor = 8;
-  tocarBgm('audio/portao-gladiador.mp3', .16);   // mais baixa: as vozes da luta ficam na frente
+  tocarBgm('audio/fase1/portao-gladiador.mp3', .16);   // mais baixa: as vozes da luta ficam na frente
   avisar('O portão sobe', 'a areia está do outro lado');
 }
 function fecharPortao(){
@@ -2867,7 +2867,7 @@ function desenharGladiador(c, ox, oy){
 /* --- o piso, montado --- */
 const PISO_CALABOUCO = {
   id:'calabouco', nome:'O Calabouço',
-  bgm:'audio/fase1-bgm.mp3',
+  bgm:'audio/fase1/fase1-bgm.mp3',
   paleta:{
     fundo:'#0f0c15',
     chao:[96,90,110],      // pedra do calabouço
@@ -2898,7 +2898,7 @@ const PISO_CALABOUCO = {
     { nome:'O Velho', chave:'ritmo', cor:'#b9a98e',
       retrato:'img/fase1/velho.png',
       voz:{pitch:.5, rate:.78, genero:'m', tosse:true,
-           audios:['audio/velho-1.mp3','audio/velho-2.mp3','audio/velho-3.mp3']},
+           audios:['audio/fase1/velho-1.mp3','audio/fase1/velho-2.mp3','audio/fase1/velho-3.mp3']},
       x:14, y:21,        // cela em frente à do jogador
       falas:[
         'Você é o quinto este mês. Os outros quatro entraram gritando.',
@@ -2908,7 +2908,7 @@ const PISO_CALABOUCO = {
     { nome:'A Ladra', chave:'flanco', cor:'#c98f9c',
       retrato:'img/fase1/ladra.png',
       voz:{pitch:1.35, rate:1.08, genero:'f',
-           audios:['audio/ladra-1.mp3','audio/ladra-2.mp3','audio/ladra-3.mp3']},
+           audios:['audio/fase1/ladra-1.mp3','audio/fase1/ladra-2.mp3','audio/fase1/ladra-3.mp3']},
       x:5, y:54.8,       // na câmara mais funda do labirinto das catacumbas
       falas:[
         'Não me olhe assim. Eu roubei do templo, você provavelmente roubou pão.',
@@ -2918,7 +2918,7 @@ const PISO_CALABOUCO = {
     { nome:'O Ferreiro', chave:'investida', cor:'#9aa8b8',
       retrato:'img/fase1/ferreiro.png',
       voz:{pitch:.72, rate:.88, genero:'m',
-           audios:['audio/ferreiro-1.mp3','audio/ferreiro-2.mp3','audio/ferreiro-3.mp3']},
+           audios:['audio/fase1/ferreiro-1.mp3','audio/fase1/ferreiro-2.mp3','audio/fase1/ferreiro-3.mp3']},
       x:41, y:27.5,      // acorrentado na forja da guarnição
       falas:[
         'Fui eu que fiz aquele escudo. Me arrependo todo dia.',
@@ -2939,7 +2939,7 @@ const PISO_CALABOUCO = {
       retrato:'img/fase1/gladiador.png',
       abertura:{
         falas:['Olhaaa você acha mesmo que pode me vencer? Então vem pro pau!'],
-        voz:{pitch:.55, rate:.82, genero:'m', audios:['audio/gladiador-entrada.mp3']}
+        voz:{pitch:.55, rate:.82, genero:'m', audios:['audio/fase1/gladiador-entrada.mp3']}
       }
     },
     fraquezas:{

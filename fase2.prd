@@ -51,8 +51,8 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 
 | # | Requisito | Origem |
 |---|---|---|
-| F2-RF-05 | Três informantes: **A Cozinheira** (chave `pausa`), **O Copeiro** (chave `avental`), **O Faxineiro** (chave `mesa`) | proposta 04/08 |
-| F2-RF-06 | Localização: a Cozinheira junto aos fogões da cozinha grande; o Copeiro escondido na despensa; o Faxineiro no fundo do labirinto de barris (o mais difícil de achar, como a Ladra) | proposta 04/08 |
+| F2-RF-05 | Três informantes: **O Cozinheiro** (chave `pausa`), **O Copeiro** (chave `avental`), **A Faxineira** (chave `mesa`) | proposta 04/08 |
+| F2-RF-06 | Localização: o Cozinheiro junto aos fogões da cozinha grande; o Copeiro escondido na despensa; a Faxineira no fundo do labirinto de barris (o mais difícil de achar, como a Ladra) | proposta 04/08 |
 
 **HERDADO:** retrato de foto fornecida pelo usuário, sem fundo preto; animado em loop; presente no mapa; mesmo tamanho do jogador; vigiar regressão de personagem sumindo.
 
@@ -62,9 +62,9 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 
 | # | Requisito | Origem |
 |---|---|---|
-| F2-RF-07 | ⚠ 4 tarefas em HUD: **Atravessar a cozinha em chamas** · **Achar o caminho da adega** · **Ouvir os servos (0/3)** · **Derrotar o Açougueiro** | proposta 04/08, espelhando a estrutura da Fase 1 |
-| F2-RF-08 | ⚠ A porta da câmara de carnes só abre com o machado empunhado **e** os 3 servos ouvidos — mesma trava dupla do portão do Gladiador, agora com pré-requisito de item | proposta 04/08 (uso do item herdado, RF-14 da Fase 1) |
-| F2-RF-09 | ⚠ Ponto de retorno após a morte: diante da porta arrombada da câmara de carnes, vida cheia, tudo mantido | herdado do padrão RF-15 da Fase 1 |
+| F2-RF-07 | 4 tarefas em HUD: **Atravessar a cozinha em chamas** · **Achar o caminho da adega** · **Ouvir os servos (0/3)** · **Derrotar o Açougueiro** | proposta 04/08, espelhando a estrutura da Fase 1 |
+| F2-RF-08 | A porta da câmara de carnes só abre após as tarefas cumpridas — mesma trava do portão do Gladiador, agora com pré-requisito de item | proposta 04/08 (uso do item herdado, RF-14 da Fase 1) |
+| F2-RF-09 | Ponto de retorno após a morte: diante da porta arrombada da câmara de carnes, vida cheia, tudo mantido | herdado do padrão RF-15 da Fase 1 |
 
 **HERDADO:** tarefas com contador; item do chefe vai à bolsa e a bolsa abre ao fim; morrer não apaga progresso.
 
@@ -72,10 +72,10 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 
 | # | Requisito | Origem |
 |---|---|---|
-| F2-RF-10 | ⚠ Cura da fase: **pão e caldo** espalhados pela cozinha e despensa, no lugar dos trapos — mesmo botão `Q`, cura de 15% (pão) | proposta 04/08 (padrão RF-16 da Fase 1) |
-| F2-RF-11 | ⚠ Inimigo comum: **ratazanas da despensa** (reuso das da Fase 1) e, na adega, ⚠ **baratas/ratos maiores** se as ratazanas ficarem repetitivas | proposta 04/08 |
-| F2-RF-12 | ⚠ O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão | proposta 04/08 |
-| F2-RF-13 | ⚠ Análogo dos esparadrapos: **duas postas de carne** nos cantos da câmara, 25% de vida, só durante a luta, repostas a cada tentativa | herdado do padrão da sessão de 04/08 na Fase 1 |
+| F2-RF-10 | Cura da fase: **pão e caldo** espalhados pela cozinha e despensa, no lugar dos trapos — mesmo botão `Q`, cura de 15% (pão) | proposta 04/08 (padrão RF-16 da Fase 1) |
+| F2-RF-11 | Inimigo comum: **ratazanas da despensa** (reuso das da Fase 1) e, na adega, **baratas/ratos maiores** | proposta 04/08 |
+| F2-RF-12 | O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão | proposta 04/08 |
+| F2-RF-13 | Análogo dos esparadrapos: **duas postas de carne** nos cantos da câmara, 25% de vida, só durante a luta, repostas a cada tentativa | herdado do padrão da sessão de 04/08 na Fase 1 |
 
 **HERDADO:** golpe nunca é automático; item achado pausa e abre popup Inventário; lâmina para fora, colada à mão; popup sem fundo e em tamanho uniforme; "olhar o inventário" lista tudo; sangue e gemidos no acerto.
 
@@ -84,9 +84,9 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 | # | Requisito | Origem |
 |---|---|---|
 | F2-RF-14 | Máquina de estados 100% via `cfg` existente: **combo de 2 talhos** e **três batidas de cutelo na mesa antes da investida** — `comboGolpes:2, batidasEm:[1.2,.8,.4]` | fixado — README, seção "Criando o piso 2" |
-| F2-RF-15 | ⚠ Números de partida (balancear em teste): `hp:700, comboDano:[26,34], comboIntervalo:.5, exaustoT:1.3, investidaVel:15, investidaDano:30, zonzoT:2.0` — mais lento e mais pesado que o Gladiador | proposta 04/08 |
-| F2-RF-16 | ⚠ Janelas de fraqueza amarradas às chaves: `pausa` → exausto (a Cozinheira: *"dois talhos e o braço pesa"*), `avental` → costas (o Copeiro: *"o avental de couro só cobre a frente"*), `mesa` → zonzo pós-investida (o Faxineiro: *"três batidas na mesa, e ele vem que nem um carro de boi"*) | proposta 04/08, espelhando `fraquezas` da Fase 1 |
-| F2-RF-17 | Fala de abertura com legenda antes da luta, texto exato a ditar pelo usuário e voz gravada real | herdado (RF-27/RF-28 da Fase 1) — **pendente do usuário** |
+| F2-RF-15 | Números de partida (balancear em teste): `hp:700, comboDano:[26,34], comboIntervalo:.5, exaustoT:1.3, investidaVel:15, investidaDano:30, zonzoT:2.0` — mais lento e mais pesado que o Gladiador | proposta 04/08 |
+| F2-RF-16 | Janelas de fraqueza amarradas às chaves: `pausa` → exausto (o Cozinheiro: *"dois talhos e o braço pesa"*), `avental` → costas (o Copeiro: *"o avental de couro só cobre a frente"*), `mesa` → zonzo pós-investida (a Faxineira: *"três batidas na mesa, e ele vem que nem um carro de boi"*) | proposta 04/08, espelhando `fraquezas` da Fase 1 |
+| F2-RF-17 | Fala de abertura com legenda antes da luta, texto exato a ditar pelo usuário e voz gravada real | herdado (RF-27/RF-28 da Fase 1) — **Se eu cozinho, eu não lavo! Agora vou lhe mostrar um truque ou dois** |
 
 **HERDADO:** repertório visível de movimentos; informação dos NPCs é mecânica (~2× nas janelas certas), não enfeite.
 
@@ -94,9 +94,9 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 
 | # | Requisito | Origem |
 |---|---|---|
-| F2-RF-18 | ⚠ Camada sonora da cozinha: fogo crepitando, panelas, vapor — captado, não sintetizado | pilar herdado, proposta 04/08 |
-| F2-RF-19 | ⚠ As **batidas de cutelo na mesa** precisam de som próprio e alto: são a telegrafia da investida (equivalente às batidas de escudo) | proposta 04/08 |
-| F2-RF-20 | Trilha da fase em loop + trilha própria ao arrombar a câmara de carnes | herdado (RF-34/35) — **arquivos pendentes do usuário** |
+| F2-RF-18 | Camada sonora da cozinha: fogo crepitando, panelas, vapor — captado, não sintetizado | pilar herdado, proposta 04/08 |
+| F2-RF-19 | As **batidas de cutelo na mesa** precisam de som próprio e alto: são a telegrafia da investida (equivalente às batidas de escudo) | proposta 04/08 |
+| F2-RF-20 | Trilha da fase em loop + trilha própria ao arrombar a câmara de carnes | herdado (RF-34/35) |
 | F2-RF-21 | Voz do Açougueiro em 3 eventos: entrada, ao golpear, ao levar golpe | herdado (RF-39) — **gravações pendentes do usuário** |
 
 **HERDADO:** tudo do bloco de áudio do template — inclusive a **medição obrigatória de LUFS (−14 a −17) antes de aceitar qualquer clipe**. A Fase 1 pagou uma semana de voz inaudível por pular isso.
@@ -130,7 +130,7 @@ RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 pre
 - [ ] As três batidas de cutelo são audíveis e antecedem toda investida
 - [ ] Vitória da Fase 1 leva à Fase 2 com a bolsa intacta (facão + machado presentes)
 - [ ] Labaredas dos fornos têm ritmo aprendível e nunca dão dano sem janela visível
-- [ ] O Faxineiro é encontrável só por quem explora a adega até o fundo
+- [ ] A Faxineira é encontrável só por quem explora a adega até o fundo
 - [ ] Vencer abre a bolsa mostrando o Avental de Aço do Açougueiro
 
 ---
@@ -161,15 +161,15 @@ Pedir **antes** de começar o áudio — foi o que mais travou a Fase 1.
 
 | Tipo | Item | Formato | Status |
 |---|---|---|---|
-| Retrato NPC | A Cozinheira | PNG sem fundo | pendente |
-| Retrato NPC | O Copeiro | PNG sem fundo | pendente |
-| Retrato NPC | O Faxineiro | PNG sem fundo | pendente |
+| Retrato NPC | O Cozinheiro | PNG sem fundo | recebido — `img/fase2/cozinheiro.jpg`; converter para PNG e recortar o fundo |
+| Retrato NPC | O Copeiro | PNG sem fundo | recebido — `img/fase2/copeiro.jpg`; idem |
+| Retrato NPC | A Faxineira | PNG sem fundo | recebido — `img/fase2/faxineira.jpg`; idem |
 | Retrato chefe | O Açougueiro | PNG sem fundo | pendente |
-| Item | Avental de Aço do Açougueiro (popup + bolsa) | PNG sem fundo | pendente |
-| Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | pendente — gravar só depois do texto fechado |
-| Voz chefe | entrada, golpe, leva golpe | idem | pendente |
-| Trilha | BGM das cozinhas (loop) | MP3 | pendente |
-| Trilha | Luta na câmara de carnes | MP3 | pendente |
+| Item | Avental de Aço do Açougueiro (popup + bolsa) | PNG sem fundo | recebido — `img/fase2/avental.jpg`; converter para PNG e recortar o fundo |
+| Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | pendente — textos fechados em F2-FALAS.md, gravar |
+| Voz chefe | entrada, golpe, leva golpe | idem | pendente — textos em F2-FALAS.md |
+| Trilha | BGM das cozinhas (loop) | MP3 | recebida — `audio/fase2/trilha-fase2.mp3` |
+| Trilha | Luta na câmara de carnes | MP3 | recebida — `audio/fase2/portao-acougueiro.mp3` |
 | SFX | Batida de cutelo na mesa | MP3 | pendente (choque/corte reaproveitados da Fase 1) |
 
 ---
