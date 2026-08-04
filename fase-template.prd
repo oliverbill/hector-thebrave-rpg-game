@@ -1,0 +1,266 @@
+# PRD — Fase {N}: {título da fase}
+
+**Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
+**Fase:** {N} de M — {cenário} e {nome do chefe}
+**Status:** {rascunho | em construção | entregue}
+**Escrito em:** {DD/MM/AAAA}
+
+---
+
+## 0. Como usar este template
+
+Derivado do `fase1.prd`. Diferença de propósito: aquele foi reconstruído *depois* da fase pronta; este é para preencher **antes** de construir.
+
+Convenções:
+
+- `{chaves}` são lacunas a preencher.
+- Blocos marcados **HERDADO** já valem para toda fase — não re-especifique, só registre a **exceção** se esta fase quebrar a regra, e diga por quê.
+- Blocos marcados **PREENCHER** são o conteúdo próprio da fase.
+- A coluna **Origem** existe para rastreabilidade: data + trecho do pedido que originou o requisito. Preencha na hora que o pedido chegar; é o que permite reconstruir a intenção meses depois.
+- Numere requisitos continuando de onde a fase anterior parou, ou reinicie com prefixo da fase (`F2-RF-01`). Escolha um e mantenha.
+
+Ao encerrar a fase, preencha §5 (o que foi revertido), §7 e §8 — são as seções que mais valem na releitura.
+
+---
+
+## 1. Objetivo — **PREENCHER**
+
+{Um parágrafo: onde o jogador começa, o que atravessa, o que coleta, quem enfrenta e o que leva embora.}
+
+**Pilar de design desta fase:** {o eixo que vai dominar as decisões. Na Fase 1 foi "nada de procedural aparente" — som e imagem captados, não sintetizados, e ele sozinho motivou ~40 dos 85 pedidos.}
+
+**Item herdado da fase anterior:** {qual item entra na bolsa vindo do chefe anterior e como ele é usado aqui.}
+**Item entregue ao fim desta fase:** {o que o jogador ganha ao derrotar o chefe, para usar na fase seguinte.}
+
+---
+
+## 2. Baseline — **HERDADO**
+
+Vale para toda fase, sem re-especificar:
+
+- Motor 2D top-down em canvas, arquivo único `castelo.html`, sem build e sem dependências
+- Arquitetura **MOTOR × CONTEÚDO**: o motor não conhece nenhuma fase; cada fase é objeto de dados + ganchos (`aoIniciar`, `atualizar`, `interacao`, `agir`, `desenharCenario`, `falarLiberado`, `retomar`, `vitoria`, `derrota`)
+- Joystick virtual (arrasto do polegar esquerdo) + WASD/setas
+- Sistema de missão com tarefas e contador em HUD
+- Bolsa/inventário persistente entre fases
+- Diálogo com legenda, retrato e voz
+
+**O que esta fase acrescenta ao motor:** {idealmente nada — se precisar mexer no motor, justifique aqui. Mexer no motor é o sinal de que a abstração de fase não deu conta.}
+
+---
+
+## 3. Requisitos funcionais
+
+### 3.1 Mundo e cenário — **PREENCHER**
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-01 | {} | {DD/MM HH:MM — "trecho do pedido"} |
+
+**HERDADO** — não re-especificar:
+
+- Cenário visualmente detalhado, com imagens de referência fornecidas pelo usuário
+- Imagens em `/img` são **inspiração** para construir o cenário, não asset a referenciar direto
+- Fase longa, com obstáculos, pontes e labirintos
+- Caminhos conectados: nada de excesso de becos sem saída
+
+**A definir para esta fase:** dimensão do mapa, regiões, tipo de obstáculo, travessias válidas e falsas.
+
+### 3.2 Personagens e apresentação — **PREENCHER**
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-{} | {} | {} |
+
+**HERDADO** — vale para todo personagem novo:
+
+- Retrato vem de foto fornecida pelo usuário
+- **Nenhum retrato com fundo preto**
+- Avatar animado, nunca imagem estática; membros em movimento
+- Personagens aparecem **no cenário**, não só na legenda de fala
+- NPCs do mesmo tamanho do jogador
+- Animação em loop, tipo GIF
+- Regressão a vigiar: personagem que some do mapa depois de uma mudança de cenário
+
+**A definir:** quantos informantes, nome de cada um, chave de informação que cada um entrega, onde fica.
+
+### 3.3 Progressão e missão — **PREENCHER**
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-{} | {} | {} |
+
+**HERDADO:**
+
+- Tarefas rastreadas em HUD, com contador quando houver múltiplos passos
+- Ao vencer o chefe, o item ganho vai para a bolsa e **a bolsa abre mostrando o item ao fim da fase**
+- O item ganho é o que serve contra o chefe da fase seguinte
+- **Morrer não apaga progresso**: o jogador reaparece imediatamente antes da luta do chefe, mantendo segredos, bolsa e caminho percorrido
+
+**A definir:** as N tarefas desta fase e o ponto de retorno após a morte.
+
+### 3.4 Itens, inventário e combate — **PREENCHER**
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-{} | {} | {} |
+
+**HERDADO:**
+
+- **O jogador nunca golpeia sozinho** — o golpe só sai por botão ou tecla de atalho. Regra dura, custou uma reversão na Fase 1
+- Arma encontrada no cenário: pausa o jogo, abre popup "Inventário" com a imagem, e a partir dali fica na mão habilitando a ação de golpe
+- Empunhadura com a lâmina virada para **fora** e a arma colada à mão
+- Imagem do item no popup sem fundo, no mesmo tamanho das demais
+- Comando "olhar o inventário": lista todos os itens, o jogador escolhe qual empunhar
+- Item de cura espalhado pelo cenário, com percentual de vida definido por fase
+- Sangue jorrando e gemidos quando alguém é atingido
+
+**A definir:** arma desta fase, inimigos comuns, percentual de cura dos consumíveis.
+
+### 3.5 O chefe: {nome} — **PREENCHER**
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-{} | {} | {} |
+
+**HERDADO:**
+
+- Antes da luta, mostrar a **legenda da fala de abertura** do chefe, no mesmo formato dos NPCs; a luta só começa quando o jogador fecha a legenda
+- O chefe precisa de repertório visível de movimentos, não só de dano: atacar, correr para atacar, reagir ao golpe, demonstrar exaustão
+- **A informação dos NPCs tem que ser mecânica, não enfeite**: cada chave ouvida abre uma janela de dano dobrado contra um estado específico do chefe. Foi o que fez a Fase 1 funcionar — ouvir os presos vale ~2× de dano nas janelas certas
+
+**A definir:** HP, ciclo de estados e tempos, dano por golpe, janelas de vulnerabilidade e a chave que cada uma exige, texto exato da fala de abertura.
+
+### 3.6 Áudio — **PREENCHER**
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-{} | {} | {} |
+
+**HERDADO** — foi metade dos pedidos da Fase 1; tratar como eixo, não como acabamento:
+
+- Todo som realista, **sem sinal de digitalização procedural**
+- Vozes de personagem são **gravações reais**, não TTS. A Fase 1 tentou ElevenLabs e depois o `say` do macOS; os dois foram descartados e o usuário acabou gravando à mão
+- Vozes distintas por perfil (idoso, jovem, mulher, criança)
+- Música de fundo em loop na fase; música própria no momento de virada (portão do chefe, revelação etc.)
+- **A música abaixa enquanto um personagem fala** e volta ao fim — já implementado em `falarVoz()`, herdado de graça
+- Volume das vozes acima do da música, principalmente na luta
+- Som de choque quando os dois atacam ao mesmo tempo; som de corte no acerto, com gemido
+- Voz do chefe em três eventos no mínimo: chegada do jogador, ao golpear, ao levar golpe
+
+**Verificação obrigatória antes de aceitar um clipe novo:** medir o nível e comparar com os já existentes.
+
+```
+ffmpeg -i clipe.mp3 -af loudnorm=I=-16:TP=-1.5:print_format=json -f null /dev/null 2>&1 | sed -n '/^{/,/^}/p'
+```
+
+Alvo: **−14 a −17 LUFS** para voz. Na Fase 1 um clipe entrou em −41 LUFS e ficou inaudível em produção por mais de uma semana — o ducking funcionava, o arquivo é que estava 28 dB abaixo dos outros. Normalizar quando fugir da faixa:
+
+```
+ffmpeg -y -i in.mp3 -af "loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={}:measured_TP={}:measured_LRA={}:measured_thresh={}:offset={}:linear=true" -ar 44100 -c:a libmp3lame -q:a 2 out.mp3
+```
+
+**A definir:** trilha da fase, trilha do chefe, lista de clipes de voz por personagem e evento.
+
+### 3.7 Controles e HUD — **HERDADO**
+
+- Botões circulares: bolsa, cura, rolar, golpe, ação contextual
+- Teclas: `F` golpe, `Espaço` rolar, `Q` cura, `E` ação, `I` bolsa, `WASD`/setas andar
+- Cada botão mostra a tecla no rótulo; o chip some em telas de toque
+- O rótulo da ação contextual muda conforme o contexto (`FORÇAR`, `FALAR`, `ABRIR`, …)
+
+**A definir:** novos rótulos contextuais desta fase e qualquer ação nova. **Ação nova exige tecla nova** — registre aqui e no README.
+
+---
+
+## 4. Requisitos não-funcionais — **HERDADO**
+
+| # | Requisito |
+|---|---|
+| RNF-01 | Arquivo único, sem build e sem dependências externas |
+| RNF-02 | Publicado no GitHub Pages, com a URL no README |
+| RNF-03 | Entrega direta: nenhuma branch protegida, sem PRs, push de cada mudança na hora |
+| RNF-04 | Roda em celular (adicionável à tela inicial do iPhone) e em desktop |
+| RNF-05 | A fase não pode regredir nenhuma fase anterior — bolsa, itens e segredos continuam válidos |
+
+---
+
+## 5. Decisões revertidas — **PREENCHER DURANTE**
+
+{Registre aqui o que foi tentado e abandonado, com o motivo. Na Fase 1 foram três, e duas consumiram boa parte do tempo. Esta seção é o que impede repetir o mesmo caminho errado na fase seguinte.}
+
+1. {tentativa} → {o que virou}. Motivo: {}.
+
+---
+
+## 6. Critérios de aceite
+
+**HERDADO** — toda fase precisa passar:
+
+- [ ] Nenhuma voz soa sintetizada; todas as falas de personagem são gravações reais
+- [ ] Todo clipe de voz medido entre −14 e −17 LUFS
+- [ ] A música abaixa em toda fala e volta ao fim
+- [ ] O jogador nunca golpeia sem comando explícito
+- [ ] Morrer devolve o jogador antes da luta do chefe sem perder nada
+- [ ] O chefe fala com legenda antes da luta começar
+- [ ] As informações dos NPCs alteram o dano em janelas específicas
+- [ ] Vencer abre a bolsa mostrando o item da fase
+- [ ] O item da fase anterior tem uso real aqui
+- [ ] Nenhum retrato com fundo preto; todo personagem animado e presente no mapa
+- [ ] Publicado no GitHub Pages e verificado no ar
+- [ ] Testado em celular e em desktop
+
+**PREENCHER** — específicos desta fase:
+
+- [ ] {}
+
+---
+
+## 7. Adições posteriores — **PREENCHER DEPOIS**
+
+{O que entrou fora do escopo original, com data. Ajuda a separar o que a fase nasceu sendo do que ela virou.}
+
+---
+
+## 8. Pendências conhecidas — **PREENCHER**
+
+{O que ficou por fazer e o que se sabe estar torto. Anotar é mais barato que redescobrir.}
+
+Herdadas em aberto da Fase 1, ainda valem:
+
+- A música volta ao volume cheio quando o **áudio** da fala termina, não quando o jogador **fecha** a legenda
+- Não há teste automatizado: toda verificação é manual, pelo navegador
+
+---
+
+## Apêndice A — Assets que o usuário precisa fornecer
+
+Levantado do que a Fase 1 exigiu na prática. Pedir cedo: foi o que mais travou o andamento.
+
+| Tipo | Quantidade | Formato | Observação |
+|---|---|---|---|
+| Retrato de cada NPC | 1 por personagem | PNG | sem fundo preto |
+| Retrato do chefe | 1 | PNG | sem fundo preto |
+| Imagem de cada item novo | 1 por item | PNG | sem fundo, para o popup e para a mão |
+| Referência visual do cenário | 1–2 | qualquer | inspiração, não asset |
+| Voz de NPC | ~3 falas por personagem | m4a/mov/mp3 | gravação real; converter para MP3 |
+| Voz do chefe | 3 mínimo: entrada, golpe, leva golpe | m4a/mov/mp3 | idem |
+| Trilha da fase | 1 | MP3 | em loop |
+| Trilha do chefe | 1 | MP3 | dispara no momento de virada |
+| SFX de combate | choque, corte | MP3 | reaproveitáveis entre fases |
+
+---
+
+## Apêndice B — Ordem de trabalho sugerida
+
+A Fase 1 foi construída fora de ordem e pagou por isso: o áudio foi refeito três vezes porque entrou antes de o conteúdo estar fechado.
+
+1. Fechar §1 (objetivo, item herdado, item entregue) e o mapa em papel
+2. Construir cenário e navegação — validar que não há becos sem saída
+3. Colocar NPCs com retrato e animação, ainda **sem voz**
+4. Fechar o texto de todas as falas — só então gravar
+5. Construir o chefe: estados, tempos, dano, janelas de vulnerabilidade
+6. Amarrar as chaves dos NPCs às janelas do chefe
+7. Gravar, medir e integrar o áudio
+8. Itens, popups e inventário
+9. Publicar, testar no celular, preencher §5–§8

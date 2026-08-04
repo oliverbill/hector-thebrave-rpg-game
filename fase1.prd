@@ -1,0 +1,181 @@
+# PRD — Fase 1: Fugir do Calabouço
+
+**Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
+**Fase:** 1 de N — o calabouço e o Gladiador
+**Status:** entregue e em produção (GitHub Pages)
+**Reconstruído em:** 04/08/2026
+
+---
+
+## 0. Sobre este documento
+
+Este PRD foi **reconstruído a posteriori** a partir dos prompts reais da construção da fase, recuperados dos transcripts do Claude Code em `~/.claude/projects/`, cruzados com o código entregue em `castelo.html`.
+
+**Limite conhecido da fonte.** O prompt que criou o jogo não está nos transcripts. O histórico do CLI começa em **26/07/2026 01:27**, com o jogo já existindo — a primeira mensagem é uma correção de áudio ("os sons estão muito robóticos"), não uma criação. Os dois primeiros commits do repositório são `Add files via upload` (26/07 02:16 e 02:23), feitos pela interface web do GitHub. A evidência aponta que o `castelo.html` inicial nasceu **fora do CLI**, no chat com o Fable 5 — coerente com a pergunta de 25/07 19:11 ("pq o modelo Fable só está disponível no modo Chat, não no Claude Code?").
+
+Consequência prática: a seção **§2 (Baseline herdado)** foi derivada por leitura do código, não de prompt. Todo o resto tem prompt de origem datado, citado em cada requisito. Onde este documento diz "não rastreável", é exatamente isso — não há registro, e a informação foi inferida do artefato.
+
+**Volume da fonte:** 110 prompts recuperados, dos quais ~85 pertencem à Fase 1 (26/07 01:27 → 27/07 00:45) e 10 são da sessão de 04/08.
+
+---
+
+## 1. Objetivo
+
+Entregar a primeira fase jogável: o jogador acorda acorrentado num calabouço, se liberta, atravessa masmorras e catacumbas, coleta informação com prisioneiros, encontra uma arma e derrota o chefe da arena — saindo com um item que será usado contra o chefe da fase seguinte.
+
+**Pilar de design que aparece em todos os prompts:** *nada de procedural aparente*. Som, voz e imagem devem soar e parecer captados, não sintetizados. Esse pilar motivou sozinho cerca de 40 dos 85 prompts da fase.
+
+---
+
+## 2. Baseline
+
+- Motor 2D top-down em canvas, arquivo único `castelo.html`, sem build e sem dependências
+- Arquitetura **MOTOR × CONTEÚDO**: o motor não conhece nenhuma fase; cada fase é objeto de dados + ganchos (`aoIniciar`, `atualizar`, `interacao`, `agir`, `desenharCenario`)
+- Joystick virtual (arrasto do polegar esquerdo) + WASD/setas
+- Estrutura de calabouço: torre circular (arena), portão de grade, corredor de celas
+- Corrente com barra de força, prisioneiros informantes, chefe com máquina de estados
+- Sistema de missão com tarefas e contador
+
+---
+
+## 3. Requisitos funcionais
+
+Cada item traz a data e o prompt que o originou.
+
+### 3.1 Mundo e cenário
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-01 | O cenário deve ser visualmente detalhado, com referência em imagens fornecidas pelo usuário | 26/07 13:26 — *"faça um cenário mais detalhado, como esse: [Image #1], [Image #2]"* |
+| RF-02 | A fase deve ser mais longa, com obstáculos, pontes e labirintos | 26/07 19:27 — *"faça a fase 1 mais longa, com obstáculos, pontes e labirintos"* |
+| RF-03 | O mapa não pode ter excesso de becos sem saída; os caminhos devem se conectar | 26/07 19:47 — *"o cenario ficou com muitos dead-ends. Conecte mais os caminhos"* |
+| RF-04 | As imagens em `/img` servem de **inspiração** para construir o cenário, não de asset a referenciar | 26/07 23:47 — *"Essas são imagens p vc usar como inspiração na construção de cada scenário de cada fase"* |
+
+**Entregue:** mapa 46×58 tiles — torre circular (arena), bloco de 6 celas, depósito, guarnição (caserna, gabinete, arsenal, sala da guarda, forja), fosso de ponta a ponta com 3 travessias (duas válidas, uma quebrada), labirinto de catacumbas 13×4 gerado com semente fixa, câmara da Ladra. Espinhos animados como obstáculo.
+
+### 3.2 Personagens e apresentação
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-05 | Cada prisioneiro e o jogador devem usar a foto fornecida como retrato | 26/07 13:32, 13:37, 19:36, 21:09 — *"add essa imagem ao ferreiro / a ladra / ao jogador / no velho"* |
+| RF-06 | Nenhum retrato pode exibir fundo preto | 26/07 19:04 — *"Remova esse background preto do jogador"*; 19:24 — *"(sem backgrounds pretos)"* |
+| RF-07 | O jogador deve ser um avatar **animado**, não uma imagem estática; braços em movimento | 26/07 15:40 — *"faça um avatar com movimentos a partir da foto do jogador. Não exiba-a como uma imagem estática."*; 19:04 — *"Faça mexer os braços tb."* |
+| RF-08 | Os prisioneiros devem aparecer **no cenário**, não só na legenda de fala | 26/07 19:24 — *"incorpore as fotos dos prisioneiros no jogo... Elas estão aparecendo apenas na legenda quando eles falam."* |
+| RF-09 | Prisioneiros devem ter o mesmo tamanho do jogador | 26/07 19:29 — *"aumente o tamanho dos prisioneiros para o mesmo tamanho do jogador"* |
+| RF-10 | Prisioneiros devem se mexer em loop, como um GIF | 26/07 20:54 — *"faça os presos se mexerem, como um GIF (movimentos repetidos)"* |
+| RF-11 | Nenhum personagem pode sumir do cenário ao longo das mudanças | 26/07 19:51 — *"a ladra sumiu do cenário"* (regressão reportada) |
+
+**Entregue:** três informantes — **O Velho** (chave `ritmo`), **A Ladra** (chave `flanco`), **O Ferreiro** (chave `investida`) — cada um com retrato próprio, presença no mapa e animação em loop.
+
+### 3.3 Progressão e missão
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-12 | A fase tem 4 tarefas rastreadas em HUD: quebrar a corrente, cruzar o fosso, ouvir 3 presos, derrotar o Gladiador | baseline + prompts de cenário |
+| RF-13 | Ao vencer o chefe, o jogador ganha um item que vai para a bolsa; a bolsa abre e mostra o item ao fim da fase | 26/07 13:41 — *"quando ganhar do Gladiador, o jogador deve ganhar esse item que deve ir para a sua bolsa (inventário). Abra a bolsa e mostre o item ao final da fase"* |
+| RF-14 | O item ganho serve para enfrentar o chefe da fase seguinte — **e isso vale para toda fase** | 26/07 13:41 — *"Faça isso sempre que terminar a fase. O item será usado para enfrentar o chefão da proxima fase."* |
+| RF-15 | Morrer **não** apaga progresso: o jogador reaparece atrás do portão do Gladiador para recomeçar a luta | 26/07 21:02 — *"quando o jogador morrer, não perca o progresso: ele volta p tras do portão do gladiador para recomeçar a luta"* |
+
+**Entregue:** `retomar()` devolve o jogador ao corredor atrás do portão com vida cheia, mantendo segredos, bolsa e caminho.
+
+### 3.4 Itens, inventário e combate
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-16 | Pegar um item "trapo" restaura 15% da vida | 26/07 19:51 — *"quando o jogador pegar os itens 'trapo', restaure sua vida em 15%"* |
+| RF-17 | Deve haver ratazanas que atacam o jogador | 26/07 20:00 — *"add ratazanas que atacam o jogador"* |
+| RF-18 | Um facão escondido no cenário entra no inventário ao ser encontrado, igual ao machado do chefe | 26/07 20:00 — *"Add um facão que ele deve encontrar no cenário... adicione ao inventário (do mesmo jeito que adiciona o machado quando ele vence o Gladiador)"* |
+| RF-19 | Ao pegar o facão: pausar o jogo, abrir popup "Inventário" com a imagem, e a partir dali o facão fica na mão e habilita a ação de golpe | 26/07 20:12 — *"pause o jogo, abra um popup chamado Inventário e mostre a imagem do facão. A partir desse ponto, coloque o facão na mão do jogador e habilite-o a dar golpes (add uma ação)"* |
+| RF-20 | Ao derrotar o Gladiador: mesmo popup, com a imagem do machado | 26/07 21:06 — *"quando derrotar o gladiador, abra um popup igual ao do facão, mas com a imagem do machado"* |
+| RF-21 | A empunhadura deve ter a lâmina virada para **fora** e a arma colada à mão | 26/07 20:59 e 21:12 — *"o facão está com a lâmina virada para o jogador. Faça a virada p fora e mais proxima da mão"* / *"deixe o colado a mão"* |
+| RF-22 | O machado no popup deve ter o tamanho do facão e vir sem fundo | 26/07 21:18 — *"faça o machado maior no popup, do tamanho do facão e sem background"* |
+| RF-23 | Comando "olhar o inventário": popup lista todos os itens e o jogador escolhe qual empunhar | 26/07 21:18 — *"Adicione o comando 'olhar o inventário' (o pop-up se abre com todos os itens e o jogador pode escolher qual quer pegar)"* |
+| RF-24 | **O jogador nunca golpeia sozinho.** O golpe só sai com o botão GOLPE ou a tecla de atalho | 27/07 00:20 — *"o jogador está golpeando auto qdo algum inimigo se aproxima. Desabilite isso!"* |
+| RF-25 | Sangue jorrando quando alguém é atingido na luta, com gemidos | 26/07 21:10 — *"adicione sangue jorrando quando alguém é atingido na luta contra o Gladiador. Adicione gemidos também"* |
+
+### 3.5 O Gladiador
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-26 | O chefe precisa de repertório de movimentos: golpe de espada, golpe de corrente, corrida de ataque, ajoelhar ao ser atingido, ficar ofegante | 26/07 21:18 — *"Add movimentos: dar golpe de espada, golpear com a corrente, correr para atacar, ficar de joelhos quando for atingido e ficar ofegante."* |
+| RF-27 | Antes da luta, mostrar a legenda da primeira fala do Gladiador — igual às dos prisioneiros — e só depois soltar o combate | 27/07 00:35 — *"No início, mostre a legenda da primeira fala do gladiador (como faz com os prisioneiros), só depois começa a luta"* |
+| RF-28 | O texto da fala de abertura é: *"Olhaaa você acha mesmo que pode me vencer? Então vem pro pau!"* | 27/07 00:45 — ditado literalmente pelo usuário |
+
+**Entregue:** 560 HP; ciclo espera → aproxima → combo de 3 golpes (18/18/28 de dano) → exausto → investida com 2 batidas de escudo, 24 de dano e estado zonzo ao bater na parede. As três chaves de informante (`ritmo`, `flanco`, `investida`) dobram o dano nas janelas correspondentes — ouvir os presos é mecânica, não enfeite.
+
+### 3.6 Áudio — o eixo dominante da fase
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-29 | Todo som deve ser realista, sem sinal de digitalização procedural: corrente esticando e quebrando, vozes dos presos, pisadas do Gladiador, espada, gemidos de dor | 26/07 01:27 — prompt fundador do eixo |
+| RF-30 | Vozes distintas por perfil: idosos tossindo, jovens, mulheres | 26/07 01:27 |
+| RF-31 | O rangido da corrente não pode ter drone grave sobreposto | 26/07 01:57 — *"está tocando dois sons: 1 da corrente e outro som grave, robotizado. Remova o grave"* |
+| RF-32 | Comando `/add-voice` para gerar voz a partir de texto, com parâmetros `desc` (idoso/mulher/criança/homem) e texto, em Português por padrão | 26/07 02:28, 02:43, 02:51 |
+| RF-33 | Se a voz pedida não existir na ferramenta, o comando **deve falhar** — não cair em fallback silencioso | 26/07 03:12 — *"se nao existir, o comando deve dar erro"* |
+| RF-34 | Música de fundo em loop na fase 1 | 26/07 19:13 — arquivo fornecido |
+| RF-35 | Música própria ao abrir o portão do Gladiador | 26/07 19:22 — arquivo fornecido |
+| RF-36 | **A música abaixa quando um personagem fala**, para a voz ficar à frente | 26/07 19:30 — *"abaixe a musica de fundo quando os prisioneiros forem falar"* |
+| RF-37 | Volume das vozes acima do da música na luta | 26/07 19:45 e 20:12 — *"aumente a voz dos prisioneiros"* / *"diminua a musica da batalha contra o gladiador e aumente o volume das vozes"* |
+| RF-38 | Som de choque quando jogador e Gladiador atacam ao mesmo tempo; som de corte quando um acerta o outro, com gemido | 26/07 20:06 — arquivos fornecidos |
+| RF-39 | Vozes do Gladiador em três eventos: chegada do jogador, ao golpear, ao levar golpe | 26/07 19:56 e 27/07 00:35 — arquivos fornecidos |
+
+**Entregue:** ducking implementado em `falarVoz()` — a BGM cai de `.35` (ou `.16` na luta) para `.08` enquanto há fala, e volta ao fim. Vozes dos três informantes e do Gladiador são gravações reais do usuário, convertidas para MP3.
+
+### 3.7 Controles e HUD
+
+| # | Requisito | Origem |
+|---|---|---|
+| RF-40 | Ações por botão circular na tela: bolsa, trapo, rolar, golpe, ação contextual | baseline |
+| RF-41 | Teclas de atalho: F golpe, Espaço rolar, Q trapo, E ação, I bolsa, WASD/setas andar | baseline + 27/07 00:20 (*"ou a tecla de atalho"*) |
+
+---
+
+## 4. Requisitos não-funcionais
+
+| # | Requisito | Origem |
+|---|---|---|
+| RNF-01 | O jogo é um arquivo único, sem build e sem dependências externas | baseline |
+| RNF-02 | Publicado no GitHub Pages, com a URL no README | 26/07 01:43 e 01:47 |
+| RNF-03 | Fluxo de entrega direto: nenhuma branch protegida, sem PRs, push de cada mudança na hora | 26/07 01:46 — *"não proteja nenhuma branch, nao abra PR's: faça o push de cada change right away"* |
+| RNF-04 | Deve rodar em celular (adicionável à tela inicial do iPhone) e em desktop | baseline / README |
+
+---
+
+## 5. Decisões revertidas — o que foi tentado e abandonado
+
+Registro honesto do caminho, porque duas dessas reversões consumiram boa parte da fase:
+
+1. **ElevenLabs → `say` do macOS → gravações reais.** Começou com ElevenLabs (26/07 01:59), migrou para o `say` por custo (02:42), quebrou porque o `say` não tinha voz de idoso convincente em PT (03:12–03:23: *"nao da p usar say. Me de outra alternativa gratis"*), e terminou com o usuário **gravando as vozes ele mesmo** no TapRecord (12:26 em diante). As vozes finais do Velho, da Ladra, do Ferreiro e do Gladiador são humanas, gravadas à mão.
+2. **Golpe automático → golpe manual.** O combate atacava sozinho quando um inimigo se aproximava; foi removido por decisão explícita em 27/07 00:20 (RF-24).
+3. **Síntese procedural de SFX → áudio real.** O prompt fundador de 26/07 01:27 encerrou a abordagem procedural inicial.
+
+---
+
+## 6. Critérios de aceite
+
+- [x] O jogador quebra a corrente, cruza o fosso, ouve os 3 presos e o portão da arena abre
+- [x] Nenhuma voz soa sintetizada; todas as falas de personagem são gravações reais
+- [x] A música abaixa em toda fala e volta ao fim
+- [x] O facão é encontrável, entra na bolsa via popup e fica na mão com lâmina para fora
+- [x] O Gladiador fala com legenda antes da luta começar
+- [x] As três informações dos presos alteram o dano em janelas específicas da luta
+- [x] Morrer devolve o jogador atrás do portão sem perder nada
+- [x] Vencer abre a bolsa mostrando o machado
+- [x] Publicado no GitHub Pages
+
+---
+
+## 7. Adições posteriores (sessão de 04/08/2026)
+
+Fora do escopo original da fase, acrescentado depois:
+
+- **Esparadrapos na arena** — dois curativos de 25% de vida, um em cada canto superior da areia, disponíveis só durante a luta com o Gladiador e repostos a cada tentativa
+- **Teclas de atalho impressas nos rótulos dos botões**, ocultas em telas de toque
+- **Normalização da fala de abertura do Gladiador** — o clipe estava em −41,2 LUFS, ~28 dB abaixo das outras vozes, e por isso não se ouvia mesmo com o ducking funcionando; normalizado para −16,9 LUFS
+
+---
+
+## 8. Pendências conhecidas
+
+- A música volta ao volume cheio quando o **áudio** da fala termina, não quando o jogador **fecha** a legenda — durante o resto da leitura a BGM já está alta
+- Não há teste automatizado: toda verificação da fase foi manual, pelo navegador
