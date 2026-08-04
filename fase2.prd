@@ -1,0 +1,190 @@
+# PRD — Fase 2: As Cozinhas e a Adega
+
+**Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
+**Fase:** 2 de 6 — cozinhas e adega, e O Açougueiro
+**Status:** rascunho
+**Escrito em:** 04/08/2026
+
+---
+
+## 0. Sobre este documento
+
+Preenchido **antes** da construção, a partir do `fase-template.prd`. O que já estava fixado pelo projeto (README, `castelo.html`, imagem de inspiração `img/scenarios/fase2-kitchen.png`) entra como decidido; o resto entra como **proposta** — marcada com ⚠ — e precisa de confirmação do usuário antes de virar código. A coluna Origem distingue os dois casos.
+
+Numeração: prefixo de fase, `F2-RF-01` em diante.
+
+---
+
+## 1. Objetivo
+
+O jogador sobe a escada da arena e emerge nas **cozinhas do castelo**: um piso de fogões acesos, mesas de preparo, despensa, câmara de carnes e uma **adega labiríntica de barris**. Os servos da cozinha vivem sob o terror do Açougueiro, que manda no piso a cutelo. O jogador atravessa o fogo dos fornos e o labirinto da adega, ouve três servos que conhecem os vícios do chefe, arromba a câmara de carnes com o **machado do Gladiador** e derrota **O Açougueiro** — saindo com o **cutelo** dele para enfrentar O Coveiro no piso 3.
+
+**Pilar de design desta fase:** herdado da Fase 1 — *nada de procedural aparente* — somado a um eixo próprio: ⚠ **calor e comida como linguagem do piso**. Onde o calabouço era pedra fria e escuridão, a cozinha é fogo, vapor, gordura e barulho de metal. A cura vem de comida, o perigo vem das chamas, e o chefe é ouvido (batidas de cutelo na mesa) antes de ser visto.
+
+**Item herdado da fase anterior:** **Machado do Gladiador** (`machado-gladiador`) — a descrição no código já promete: *"serve para o próximo chefe"*. Uso proposto ⚠: (a) é a única ferramenta que **arromba a porta da câmara de carnes**, onde o Açougueiro espera — a fase não abre sem ele; (b) empunhado, causa mais dano que o facão (o jogador escolhe na bolsa, RF-23 da Fase 1).
+**Item entregue ao fim desta fase:** ⚠ **Cutelo do Açougueiro** — entra na bolsa via popup de Inventário e será a chave contra O Coveiro na Fase 3.
+
+---
+
+## 2. Baseline — HERDADO
+
+Vale o bloco inteiro do template, sem exceções nesta fase.
+
+**O que esta fase acrescenta ao motor:** uma única coisa, e justificada — **transição de piso**. Hoje o motor inicia um piso mas não encadeia dois: a vitória da Fase 1 termina em véu com placar. É preciso um mecanismo `proximoPiso` (a vitória carrega o piso seguinte, preservando a bolsa — RNF-05 já exige a persistência). Nada mais do motor deve ser tocado: o Açougueiro é 100% expressável no `cfg` existente (o README já dá o exemplo: `comboGolpes:2, batidasEm:[1.2,.8,.4]`).
+
+---
+
+## 3. Requisitos funcionais
+
+### 3.1 Mundo e cenário
+
+| # | Requisito | Origem |
+|---|---|---|
+| F2-RF-01 | O piso segue a planta da imagem de inspiração: salão central com claraboia/rosácea, cozinha grande ao norte, salas de serviço nas laterais, adega e depósitos ao sul | fixado — `img/scenarios/fase2-kitchen.png` (26/07 23:47: imagens são inspiração de cenário) |
+| F2-RF-02 | ⚠ Regiões: escada de chegada (vinda da arena), refeitório dos servos, cozinha grande (fogões e lareiras), despensa, **adega labiríntica de barris** (análoga às catacumbas), poço/cisterna, câmara de carnes (arena do chefe) | proposta 04/08 |
+| F2-RF-03 | ⚠ Obstáculo cíclico da fase: **labaredas dos fornos e bocas de fogo** — mesmo papel mecânico dos espinhos da Fase 1 (dano em janela, ritmo aprendível) | proposta 04/08 |
+| F2-RF-04 | ⚠ Travessias: duas passagens válidas para a adega (porta de serviço e alçapão da despensa) e uma falsa (grade da cisterna, trancada por fora) | proposta 04/08 |
+
+**HERDADO:** cenário detalhado; fase longa com obstáculos e labirinto; caminhos conectados, sem excesso de becos sem saída (a adega usa o mesmo braiding das catacumbas).
+
+### 3.2 Personagens e apresentação
+
+| # | Requisito | Origem |
+|---|---|---|
+| F2-RF-05 | ⚠ Três informantes: **A Cozinheira** (chave `pausa`), **O Copeiro** (chave `avental`), **O Adegueiro** (chave `mesa`) | proposta 04/08 |
+| F2-RF-06 | ⚠ Localização: a Cozinheira junto aos fogões da cozinha grande; o Copeiro escondido na despensa; o Adegueiro no fundo do labirinto de barris (o mais difícil de achar, como a Ladra) | proposta 04/08 |
+
+**HERDADO:** retrato de foto fornecida pelo usuário, sem fundo preto; animado em loop; presente no mapa; mesmo tamanho do jogador; vigiar regressão de personagem sumindo.
+
+**Assets pendentes do usuário:** 3 retratos (PNG sem fundo) + ~3 falas gravadas por personagem. Ver Apêndice A.
+
+### 3.3 Progressão e missão
+
+| # | Requisito | Origem |
+|---|---|---|
+| F2-RF-07 | ⚠ 4 tarefas em HUD: **Atravessar a cozinha em chamas** · **Achar o caminho da adega** · **Ouvir os servos (0/3)** · **Derrotar o Açougueiro** | proposta 04/08, espelhando a estrutura da Fase 1 |
+| F2-RF-08 | ⚠ A porta da câmara de carnes só abre com o machado empunhado **e** os 3 servos ouvidos — mesma trava dupla do portão do Gladiador, agora com pré-requisito de item | proposta 04/08 (uso do item herdado, RF-14 da Fase 1) |
+| F2-RF-09 | ⚠ Ponto de retorno após a morte: diante da porta arrombada da câmara de carnes, vida cheia, tudo mantido | herdado do padrão RF-15 da Fase 1 |
+
+**HERDADO:** tarefas com contador; item do chefe vai à bolsa e a bolsa abre ao fim; morrer não apaga progresso.
+
+### 3.4 Itens, inventário e combate
+
+| # | Requisito | Origem |
+|---|---|---|
+| F2-RF-10 | ⚠ Cura da fase: **pão e caldo** espalhados pela cozinha e despensa, no lugar dos trapos — mesmo botão `Q`, cura de 15% (pão) | proposta 04/08 (padrão RF-16 da Fase 1) |
+| F2-RF-11 | ⚠ Inimigo comum: **ratazanas da despensa** (reuso das da Fase 1) e, na adega, ⚠ **baratas/ratos maiores** se as ratazanas ficarem repetitivas | proposta 04/08 |
+| F2-RF-12 | ⚠ O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão | proposta 04/08 |
+| F2-RF-13 | ⚠ Análogo dos esparadrapos: **duas postas de carne** nos cantos da câmara, 25% de vida, só durante a luta, repostas a cada tentativa | herdado do padrão da sessão de 04/08 na Fase 1 |
+
+**HERDADO:** golpe nunca é automático; item achado pausa e abre popup Inventário; lâmina para fora, colada à mão; popup sem fundo e em tamanho uniforme; "olhar o inventário" lista tudo; sangue e gemidos no acerto.
+
+### 3.5 O chefe: O Açougueiro
+
+| # | Requisito | Origem |
+|---|---|---|
+| F2-RF-14 | Máquina de estados 100% via `cfg` existente: **combo de 2 talhos** e **três batidas de cutelo na mesa antes da investida** — `comboGolpes:2, batidasEm:[1.2,.8,.4]` | fixado — README, seção "Criando o piso 2" |
+| F2-RF-15 | ⚠ Números de partida (balancear em teste): `hp:700, comboDano:[26,34], comboIntervalo:.5, exaustoT:1.3, investidaVel:15, investidaDano:30, zonzoT:2.0` — mais lento e mais pesado que o Gladiador | proposta 04/08 |
+| F2-RF-16 | ⚠ Janelas de fraqueza amarradas às chaves: `pausa` → exausto (a Cozinheira: *"dois talhos e o braço pesa"*), `avental` → costas (o Copeiro: *"o avental de couro só cobre a frente"*), `mesa` → zonzo pós-investida (o Adegueiro: *"três batidas na mesa, e ele vem que nem um carro de boi"*) | proposta 04/08, espelhando `fraquezas` da Fase 1 |
+| F2-RF-17 | Fala de abertura com legenda antes da luta, texto exato a ditar pelo usuário e voz gravada real | herdado (RF-27/RF-28 da Fase 1) — **pendente do usuário** |
+
+**HERDADO:** repertório visível de movimentos; informação dos NPCs é mecânica (~2× nas janelas certas), não enfeite.
+
+### 3.6 Áudio
+
+| # | Requisito | Origem |
+|---|---|---|
+| F2-RF-18 | ⚠ Camada sonora da cozinha: fogo crepitando, panelas, vapor — captado, não sintetizado | pilar herdado, proposta 04/08 |
+| F2-RF-19 | ⚠ As **batidas de cutelo na mesa** precisam de som próprio e alto: são a telegrafia da investida (equivalente às batidas de escudo) | proposta 04/08 |
+| F2-RF-20 | Trilha da fase em loop + trilha própria ao arrombar a câmara de carnes | herdado (RF-34/35) — **arquivos pendentes do usuário** |
+| F2-RF-21 | Voz do Açougueiro em 3 eventos: entrada, ao golpear, ao levar golpe | herdado (RF-39) — **gravações pendentes do usuário** |
+
+**HERDADO:** tudo do bloco de áudio do template — inclusive a **medição obrigatória de LUFS (−14 a −17) antes de aceitar qualquer clipe**. A Fase 1 pagou uma semana de voz inaudível por pular isso.
+
+### 3.7 Controles e HUD — HERDADO
+
+Sem ação nova prevista. ⚠ Novos rótulos contextuais: `ARROMBAR` (porta de tábuas, exige machado), `PEGAR` (pão/caldo/postas), `FALAR`/`OUVIR` (herdados).
+
+---
+
+## 4. Requisitos não-funcionais — HERDADO
+
+RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 precisa continuar jogável e íntegra — a transição de piso não pode quebrar `retomar()`, bolsa nem segredos do piso 1.
+
+---
+
+## 5. Decisões revertidas — PREENCHER DURANTE
+
+*(vazio — fase ainda não começou)*
+
+---
+
+## 6. Critérios de aceite
+
+**HERDADO** — os 12 do template, todos valem.
+
+**Específicos desta fase:**
+
+- [ ] O machado tem uso real e obrigatório: sem ele a câmara de carnes não abre
+- [ ] A porta do chefe exige machado **e** 3/3 servos, e comunica o que falta (como o portão da Fase 1)
+- [ ] As três batidas de cutelo são audíveis e antecedem toda investida
+- [ ] Vitória da Fase 1 leva à Fase 2 com a bolsa intacta (facão + machado presentes)
+- [ ] Labaredas dos fornos têm ritmo aprendível e nunca dão dano sem janela visível
+- [ ] O Adegueiro é encontrável só por quem explora a adega até o fundo
+- [ ] Vencer abre a bolsa mostrando o Cutelo do Açougueiro
+
+---
+
+## 7. Adições posteriores — PREENCHER DEPOIS
+
+*(vazio)*
+
+---
+
+## 8. Pendências conhecidas
+
+Herdadas em aberto da Fase 1, ainda valem:
+
+- A música volta ao volume cheio quando o **áudio** da fala termina, não quando o jogador **fecha** a legenda
+- Não há teste automatizado rodando em CI: a validação por bots citada no README é manual
+
+Próprias deste rascunho:
+
+- Todos os itens marcados ⚠ são propostas — confirmar com o usuário antes de codificar
+- Texto da fala de abertura do Açougueiro: a ditar pelo usuário (padrão da Fase 1)
+
+---
+
+## Apêndice A — Assets que o usuário precisa fornecer
+
+Pedir **antes** de começar o áudio — foi o que mais travou a Fase 1.
+
+| Tipo | Item | Formato | Status |
+|---|---|---|---|
+| Retrato NPC | A Cozinheira | PNG sem fundo | pendente |
+| Retrato NPC | O Copeiro | PNG sem fundo | pendente |
+| Retrato NPC | O Adegueiro | PNG sem fundo | pendente |
+| Retrato chefe | O Açougueiro | PNG sem fundo | pendente |
+| Item | Cutelo do Açougueiro (popup + mão) | PNG sem fundo | pendente |
+| Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | pendente — gravar só depois do texto fechado |
+| Voz chefe | entrada, golpe, leva golpe | idem | pendente |
+| Trilha | BGM das cozinhas (loop) | MP3 | pendente |
+| Trilha | Luta na câmara de carnes | MP3 | pendente |
+| SFX | Batida de cutelo na mesa | MP3 | pendente (choque/corte reaproveitados da Fase 1) |
+
+---
+
+## Apêndice B — Ordem de trabalho
+
+A do template, com o passo 0 próprio desta fase:
+
+0. Implementar e testar a **transição de piso** no motor (única mudança de motor permitida)
+1. Fechar §1 confirmando os ⚠ com o usuário, e o mapa em papel sobre a imagem de inspiração
+2. Cenário e navegação — validar conexões da adega (braiding, sem becos em excesso)
+3. NPCs com retrato e animação, **sem voz**
+4. Fechar o texto de todas as falas — só então gravar
+5. Chefe: `cfg`, estados, tempos, janelas
+6. Amarrar `pausa`/`avental`/`mesa` às janelas
+7. Gravar, **medir LUFS**, integrar
+8. Itens (pão, caldo, postas, cutelo), popups, arrombamento com machado
+9. Publicar, testar no celular, preencher §5–§8
