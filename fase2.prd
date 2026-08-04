@@ -74,7 +74,7 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 |---|---|---|
 | F2-RF-10 | Cura da fase: **pão e caldo** espalhados pela cozinha e despensa, no lugar dos trapos — mesmo botão `Q`, cura de 15% (pão) | proposta 04/08 (padrão RF-16 da Fase 1) |
 | F2-RF-11 | Inimigo comum: **ratazanas da despensa** (reuso das da Fase 1) e, na adega, **baratas/ratos maiores** | proposta 04/08 |
-| F2-RF-12 | O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão | proposta 04/08 |
+| F2-RF-12 | O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão. O arrombamento usa a porta de `img/fase2/porta.jpg` e o GIF `img/fase2/porta-arrombada.gif` como animação | proposta 04/08; GIF: 04/08 — *"use o gif da porta sendo arrombada"* |
 | F2-RF-13 | Análogo dos esparadrapos: **duas postas de carne** nos cantos da câmara, 25% de vida, só durante a luta, repostas a cada tentativa | herdado do padrão da sessão de 04/08 na Fase 1 |
 
 **HERDADO:** golpe nunca é automático; item achado pausa e abre popup Inventário; lâmina para fora, colada à mão; popup sem fundo e em tamanho uniforme; "olhar o inventário" lista tudo; sangue e gemidos no acerto.
@@ -166,7 +166,8 @@ Pedir **antes** de começar o áudio — foi o que mais travou a Fase 1.
 | Retrato NPC | A Faxineira | PNG sem fundo | recebido — `img/fase2/faxineira.jpg`; idem |
 | Retrato chefe | O Açougueiro | PNG sem fundo | pendente |
 | Item | Avental de Aço do Açougueiro (popup + bolsa) | PNG sem fundo | recebido — `img/fase2/avental.jpg`; converter para PNG e recortar o fundo |
-| Item | Pão e caldo (cura, F2-RF-10) | PNG sem fundo | recebidos — `img/fase2/pao.jpg` e `caldo.jpg`; idem |
+| Item | Pão e caldo (cura, F2-RF-10) | PNG sem fundo | **prontos** — `img/fase2/pao.png` e `caldo.png`, recortados |
+| Cenário | Porta da câmara de carnes + animação de arrombamento | JPG + GIF | recebidos — `img/fase2/porta.jpg` e `porta-arrombada.gif` |
 | Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | recebidas — `audio/fase2/vozes/`, normalizadas (−15,4 a −17,1 LUFS) |
 | Voz chefe | entrada, golpe, leva golpe | idem | recebidas — `audio/fase2/vozes/acougueiro-*.mp3`, normalizadas |
 | Trilha | BGM das cozinhas (loop) | MP3 | recebida — `audio/fase2/trilha-fase2.mp3` |
