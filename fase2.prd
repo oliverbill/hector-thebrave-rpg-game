@@ -2,7 +2,7 @@
 
 **Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
 **Fase:** 2 de 6 — cozinhas e adega, e O Açougueiro
-**Status:** rascunho
+**Status:** em construção — jogável de ponta a ponta desde 04/08 (cenário, NPCs, chefe, porta, transição de piso)
 **Escrito em:** 04/08/2026
 
 ---
@@ -30,7 +30,14 @@ Após derrotar o Gladiador, o jogador sobe a escada da arena(faça uma animaçã
 
 Vale o bloco inteiro do template, sem exceções nesta fase.
 
-**O que esta fase acrescenta ao motor:** uma única coisa, e justificada — **transição de piso**. Hoje o motor inicia um piso mas não encadeia dois: a vitória da Fase 1 termina em véu com placar. É preciso um mecanismo `proximoPiso` (a vitória carrega o piso seguinte, preservando a bolsa — RNF-05 já exige a persistência). Nada mais do motor deve ser tocado: o Açougueiro é 100% expressável no `cfg` existente (o README já dá o exemplo: `comboGolpes:2, batidasEm:[1.2,.8,.4]`).
+**O que esta fase acrescentou ao motor** (implementado em 04/08):
+
+1. **Transição de piso** — a vitória com próximo piso disponível troca o botão do véu ("Subir a escada") e carrega o piso seguinte preservando a bolsa (RNF-05). Sem animação do castelo ainda — ver §8.
+2. **Vozes e som de batida do chefe saíram do motor para o `cfg`** — o motor tinha `vozChefe('fase1/gladiador-*')` hardcoded em três pontos; agora lê `cfg.sons:{entrada,golpe,levaGolpe}` e `cfg.somBatida`. Era um vazamento MOTOR×CONTEÚDO que a Fase 2 obrigou a corrigir.
+3. **`atualizarRatazanas()` compartilhada** — a lógica saiu do `atualizar` do piso 1 para função de conteúdo reutilizável (as ratazanas da despensa e da adega são as mesmas do calabouço, F2-RF-11).
+4. **`?piso=N` na URL** — pula direto a um piso herdando as recompensas dos anteriores; é o acesso de teste.
+
+O Açougueiro em si confirmou a promessa do README: 100% expressável no `cfg` existente (`comboGolpes:2, batidasEm:[1.2,.8,.4]`), zero mudança na máquina de estados.
 
 ---
 
@@ -146,11 +153,15 @@ RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 pre
 Herdadas em aberto da Fase 1, ainda valem:
 
 - A música volta ao volume cheio quando o **áudio** da fala termina, não quando o jogador **fecha** a legenda
-- Não há teste automatizado rodando em CI: a validação por bots citada no README é manual
+- Não há teste automatizado rodando em CI: a validação de 04/08 foi por navegador headless (geometria validada por flood-fill em Node)
 
-Próprias deste rascunho:
+Próprias da construção de 04/08:
 
-- Todos os itens marcados ⚠ são propostas — confirmar com o usuário antes de codificar
+- **Animação do castelo entre pisos** (pedido no §1) não feita — a transição hoje é véu → intro do piso seguinte
+- **`porta-arrombada.gif` tem o xadrez de transparência impresso no fundo** — o GIF toca com o quadriculado visível; o asset precisa ser reexportado com fundo transparente ou escuro
+- **Sons ambiente da cozinha (F2-RF-18)** — fogo/panelas/vapor baixados em `audio/fase2/sons/` mas ainda não integrados ao jogo
+- **Balanceamento do chefe (F2-RF-15)** não testado com jogador real — números de partida valem até a primeira sessão de jogo
+- Retrato do Açougueiro no Apêndice A: em uso o próprio `butcher.png` (sprite e retrato são a mesma imagem)
 - ~~Texto da fala de abertura do Açougueiro~~ — fechado em F2-FALAS.md: *"Se eu cozinho, eu não lavo! Agora vou lhe mostrar um truque ou dois!"*
 
 ---

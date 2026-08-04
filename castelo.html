@@ -1468,7 +1468,7 @@ function criarChefe(){
     abrirFala({nome:f.nome, retrato:f.retrato, falas:f.abertura.falas, voz:f.abertura.voz}, entrar);
   } else {
     setTimeout(entrar, 900);
-    vozChefe('fase1/gladiador-entrada');
+    if(f.sons && f.sons.entrada) vozChefe(f.sons.entrada);
   }
 }
 function dirLivre(c, ax, ay){
@@ -1480,9 +1480,10 @@ function dirLivre(c, ax, ay){
   }
   return [ax, ay];
 }
-function bateEscudo(c){       // hoje é a corrente açoitando o chão antes da investida
+function bateEscudo(c){       // a telegrafia da investida: corrente no chão, faca na mesa...
   c.bateu++; c.escudoBate = .22;
-  sEscudoBate();
+  if(c.cfg.somBatida) tocarSfx(c.cfg.somBatida, 1, sEscudoBate);
+  else sEscudoBate();
   sFerro();
   tremor = 8;
   const mira = c.mira != null ? c.mira : c.angulo;
@@ -1494,7 +1495,8 @@ function golpeChefe(dano, alcance){
   const ang = Math.atan2(dy,dx);
   const dif = Math.abs(((ang - chefe.angulo + Math.PI*3) % TAU) - Math.PI);
   chefe.golpeAnim = .22;
-  vozChefe('fase1/gladiador-golpe');
+  const sons = chefe.cfg.sons;
+  if(sons && sons.golpe) vozChefe(sons.golpe);
   sEspadaCorta();
   for(let k=0;k<6;k++) faisca(chefe.x + Math.cos(chefe.angulo)*1.4, chefe.y + Math.sin(chefe.angulo)*1.4, '#e0d0b0', .12);
   if(d < alcance && dif < 1.25){
@@ -1613,7 +1615,8 @@ function golpear(alvo){
     sCorte();
     jorrarSangue(alvo.x, alvo.y, jog.angulo, 14);            // o corte abre carne
     if(Math.random() < .6) mancharSangue(alvo.x, alvo.y + .5);
-    setTimeout(() => { if(!vozChefe('fase1/gladiador-levagolpe')) sDorChefe(); }, 60);
+    const sons = alvo.cfg && alvo.cfg.sons;
+    setTimeout(() => { if(!(sons && sons.levaGolpe && vozChefe(sons.levaGolpe))) sDorChefe(); }, 60);
   }
   flutuar(alvo.x, alvo.y-.5, dano, dano > jog.dano*1.8 ? '#ffd88a' : '#f4e2b4');
   faisca(alvo.x - dx/d*alvo.raio, alvo.y - dy/d*alvo.raio, '#f0c070', .12);
@@ -2174,6 +2177,12 @@ el('comecar').addEventListener('click', () => {
     tocarBgm(piso.bgm);
     return;
   }
+  if(etapa === 'fim' && pisoAtual + 1 < PISOS.length){   // transição de piso: a vitória sobe a escada
+    pisoAtual++;
+    etapa = 'menu';
+    mostrarVeu({...PISOS[pisoAtual].intro, placar:''});
+    return;
+  }
   iniciarPiso(PISOS[pisoAtual]);
   tocarBgm(PISOS[pisoAtual].bgm);
 });
@@ -2603,7 +2612,34 @@ function golpeDeArma(){
   });
 }
 
-/* --- ratazanas --- */
+/* --- ratazanas (compartilhadas entre pisos: calabouço, despensa, adega...) --- */
+function atualizarRatazanas(dt, paradas){
+  ratazanas.forEach(rz => {
+    if(rz.hp <= 0) return;
+    rz.fase += dt;
+    rz.morde = Math.max(0, rz.morde - dt);
+    rz.flash = Math.max(0, rz.flash - dt*4);
+    rz.guincho = Math.max(0, rz.guincho - dt);
+    const dx = rz.x-jog.x, dy = rz.y-jog.y, d = Math.hypot(dx,dy);
+    if(!paradas && d < 5.5 && d > .001){
+      const v = 2.7;   // persegue o jogador
+      rz.vx += (-dx/d*v - rz.vx)*Math.min(1, dt*5);
+      rz.vy += (-dy/d*v - rz.vy)*Math.min(1, dt*5);
+      if(rz.guincho <= 0 && d < 4){ sRato(); rz.guincho = 1.2 + Math.random()*1.5; }
+    } else {           // vagueia farejando
+      const a = rz.ang + Math.sin(rz.fase*.9)*1.2;
+      rz.vx += (Math.cos(a)*.5 - rz.vx)*Math.min(1, dt*2);
+      rz.vy += (Math.sin(a)*.5 - rz.vy)*Math.min(1, dt*2);
+    }
+    mover(rz, rz.vx*dt, rz.vy*dt);
+    if(Math.hypot(rz.vx, rz.vy) > .15) rz.ang = Math.atan2(rz.vy, rz.vx);
+    if(d < rz.raio + jog.raio + .1 && rz.morde <= 0){
+      rz.morde = .8;
+      sRato();
+      machucar(6);
+    }
+  });
+}
 function desenharRatazanas(ox, oy){
   ratazanas.forEach(rz => {
     if(rz.hp <= 0) return;
@@ -2935,6 +2971,7 @@ const PISO_CALABOUCO = {
       exaustoT:1.5,
       investidaDist:3.0, preparoT:1.5, batidasEm:[1.15,.55],
       investidaVel:17, investidaT:1.1, investidaDano:24, zonzoT:2.0,
+      sons:{entrada:'fase1/gladiador-entrada', golpe:'fase1/gladiador-golpe', levaGolpe:'fase1/gladiador-levagolpe'},
       entrada:['O Gladiador', 'ele não cumprimenta'],
       retrato:'img/fase1/gladiador.png',
       abertura:{
@@ -2961,7 +2998,7 @@ const PISO_CALABOUCO = {
     vitoria: () => ({
       titulo:"O Gladiador cai<em>piso 1 concluído</em>",
       texto:"A multidão para de gritar. Do outro lado da areia há uma escada — ela sobe para as cozinhas.<br><br>Você tirou o <b>machado</b> das mãos dele. Guarde na bolsa — vai precisar.",
-      botao:"De novo",
+      botao:"Subir a escada",
       placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>'
         + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
       mostrarBolsa:true
@@ -3096,31 +3133,7 @@ const PISO_CALABOUCO = {
         atualizarHUD();
       });
     }
-    ratazanas.forEach(rz => {
-      if(rz.hp <= 0) return;
-      rz.fase += dt;
-      rz.morde = Math.max(0, rz.morde - dt);
-      rz.flash = Math.max(0, rz.flash - dt*4);
-      rz.guincho = Math.max(0, rz.guincho - dt);
-      const dx = rz.x-jog.x, dy = rz.y-jog.y, d = Math.hypot(dx,dy);
-      if(etapa !== 'preso' && d < 5.5 && d > .001){
-        const v = 2.7;   // persegue o jogador
-        rz.vx += (-dx/d*v - rz.vx)*Math.min(1, dt*5);
-        rz.vy += (-dy/d*v - rz.vy)*Math.min(1, dt*5);
-        if(rz.guincho <= 0 && d < 4){ sRato(); rz.guincho = 1.2 + Math.random()*1.5; }
-      } else {           // vagueia farejando
-        const a = rz.ang + Math.sin(rz.fase*.9)*1.2;
-        rz.vx += (Math.cos(a)*.5 - rz.vx)*Math.min(1, dt*2);
-        rz.vy += (Math.sin(a)*.5 - rz.vy)*Math.min(1, dt*2);
-      }
-      mover(rz, rz.vx*dt, rz.vy*dt);
-      if(Math.hypot(rz.vx, rz.vy) > .15) rz.ang = Math.atan2(rz.vy, rz.vx);
-      if(d < rz.raio + jog.raio + .1 && rz.morde <= 0){
-        rz.morde = .8;
-        sRato();
-        machucar(6);
-      }
-    });
+    atualizarRatazanas(dt, etapa === 'preso');
     if(facao && !facao.pego && Math.hypot(facao.x-jog.x, facao.y-jog.y) < .7){
       facao.pego = true;
       const item = {
@@ -3195,11 +3208,655 @@ const PISO_CALABOUCO = {
   }
 };
 
+/* ================================================================
+   CONTEÚDO — PISO 2: AS COZINHAS E A ADEGA
+   O Açougueiro manda no piso a cutelo. O machado do Gladiador
+   arromba a porta da câmara de carnes. (fase2.prd)
+   ================================================================ */
+
+const COZ = {                      // geografia do piso (planta: cozinha ao norte, salão central, adega ao sul)
+  LARG:46, ALT:54,
+  PORTA:{x:30, y:9, alt:3},        // porta de tábuas da câmara de carnes (coluna x, de y a y+alt-1)
+  ROSACEA:{x:23, y:36, raio:3.4}   // rosácea de pedra no salão central
+};
+let labaredas = [], paes = [], caldos = [], porta2 = null, vistoAdega = false, vistoCisterna = false;
+
+function construirCozinhas(){
+  const t = new Uint8Array(COZ.LARG*COZ.ALT).fill(PAREDE);
+  const bra = [], dec = [];
+  const ix = (x,y) => y*COZ.LARG + x;
+  const cavar = (x1,y1,x2,y2,tile) => {
+    for(let y=y1;y<=y2;y++) for(let x=x1;x<=x2;x++) t[ix(x,y)] = (tile===undefined?CHAO:tile);
+  };
+
+  /* ---- cozinha grande (piso de madeira), fogões na parede norte ---- */
+  cavar(3,6,28,17,CHAO2);
+  /* ---- corredor da câmara de carnes; a porta em si nasce PAREDE (tábuas por cima) ---- */
+  cavar(29,9,29,11);
+  /* ---- câmara de carnes: a arena do Açougueiro ---- */
+  cavar(31,4,43,16,CHAO2);
+
+  /* ---- corredores em chamas: central (salão -> cozinha) e oeste (refeitório -> cozinha) ---- */
+  cavar(22,18,23,29);
+  cavar(6,18,7,30);
+
+  /* ---- salão central com a rosácea ---- */
+  cavar(14,30,30,42);
+  /* ---- refeitório dos servos, a oeste ---- */
+  cavar(3,31,12,41);
+  cavar(13,35,13,36);           // porta refeitório -> salão
+  /* ---- despensa, a leste ---- */
+  cavar(32,28,43,40);
+  cavar(31,34,31,35);           // porta salão -> despensa
+
+  /* ---- escada de chegada (vinda da arena) e corredor de serviço ---- */
+  cavar(37,47,43,52,CHAO2);
+  cavar(39,41,40,46);           // sobe da escada para a despensa
+
+  /* ---- adega labiríntica de barris: celas 2x2 numa grade 10x3 ---- */
+  const lab = gerarLabirinto(10, 3, 20260804);
+  for(let ly=0; ly<3; ly++) for(let lx=0; lx<10; lx++){
+    const c = lab[ly*10+lx], gx = 4+lx*3, gy = 45+ly*3;
+    cavar(gx, gy, gx+1, gy+1);
+    if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
+    if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
+  }
+  /* travessias da adega: porta de serviço (refeitório) e alçapão (despensa) */
+  cavar(5,42,6,44);             // serviço: desce do refeitório
+  cavar(32,41,33,44);           // alçapão: desce da despensa
+  /* a falsa: grade da cisterna, trancada por fora */
+  cavar(22,43,23,43);
+  cavar(22,44,23,44,GRADE);
+  cavar(22,45,23,46,FOSSO);     // a água escura lá embaixo
+
+  /* ---- luzes ---- */
+  [[5,6.4],[9,6.4],[13,6.4],[17,6.4],[21,6.4],[25,6.4],     // fogões da cozinha
+   [4,16],[26,16],                                          // cantos da cozinha
+   [22.5,20],[22.5,27],[6.5,21],[6.5,28],                   // corredores em chamas
+   [16,31],[30,31],[16,41],[30,41],[23,36],                 // salão e rosácea
+   [4,32],[11,40],                                          // refeitório
+   [33,29],[42,39],[37,34],                                 // despensa
+   [33,5],[41,5],[37,15],[30,10],                           // câmara de carnes e porta
+   [39.5,42],[40,50],[38,48],                               // escada e corredor de serviço
+   [5.5,43],[32.5,42],                                      // descidas da adega
+   [7.5,46.5],[16.5,49.5],[25.5,46.5],[30.5,51.5],[10.5,51.5] // adega
+  ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
+
+  /* ---- decoração ---- */
+  // cozinha: mesas de preparo, panelas, o caos de todo dia
+  [[9,12],[10,12],[14,12.2],[15,12.2],[19,12],[20,12]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  [[9.6,11.4],[14.5,11.6],[19.8,11.5],[24.5,9.5]].forEach(([x,y]) => dec.push({tipo:'tigela',x,y}));
+  dec.push({tipo:'barril', x:4.5, y:16.4}); dec.push({tipo:'barril', x:5.3, y:16.8});
+  dec.push({tipo:'poca', x:12, y:15}); dec.push({tipo:'teia', x:3.4, y:6.4, flip:false});
+  dec.push({tipo:'sangue', x:22.5, y:13.5});                  // a mesa de cortar carne fica perto da câmara
+  // refeitório: mesas compridas e tigelas
+  [[6,34],[7,34],[6,37],[7,37],[9.5,34.5],[9.5,37.5]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  [[6.5,33.4],[7.5,34.6],[6.4,36.5],[9.8,33.9],[10.2,37.1]].forEach(([x,y]) => dec.push({tipo:'tigela',x,y}));
+  dec.push({tipo:'palha', x:11, y:39.6}); dec.push({tipo:'poca', x:4.5, y:39});
+  // salão: estandartes da casa e o desgaste
+  dec.push({tipo:'estandarte', x:18, y:30.4, cor:'#7c2020'});
+  dec.push({tipo:'estandarte', x:28, y:30.4, cor:'#1d3a6e'});
+  dec.push({tipo:'rachadura', x:17, y:39}); dec.push({tipo:'poca', x:28.5, y:33.5});
+  // despensa: prateleiras de barris e caixotes
+  [[33,31],[34,31.5],[42,31],[41.5,36],[33,39],[36.5,39.5]].forEach(([x,y]) => dec.push({tipo:'barril',x,y}));
+  [[36,31],[37,31.5],[42,34]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  dec.push({tipo:'teia', x:32.4, y:28.4, flip:false}); dec.push({tipo:'teia', x:42.6, y:28.4, flip:true});
+  // câmara de carnes: ganchos, sangue velho e novo
+  [[33,4.3],[35,4.3],[37,4.3],[39,4.3],[41,4.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
+  dec.push({tipo:'sangue', x:34, y:8}); dec.push({tipo:'sangue', x:39, y:12});
+  dec.push({tipo:'sangue', x:36.5, y:6.5}); dec.push({tipo:'poca', x:40, y:8.5});
+  dec.push({tipo:'caveira', x:42.5, y:15.5}); dec.push({tipo:'osso', x:32.5, y:14.5});
+  dec.push({tipo:'caixote', x:37, y:12.6});                   // a mesa de corte dele
+  // escada de chegada
+  dec.push({tipo:'rachadura', x:39, y:49}); dec.push({tipo:'teia', x:37.4, y:47.4, flip:false});
+  dec.push({tipo:'barril', x:42.5, y:51.5});
+  // adega: barris por toda parte
+  [[5,46],[6,45.6],[11,48.5],[14,45.5],[23,51.5],[26,48.5],[31,45.5],[8,51.5],[29,51.8],[17,48.4],[20,45.6]]
+    .forEach(([x,y]) => dec.push({tipo:'barril',x,y}));
+  dec.push({tipo:'teia', x:4.4, y:45.4, flip:false}); dec.push({tipo:'teia', x:31.5, y:45.4, flip:true});
+  dec.push({tipo:'caveira', x:27.5, y:51.5}); dec.push({tipo:'osso', x:12.5, y:51.5});
+
+  return {larg:COZ.LARG, alt:COZ.ALT, tiles:t, braseiros:bra, decor:dec};
+}
+
+/* --- labaredas: as bocas de fogo dos fornos, no ritmo dos espinhos da fase 1 --- */
+function alturaLabareda(e){
+  const c = (tempo + e.fase) % 3.2;
+  if(c < .3) return (c/.3)*.25;           // brasas acordando: aviso, sem dano
+  if(c < 1.3) return 1;                   // labareda cheia
+  if(c < 1.55) return 1 - (c-1.3)/.25;    // morrendo
+  return 0;
+}
+function desenharLabaredas(ox, oy){
+  labaredas.forEach(e => {
+    const px = ox + e.x*tam, py = oy + e.y*tam;
+    // a boca de ferro no chão, sempre visível
+    ctx.fillStyle = 'rgba(0,0,0,.5)';
+    ctx.beginPath(); ctx.ellipse(px, py, tam*.34, tam*.2, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,96,72,.7)'; ctx.lineWidth = Math.max(1, tam*.05);
+    ctx.beginPath(); ctx.ellipse(px, py, tam*.3, tam*.17, 0, 0, TAU); ctx.stroke();
+    const h = alturaLabareda(e);
+    if(h <= 0) return;
+    // brilho no chão
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*1.1*h));
+    g.addColorStop(0, 'rgba(255,150,50,' + (.35*h) + ')'); g.addColorStop(1, 'rgba(255,90,20,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*1.1*h, 0, TAU); ctx.fill();
+    // línguas de fogo dançando
+    for(let i=0;i<4;i++){
+      const fx = px + (i-1.5)*tam*.14 + Math.sin(tempo*13 + i*2 + e.fase)*tam*.03;
+      const alt = tam*(.55 + Math.sin(tempo*11 + i*1.7 + e.fase*3)*.15)*h*(i%2 ? 1 : .8);
+      const lar = tam*.09*(1 + h*.4);
+      ctx.fillStyle = i%2 ? 'rgba(255,120,30,.85)' : 'rgba(255,190,60,.9)';
+      ctx.beginPath();
+      ctx.moveTo(fx - lar, py + tam*.02);
+      ctx.quadraticCurveTo(fx - lar*.3, py - alt*.55, fx + Math.sin(tempo*17 + i)*tam*.04, py - alt);
+      ctx.quadraticCurveTo(fx + lar*.3, py - alt*.5, fx + lar, py + tam*.02);
+      ctx.closePath(); ctx.fill();
+    }
+    if(Math.random() < .3*h)
+      particulas.push({x:e.x + (Math.random()-.5)*.3, y:e.y - .4,
+        vx:(Math.random()-.5)*.3, vy:-1.2 - Math.random()*.8, vida:.5, cor:'rgba(255,170,60,.8)', tam:.07});
+  });
+}
+
+/* --- pão nosso de cada dia: cura espalhada pela cozinha, despensa e adega --- */
+const imgPao = new Image(); imgPao.src = 'img/fase2/pao.png';
+const imgCaldo = new Image(); imgCaldo.src = 'img/fase2/caldo.png';
+function desenharPaes(ox, oy){
+  paes.forEach(pa => {
+    if(pa.pego) return;
+    const px = ox + pa.x*tam, py = oy + pa.y*tam;
+    const fl = Math.sin(tempo*2.4 + pa.x*3)*tam*.05;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.5));
+    g.addColorStop(0, 'rgba(143,196,138,.30)'); g.addColorStop(1, 'rgba(143,196,138,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.2, tam*.07, 0, 0, TAU); ctx.fill();
+    if(imgPao.complete && imgPao.naturalWidth > 0){
+      const l = tam*.5, a = imgPao.naturalHeight*(l/imgPao.naturalWidth);
+      ctx.drawImage(imgPao, px - l/2, py - a/2 - tam*.06 + fl, l, a);
+    }
+  });
+}
+/* --- caldo quente da câmara: 25% de vida, só durante a luta, reposto a cada tentativa --- */
+function criarCaldos(){
+  caldos = [
+    {x:32.6, y:5.4, pego:false},   // canto noroeste da câmara
+    {x:41.4, y:5.4, pego:false}    // canto nordeste
+  ];
+}
+function desenharCaldos(ox, oy){
+  caldos.forEach(cd => {
+    if(cd.pego) return;
+    const px = ox + cd.x*tam, py = oy + cd.y*tam;
+    const pulso = .5 + Math.sin(tempo*3.1 + cd.x)*.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
+    g.addColorStop(0, 'rgba(143,196,138,' + (.30 + pulso*.18) + ')');
+    g.addColorStop(1, 'rgba(143,196,138,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*(.6 + pulso*.12), 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.15, tam*.22, tam*.08, 0, 0, TAU); ctx.fill();
+    if(imgCaldo.complete && imgCaldo.naturalWidth > 0){
+      const l = tam*.6, a = imgCaldo.naturalHeight*(l/imgCaldo.naturalWidth);
+      ctx.drawImage(imgCaldo, px - l/2, py - a + tam*.15, l, a);
+    }
+    // vapor subindo da tigela
+    if(Math.random() < .12)
+      particulas.push({x:cd.x + (Math.random()-.5)*.2, y:cd.y - .35,
+        vx:(Math.random()-.5)*.15, vy:-.5 - Math.random()*.3, vida:.8, cor:'rgba(230,230,235,.35)', tam:.08});
+  });
+}
+
+/* --- a porta da câmara de carnes: tábuas que só o machado abre --- */
+const imgPorta = new Image(); imgPorta.src = 'img/fase2/porta.png';
+function desenharPorta2(ox, oy){
+  if(porta2.aberta) return;
+  const P = COZ.PORTA;
+  const px = ox + P.x*tam, py = oy + P.y*tam;
+  if(imgPorta.complete && imgPorta.naturalWidth > 0){
+    ctx.drawImage(imgPorta, px - tam*.3, py - tam*.15, tam*1.6, tam*P.alt + tam*.3);
+  } else {
+    // tábuas de reserva enquanto a imagem carrega
+    for(let k=0;k<4;k++){
+      ctx.fillStyle = 'rgb(' + Math.round(122*(.8+k*.05)) + ',' + Math.round(82*(.8+k*.05)) + ',48)';
+      ctx.fillRect(px + k*tam*.25, py, tam*.22, tam*P.alt);
+    }
+  }
+}
+function arrombarPorta(){
+  const sabidos = informantes.filter(p => p.feito).length;
+  if(jog.arma !== 'machado-gladiador'){
+    sPortaoTravado(); tremor = 4;
+    avisar('A porta não cede', 'só o machado do Gladiador abre isso — olhe a bolsa');
+    return;
+  }
+  if(sabidos < informantes.length){
+    const falta = informantes.length - sabidos;
+    sPortaoTravado(); tremor = 4;
+    avisar('Ainda não', falta === 1 ? 'falta ouvir 1 servo' : 'faltam ouvir ' + falta + ' servos');
+    return;
+  }
+  porta2.aberta = true;
+  const P = COZ.PORTA;
+  for(let y=P.y; y<P.y+P.alt; y++) mapa[idx(P.x,y)] = CHAO;
+  desenharCache();
+  sBaterParede(); tremor = 16;
+  for(let k=0;k<24;k++) faisca(P.x + .5, P.y + 1.5, '#b98a4a', .2);
+  mostrarGifPorta();
+  tocarBgm('audio/fase2/portao-acougueiro.mp3', .16);   // a música da câmara: as vozes ficam na frente
+  avisar('A porta se despedaça', 'a câmara de carnes espera');
+}
+/* o GIF da porta sendo arrombada a machadadas, por cima do jogo (canvas não anima GIF) */
+function mostrarGifPorta(){
+  const P = COZ.PORTA;
+  const sx = W/2 + (P.x + .5 - camX)*tam, sy = H/2 + (P.y + 1.5 - camY)*tam;
+  const g = document.createElement('img');
+  g.src = 'img/fase2/porta-arrombada.gif?' + Date.now();   // recomeça o GIF a cada arrombada
+  const lado = tam*6;
+  g.style.cssText = 'position:fixed; left:' + Math.round(sx - lado/2) + 'px; top:' + Math.round(sy - lado/2)
+    + 'px; width:' + Math.round(lado) + 'px; z-index:40; pointer-events:none;'
+    + 'filter:drop-shadow(0 0 18px rgba(0,0,0,.8));';
+  document.body.appendChild(g);
+  setTimeout(() => g.remove(), 1600);
+}
+
+/* --- o Açougueiro: números e desenho --- */
+const imgButcher = new Image(); imgButcher.src = 'img/fase2/butcher.png';
+function desenharAcougueiro(c, ox, oy){
+  const px = ox + c.x*tam, py = oy + c.y*tam, r = c.raio*tam;
+  const f = c.cfg;
+
+  // linha telegrafada da investida (a Faxineira contou das três batidas)
+  if(c.estado === 'preparo' && intel.mesa){
+    const p = 1 - c.t/f.preparoT;
+    ctx.strokeStyle = 'rgba(226,74,74,' + (.18 + p*.5) + ')';
+    ctx.lineWidth = tam*.6;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(px + Math.cos(c.mira)*tam*9, py + Math.sin(c.mira)*tam*9);
+    ctx.stroke();
+  }
+
+  // sombra
+  ctx.fillStyle = 'rgba(0,0,0,.45)';
+  ctx.beginPath(); ctx.ellipse(px, py + r*.92, r*1.05, r*.36, 0, 0, TAU); ctx.fill();
+
+  const exausto = c.estado === 'exausto', zonzo = c.estado === 'zonzo';
+  const golpe = c.golpeAnim > 0 ? c.golpeAnim/.22 : 0;   // 1 -> 0 durante o talho
+  const flip = Math.cos(c.angulo) > 0;                   // a arte olha para a esquerda
+
+  // dobra os joelhos: ao levar golpe, zonzo e ofegante
+  let ajoelha = 0;
+  if(c.flash > 0) ajoelha = Math.max(ajoelha, Math.min(1, c.flash*1.1));
+  if(zonzo) ajoelha = Math.max(ajoelha, .85 + Math.sin(tempo*9)*.1);
+  if(exausto) ajoelha = Math.max(ajoelha, .65);
+
+  // inclinação: o corpo pesado tomba para frente na corrida e na investida
+  let incl = 0;
+  if(c.estado === 'investida') incl = .5;
+  else if(c.estado === 'aproxima') incl = .16 + Math.sin(c.pisada*5.5)*.07;
+  if(golpe) incl += Math.sin((1-golpe)*Math.PI)*.34;
+  // no preparo, o tronco recua e ergue a faca antes de cada batida na mesa
+  if(c.estado === 'preparo') incl -= .12 + (c.escudoBate > 0 ? -.3 : Math.sin(tempo*6)*.04);
+
+  const lunge = golpe ? Math.sin((1-golpe)*Math.PI)*r*.55 : 0;
+  const passo = c.estado === 'aproxima' ? Math.abs(Math.sin(c.pisada*5.5))*r*.13 : 0;
+  const lx = Math.cos(c.angulo)*lunge, ly = Math.sin(c.angulo)*lunge*.4 - passo;
+
+  const base = py + r*.95, alt = r*2.9;
+  const iw = imgButcher.naturalWidth, ih = imgButcher.naturalHeight;
+
+  if(imgButcher.complete && iw > 0){
+    const lar = alt*iw/ih;
+    const resp = exausto ? Math.sin(tempo*7)*.06 : Math.sin(tempo*1.8)*.015;  // arfa como um fole
+    ctx.save();
+    ctx.translate(px + lx, base + ly);
+    if(flip) ctx.scale(-1, 1);
+    ctx.rotate(-incl);
+    ctx.translate(0, ajoelha*r*.36);
+    ctx.scale(1 + ajoelha*.07, (1 - ajoelha*.24)*(1 + resp));
+    if(c.flash > .5) ctx.filter = 'brightness(2.1) saturate(.4)';
+    ctx.drawImage(imgButcher, -lar/2, -alt, lar, alt);
+    ctx.filter = 'none';
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#4a3c34';
+    ctx.beginPath(); ctx.ellipse(px, py - r*.1, r*.78, r*.95, 0, 0, TAU); ctx.fill();
+  }
+
+  // o talho: a lâmina larga risca um arco pesado
+  if(golpe){
+    ctx.strokeStyle = 'rgba(255,225,190,' + (golpe*.9) + ')';
+    ctx.lineWidth = Math.max(1, r*.3*golpe);
+    ctx.beginPath();
+    ctx.arc(px, py, r*1.8, c.angulo - 1.2 + (1-golpe)*1.7, c.angulo + .4 + (1-golpe)*1.7);
+    ctx.stroke();
+  }
+
+  // batida da faca na mesa: o impacto racha o chão à frente
+  const mira = c.mira != null ? c.mira : c.angulo;
+  if(c.escudoBate > 0){
+    const p2 = c.escudoBate/.22;
+    const bx = px + Math.cos(mira)*r*1.6, by = py + Math.sin(mira)*r*1.6 + r*.4;
+    ctx.strokeStyle = 'rgba(240,210,150,' + (p2*.8) + ')';
+    ctx.lineWidth = Math.max(1, r*.12*p2);
+    ctx.beginPath(); ctx.arc(bx, by, r*(1.3 - p2*.9), 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (p2*.9) + ')';
+    ctx.lineWidth = Math.max(1, r*.16*p2);
+    ctx.beginPath();
+    ctx.moveTo(bx - Math.cos(mira+.5)*r*.8, by - Math.sin(mira+.5)*r*.8 - r*1.6*p2);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+  }
+
+  // suor e aviso quando ofegante; estrelas quando zonzo
+  const hy = base - alt*.85 + ajoelha*r*.5;
+  if(exausto && Math.random() < .25)
+    particulas.push({x:c.x + Math.cos(c.angulo)*.5, y:c.y - .6,
+      vx:(Math.random()-.5)*.4, vy:-.7 - Math.random()*.4, vida:.7, cor:'rgba(220,214,228,.55)', tam:.09});
+  if(exausto){
+    ctx.fillStyle = 'rgba(255,240,200,' + (.45 + Math.sin(tempo*8)*.25) + ')';
+    ctx.font = '600 ' + Math.round(tam*.3) + 'px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('sem fôlego', px, py - r*2.2);
+  }
+  if(zonzo){
+    for(let i=0;i<3;i++){
+      const a2 = tempo*4 + i*TAU/3;
+      ctx.fillStyle = '#ffe08a';
+      ctx.beginPath();
+      ctx.arc(px + Math.cos(a2)*r*.6, hy + Math.sin(a2)*r*.2, Math.max(1.5, r*.08), 0, TAU);
+      ctx.fill();
+    }
+  }
+}
+
+/* --- rosácea do salão central, desenhada por cima do cache --- */
+function desenharRosacea(ox, oy){
+  const R = COZ.ROSACEA;
+  const px = ox + R.x*tam, py = oy + R.y*tam, rr = R.raio*tam;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(190,170,140,.28)';
+  ctx.lineWidth = Math.max(1, tam*.08);
+  [1, .72, .4].forEach(k => {
+    ctx.beginPath(); ctx.arc(px, py, rr*k, 0, TAU); ctx.stroke();
+  });
+  for(let i=0;i<8;i++){
+    const a = i*TAU/8 + Math.PI/8;
+    ctx.beginPath();
+    ctx.moveTo(px + Math.cos(a)*rr*.4, py + Math.sin(a)*rr*.4);
+    ctx.lineTo(px + Math.cos(a)*rr, py + Math.sin(a)*rr);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = 'rgba(120,96,72,.35)';
+  ctx.beginPath(); ctx.arc(px, py, rr*.16, 0, TAU); ctx.stroke();
+  ctx.restore();
+}
+
+/* --- o piso, montado --- */
+const PISO_COZINHAS = {
+  id:'cozinhas', nome:'As Cozinhas',
+  bgm:'audio/fase2/trilha-fase2.mp3',
+  paleta:{
+    fundo:'#120d08',
+    chao:[122,106,84],     // pedra clara das salas
+    chao2:[117,86,56],     // madeira das cozinhas e da câmara
+    parede:[86,64,48],
+    luzAmbiente:'#b3a08a'  // piso quente: os fornos nunca apagam
+  },
+  construir: construirCozinhas,
+  spawn:{x:40, y:50},
+  trapos:2,
+  intro:{
+    titulo:"As Cozinhas<em>piso 2</em>",
+    texto:"A escada da arena termina num corredor que cheira a gordura e fumaça. Aqui em cima, quem manda é o <b>Açougueiro</b> — e os servos falam dele aos sussurros.<br><br>Atravesse o fogo dos fornos, ache o caminho da adega, ouça os três servos — e arrombe a câmara de carnes com o <b>machado</b>.",
+    botao:"Subir"
+  },
+  missao:{
+    titulo:'Sobreviver às Cozinhas',
+    tarefas:[
+      {id:'t-fogo', label:'Atravessar a cozinha em chamas'},
+      {id:'t-adega', label:'Achar o caminho da adega'},
+      {id:'t-servos', label:'Ouvir os servos', contador:3},
+      {id:'t-chefe2', label:'Derrotar o Açougueiro'}
+    ],
+    tarefaInformantes:'t-servos',
+    tarefaChefe:'t-chefe2'
+  },
+  informantes:[
+    { nome:'O Cozinheiro', chave:'pausa', cor:'#d8c7a8',
+      retrato:'img/fase2/cozinheiro.png',
+      voz:{pitch:.7, rate:.9, genero:'m',
+           audios:['audio/fase2/vozes/cozinheiro-1.mp3','audio/fase2/vozes/cozinheiro-2.mp3','audio/fase2/vozes/cozinheiro-3.mp3']},
+      x:11.5, y:9.5,       // junto aos fogões da cozinha grande
+      falas:[
+        'Saiu vivo do calabouço? Então senta que eu te sirvo um caldo. É a única coisa boa deste piso.',
+        'O Açougueiro corta gente como quem pica cebola: dois talhos, sempre dois. Tum, tum.',
+        'Depois do segundo talho, o braço dele pesa. É nessa hora que ele vira picadinho também.'
+      ], ganho:'Você vai enxergar quando o braço dele pesar.' },
+    { nome:'O Copeiro', chave:'avental', cor:'#a8b89a',
+      retrato:'img/fase2/copeiro.png',
+      voz:{pitch:1.1, rate:1.02, genero:'m',
+           audios:['audio/fase2/vozes/copeiro-1.mp3','audio/fase2/vozes/copeiro-2.mp3','audio/fase2/vozes/copeiro-3.mp3']},
+      x:41.5, y:29.5,      // escondido no fundo da despensa
+      falas:[
+        'Psiu! Fala baixo... Se ele me ouvir, eu viro ração de cachorro.',
+        'Sabe aquele avental de aço que ele usa? eu já vi ele entortar faca de aço.',
+        'Mas o avental só cobre a frente. Pelas costas ele é mole feito bolo de estrume.'
+      ], ganho:'Golpes pelas costas doem muito mais nele.' },
+    { nome:'A Faxineira', chave:'mesa', cor:'#c9a2b0',
+      retrato:'img/fase2/faxineira.png',
+      voz:{pitch:1.25, rate:.98, genero:'f',
+           audios:['audio/fase2/vozes/faxineira-1.mp3','audio/fase2/vozes/faxineira-2.mp3','audio/fase2/vozes/faxineira-3.mp3']},
+      x:17, y:51.5,        // no fundo do labirinto de barris
+      falas:[
+        'Eu limpo o sangue deste chão duas vezes por dia. Ninguém nunca pergunta de quem é.',
+        'Antes de atacar, ele bate a faca na mesa. Três batidas, só pra te apavorar.',
+        'Na terceira batida, sai da frente: ele vem feito flecha. Se errar e bater na parede, fica zonzo — aí é a sua chance, meu amor!'
+      ], ganho:'Você vai ver a linha da investida antes dela sair.' }
+  ],
+  chefe:{
+    cfg:{
+      nome:'O Açougueiro', x:37, y:9, hp:700, raio:.8,
+      esperaT:1.2, aproximaT:1.7, velAproxima:2.2,
+      comboDist:2.2, comboIntervalo:.5, comboGolpes:2,
+      comboDano:[26,34], comboAlcance:[2.3,2.6],
+      exaustoT:1.3,
+      investidaDist:3.2, preparoT:1.8, batidasEm:[1.2,.8,.4],
+      investidaVel:15, investidaT:1.1, investidaDano:30, zonzoT:2.0,
+      sons:{entrada:'fase2/vozes/acougueiro-entrada', golpe:'fase2/vozes/acougueiro-golpe', levaGolpe:'fase2/vozes/acougueiro-levagolpe'},
+      somBatida:'audio/fase2/sons/cutelo-batida-1.mp3',
+      entrada:['O Açougueiro', 'ele afia a faca'],
+      retrato:'img/fase2/butcher.png',
+      abertura:{
+        falas:['Se eu cozinho, eu não lavo! Agora vou lhe mostrar um truque ou dois!'],
+        voz:{pitch:.5, rate:.85, genero:'m', audios:['audio/fase2/vozes/acougueiro-entrada.mp3']}
+      }
+    },
+    fraquezas:{
+      costas:{chave:'avental', com:2.1, sem:1.2},
+      porEstado:{
+        exausto:{chave:'pausa', com:2.2, sem:1.25},
+        zonzo:{chave:'mesa', com:2.2, sem:1.25}
+      }
+    },
+    desenhar: desenharAcougueiro
+  },
+  recompensa:{
+    id:'avental-acougueiro',
+    nome:'Avental de Aço do Açougueiro',
+    img:'img/fase2/avental.png',
+    desc:'Couro e aço que já pararam mil facadas — serve para o próximo chefe.'
+  },
+  textos:{
+    vitoria: () => ({
+      titulo:"O Açougueiro cai<em>piso 2 concluído</em>",
+      texto:"O fogo dos fornos continua aceso, mas a faca não corta mais ninguém. Há uma escada atrás da câmara — ela sobe para as salas de funeral.<br><br>Você arrancou o <b>avental de aço</b> dele. Guarde na bolsa — vai precisar.",
+      botao:"De novo",
+      placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>'
+        + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
+      mostrarBolsa:true
+    }),
+    derrota: () => ({
+      titulo:"A câmara esfria<em>mas você respira</em>",
+      texto:"Os servos te arrastaram para fora antes que você virasse estoque. Nada se perdeu: os segredos, a bolsa e o caminho continuam seus.<br><br>Use o que aprendeu: recue nos dois talhos, ataque quando o braço pesar, saia da linha da terceira batida.",
+      botao:"Levantar", placar:''
+    })
+  },
+
+  /* morte com progresso: reergue diante da porta arrombada */
+  retomar(){
+    if(etapa !== 'livre' && etapa !== 'chefe') return false;
+    etapa = 'livre'; vivo = true; pausado = false; dialogo = null;
+    chefe = null; el('chefeBarra').classList.remove('on');
+    jog.hp = jog.hpMax;
+    jog.pocoes = Math.max(jog.pocoes, 2);
+    jog.x = COZ.PORTA.x - 1.2; jog.y = COZ.PORTA.y + 1.5;   // corredor, diante da porta
+    jog.vx = jog.vy = 0; jog.invul = 1;
+    jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
+    camX = jog.x; camY = jog.y;
+    el('veu').classList.add('oculto');
+    atualizarHUD();
+    avisar('De pé outra vez', 'a câmara espera');
+    return true;
+  },
+
+  aoIniciar(){
+    /* limpa o que é do calabouço, para nada vazar de um piso ao outro */
+    espinhos = []; trapos = []; facao = null; esparadrapos = [];
+    porta2 = {aberta:false};
+    vistoAdega = false; vistoCisterna = false;
+    caldos = [];
+    labaredas = [
+      {x:22.5, y:20.5, fase:0},   {x:23.5, y:23.5, fase:1.1},  {x:22.5, y:26.5, fase:2.2},  // corredor central
+      {x:6.5,  y:21.5, fase:.5},  {x:7.5,  y:25.5, fase:1.7},  {x:6.5,  y:28.5, fase:2.8},  // corredor oeste
+      {x:7.5,  y:8.5,  fase:.9},  {x:15.5, y:8.5,  fase:2.0},  {x:23.5, y:8.5,  fase:.3}    // bocas dos fornos
+    ];
+    paes = [
+      {x:11.5, y:14.5},                       // cozinha, entre as mesas
+      {x:5.5,  y:33.2},                       // refeitório
+      {x:33.5, y:31.8},                       // despensa
+      {x:10.5, y:48.5}, {x:25.5, y:45.5}, {x:28.5, y:51.5}   // fundos da adega
+    ].map(p => ({...p, pego:false}));
+    const livre2 = (x, y) => {
+      for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1],[2,0],[-2,0],[0,2],[0,-2]])
+        if(!solido(x+dx, y+dy)) return {x:x+dx, y:y+dy};
+      return null;
+    };
+    ratazanas = [
+      {x:34.5, y:38.5},                       // despensa
+      {x:8.5,  y:46.5}, {x:20.5, y:49.5},     // adega
+      {x:29.5, y:47.5}, {x:14.5, y:51.5}
+    ].map(p => livre2(p.x, p.y)).filter(Boolean)
+     .map(p => ({...p, vx:0, vy:0, raio:.22, hp:18, ang:Math.random()*TAU,
+                 fase:Math.random()*TAU, morde:0, flash:0, guincho:0}));
+    /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
+    const temMachado = inventario.some(i => i.id === 'machado-gladiador');
+    const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
+    jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
+    jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
+    etapa = 'livre';
+    avisar('As cozinhas', 'siga o cheiro de fumaça');
+  },
+  atualizar(dt){
+    labaredas.forEach(e => {
+      const h = alturaLabareda(e);
+      if(h >= 1 && !e.acesa){ e.acesa = true; if(Math.hypot(e.x-jog.x, e.y-jog.y) < 8) sFerro(); }
+      if(h <= 0) e.acesa = false;
+      if(h > .6 && Math.hypot(e.x-jog.x, e.y-jog.y) < .6) machucar(11);
+    });
+    paes.forEach(pa => {
+      if(pa.pego || Math.hypot(pa.x-jog.x, pa.y-jog.y) > .6) return;
+      pa.pego = true; jog.pocoes++;
+      const cura = Math.round(jog.hpMax*.15);
+      if(jog.hp < jog.hpMax){
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        flutuar(pa.x, pa.y-.6, '+' + cura, '#8fc48a');
+      }
+      sTrapo();
+      flutuar(pa.x, pa.y-.3, '+1 ração', '#8fc48a');
+      for(let k=0;k<10;k++) faisca(pa.x, pa.y, '#8fc48a', .09);
+      atualizarHUD();
+    });
+    /* caldo quente: só vale na luta, e só some se houver vida para repor */
+    if(etapa === 'chefe'){
+      caldos.forEach(cd => {
+        if(cd.pego || jog.hp >= jog.hpMax) return;
+        if(Math.hypot(cd.x-jog.x, cd.y-jog.y) > .65) return;
+        cd.pego = true;
+        const cura = Math.round(jog.hpMax*.25);
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        sTrapo();
+        flutuar(cd.x, cd.y-.5, '+' + cura, '#8fc48a');
+        for(let k=0;k<16;k++) faisca(cd.x, cd.y, '#8fc48a', .11);
+        atualizarHUD();
+      });
+    }
+    atualizarRatazanas(dt);
+    /* atravessou a porta arrombada: a luta sela */
+    if(etapa === 'livre' && porta2.aberta && jog.x > COZ.PORTA.x + .9
+       && jog.y > COZ.PORTA.y - 1 && jog.y < COZ.PORTA.y + COZ.PORTA.alt + 1){
+      criarChefe();
+      criarCaldos();     // duas tigelas de caldo nos cantos da câmara
+      etapa = 'chefe';
+    }
+    const bg = el('btnGolpe');
+    bg.classList.add('on');
+    bg.classList.toggle('off', jog.recarga > 0);
+    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    if(jog.y < 18.5 && jog.x < 29) marcarTarefa('t-fogo');
+    if(jog.y > 44.2 && jog.x < 34) marcarTarefa('t-adega');
+    if(!vistoAdega && jog.y > 44.2 && jog.x < 34){
+      vistoAdega = true;
+      avisar('A adega', 'a Faxineira limpa o fundo — siga a luz dourada');
+    }
+    if(!vistoCisterna && Math.hypot(22.5-jog.x, 43-jog.y) < 2){
+      vistoCisterna = true;
+      avisar('A grade da cisterna', 'trancada por fora — não é por aqui');
+    }
+  },
+  falarLiberado(){ return etapa === 'livre'; },
+  interacao(){
+    if(etapa === 'livre' && !porta2.aberta
+       && Math.hypot(COZ.PORTA.x + .5 - jog.x, COZ.PORTA.y + 1.5 - jog.y) < 2.4)
+      return {tipo:'porta', rotulo:'ARROMBAR', icone:'⚒'};
+    return null;
+  },
+  agir(i){
+    if(i.tipo === 'porta') arrombarPorta();
+  },
+  acaoGolpe: golpeDeArma,
+  pegarItem(item){
+    if(!ARMAS[item.id]) return;
+    jog.arma = item.id;
+    jog.dano = item.id === 'machado-gladiador' ? 13 : 10;
+    avisar('Na mão', item.nome);
+  },
+  desenharCenario(ox, oy){
+    desenharRosacea(ox, oy);
+    desenharLabaredas(ox, oy);
+    desenharPaes(ox, oy);
+    if(etapa === 'chefe') desenharCaldos(ox, oy);
+    desenharRatazanas(ox, oy);
+    desenharPorta2(ox, oy);
+  },
+  desenharNoJogador(px, py, r, bal){
+    if(jog.arma) desenharArmaNaMao(px, py, r);
+  }
+};
+
 /* ---------- registro dos pisos ---------- */
-const PISOS = [PISO_CALABOUCO];
+const PISOS = [PISO_CALABOUCO, PISO_COZINHAS];
 let pisoAtual = 0;
 
 /* ---------- arranque ---------- */
+/* ?piso=N pula direto a um piso, herdando as recompensas dos anteriores (teste) */
+(() => {
+  const n = parseInt(new URLSearchParams(location.search).get('piso') || '1', 10);
+  pisoAtual = clamp((isNaN(n) ? 1 : n) - 1, 0, PISOS.length - 1);
+  for(let i = 0; i < pisoAtual; i++)
+    if(PISOS[i].recompensa) inventario.push(PISOS[i].recompensa);
+})();
 piso = PISOS[pisoAtual];
 mostrarVeu({...piso.intro, placar:''});
 redimensionar();

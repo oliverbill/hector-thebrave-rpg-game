@@ -7,7 +7,7 @@ O jogo inteiro se passa num castelo medieval. **Cada fase é um piso do castelo*
 | Piso | Local | Chefe |
 |---|---|---|
 | 1 | Calabouço | O Gladiador ✅ |
-| 2 | Cozinhas e adega | O Açougueiro |
+| 2 | Cozinhas e adega | O Açougueiro 🔨 |
 | 3 | Salas de Funeral | O Coveiro |
 | 4 | Lab do Alchimista | O Alquimista |
 | 5 | Dormitórios | O Zelador |
@@ -78,9 +78,18 @@ Cada preso ensina algo **observável e verdadeiro** no comportamento do chefe:
 - *"O elmo cobre o olho esquerdo; fique atrás dele"* (a Ladra) → a placa cega é desenhada no elmo. Com o segredo: dano ×2,1 pelas costas.
 - *"Duas batidas de escudo, e vem como um touro"* (o Ferreiro) → sempre 2 batidas audíveis antes da investida; a direção fica selada na 2ª. Com o segredo: a linha vermelha da investida fica visível.
 
-### Criando o piso 2
+### CONTEÚDO — Piso 2: As Cozinhas (em construção, jogável)
 
-Um piso novo é: uma paleta, um construtor de mapa, uma lista de informantes, um `cfg` de chefe com função de desenho, e ganchos de roteiro. Exemplo: se o Açougueiro tiver combo de 2 e três batidas de cutelo, isso é `comboGolpes:2, batidasEm:[1.2,.8,.4]` — zero linhas alteradas no motor.
+Construído sobre a mesma receita — uma paleta quente, um construtor de mapa, três informantes, um `cfg` de chefe e ganchos de roteiro (`fase2.prd` documenta tudo):
+
+- **Mapa 46×54**: cozinha grande com fogões, câmara de carnes (arena), salão central com rosácea, refeitório, despensa, **adega labiríntica de barris** (mesmo backtracker+braiding das catacumbas, semente própria) e escada de chegada da arena
+- **Labaredas cíclicas** nos corredores e bocas dos fornos — o papel dos espinhos, com janela de dano aprendível
+- **Pão** (cura 15% + ração) espalhado; **caldo quente** (25%) nos cantos da câmara, só durante a luta, reposto a cada tentativa
+- **Porta de tábuas arrombável**: exige o **machado do Gladiador** empunhado e os 3 servos ouvidos; a machadada toca o GIF da porta se despedaçando
+- **O Açougueiro**: combo de 2 talhos e **três batidas de faca na mesa** antes da investida — exatamente `comboGolpes:2, batidasEm:[1.2,.8,.4]`, zero linhas alteradas na máquina de estados. Fraquezas: `pausa` (Cozinheiro), `avental` (Copeiro), `mesa` (Faxineira). Vozes reais gravadas em `audio/fase2/vozes/`
+- **Transição de piso**: vencer o Gladiador agora oferece "Subir a escada", que carrega o piso 2 com a bolsa intacta
+
+Para testar um piso direto: **`castelo.html?piso=2`** — herda as recompensas dos pisos anteriores.
 
 ## Testes
 
