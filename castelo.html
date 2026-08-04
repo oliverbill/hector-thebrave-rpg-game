@@ -2525,7 +2525,7 @@ function desenharEsparadrapos(ox, oy){
 }
 
 /* --- facão perdido nas catacumbas --- */
-const imgFacao = new Image(); imgFacao.src = 'img/facao.png';
+const imgFacao = new Image(); imgFacao.src = 'img/fase1/facao.png';
 function desenharFacao(ox, oy){
   if(!facao || facao.pego) return;
   const px = ox + facao.x*tam, py = oy + facao.y*tam;
@@ -2544,7 +2544,7 @@ function desenharFacao(ox, oy){
 }
 
 /* --- arma empunhada (facão ou machado): desenho na mão e golpe manual --- */
-const imgMachado = new Image(); imgMachado.src = 'img/machado.png';
+const imgMachado = new Image(); imgMachado.src = 'img/fase1/machado.png';
 const ARMAS = {
   // facão: cabo no topo da imagem, lâmina desce -> pivô perto do topo, gira ang - 90°
   'facao-catacumbas':  {img: () => imgFacao,   alt:.85, rot:-Math.PI/2, pivo:.18},
@@ -2748,7 +2748,7 @@ function desenharBarraForca(ox, oy){
 }
 
 /* --- o Gladiador: números e desenho --- */
-const imgGladiador = new Image(); imgGladiador.src = 'img/gladiador.png';
+const imgGladiador = new Image(); imgGladiador.src = 'img/fase1/gladiador.png';
 function desenharGladiador(c, ox, oy){
   const px = ox + c.x*tam, py = oy + c.y*tam, r = c.raio*tam;
   const f = c.cfg;
@@ -2896,7 +2896,7 @@ const PISO_CALABOUCO = {
   },
   informantes:[
     { nome:'O Velho', chave:'ritmo', cor:'#b9a98e',
-      retrato:'img/velho.png',
+      retrato:'img/fase1/velho.png',
       voz:{pitch:.5, rate:.78, genero:'m', tosse:true,
            audios:['audio/velho-1.mp3','audio/velho-2.mp3','audio/velho-3.mp3']},
       x:14, y:21,        // cela em frente à do jogador
@@ -2906,7 +2906,7 @@ const PISO_CALABOUCO = {
         'Depois do terceiro, o braço dele cai. É curto, mas é ali que ele é gente como nós.'
       ], ganho:'Você vai enxergar quando ele ficar sem fôlego.' },
     { nome:'A Ladra', chave:'flanco', cor:'#c98f9c',
-      retrato:'img/ladra.png',
+      retrato:'img/fase1/ladra.png',
       voz:{pitch:1.35, rate:1.08, genero:'f',
            audios:['audio/ladra-1.mp3','audio/ladra-2.mp3','audio/ladra-3.mp3']},
       x:5, y:54.8,       // na câmara mais funda do labirinto das catacumbas
@@ -2916,7 +2916,7 @@ const PISO_CALABOUCO = {
         'Fique atrás dele. Pelas costas ele é só um homem grande e lento.'
       ], ganho:'Golpes pelas costas doem muito mais nele.' },
     { nome:'O Ferreiro', chave:'investida', cor:'#9aa8b8',
-      retrato:'img/ferreiro.png',
+      retrato:'img/fase1/ferreiro.png',
       voz:{pitch:.72, rate:.88, genero:'m',
            audios:['audio/ferreiro-1.mp3','audio/ferreiro-2.mp3','audio/ferreiro-3.mp3']},
       x:41, y:27.5,      // acorrentado na forja da guarnição
@@ -2936,7 +2936,7 @@ const PISO_CALABOUCO = {
       investidaDist:3.0, preparoT:1.5, batidasEm:[1.15,.55],
       investidaVel:17, investidaT:1.1, investidaDano:24, zonzoT:2.0,
       entrada:['O Gladiador', 'ele não cumprimenta'],
-      retrato:'img/gladiador.png',
+      retrato:'img/fase1/gladiador.png',
       abertura:{
         falas:['Olhaaa você acha mesmo que pode me vencer? Então vem pro pau!'],
         voz:{pitch:.55, rate:.82, genero:'m', audios:['audio/gladiador-entrada.mp3']}
@@ -2954,7 +2954,7 @@ const PISO_CALABOUCO = {
   recompensa:{
     id:'machado-gladiador',
     nome:'Machado do Gladiador',
-    img:'img/machado.png',
+    img:'img/fase1/machado.png',
     desc:'Duplo corte com runas do Coliseu — serve para o próximo chefe.'
   },
   textos:{
@@ -3124,7 +3124,7 @@ const PISO_CALABOUCO = {
     if(facao && !facao.pego && Math.hypot(facao.x-jog.x, facao.y-jog.y) < .7){
       facao.pego = true;
       const item = {
-        id:'facao-catacumbas', nome:'Facão das Catacumbas', img:'img/facao.png',
+        id:'facao-catacumbas', nome:'Facão das Catacumbas', img:'img/fase1/facao.png',
         desc:'Lâmina curva achada entre os ossos. Fica na sua mão a partir de agora — use o botão GOLPE (ou F) para atacar.'
       };
       adicionarAoInventario(item);

@@ -17,7 +17,7 @@ Numeração: prefixo de fase, `F2-RF-01` em diante.
 
 ## 1. Objetivo
 
-O jogador sobe a escada da arena e emerge nas **cozinhas do castelo**: um piso de fogões acesos, mesas de preparo, despensa, câmara de carnes e uma **adega labiríntica de barris**. Os servos da cozinha vivem sob o terror do Açougueiro, que manda no piso a cutelo. O jogador atravessa o fogo dos fornos e o labirinto da adega, ouve três servos que conhecem os vícios do chefe, arromba a câmara de carnes com o **machado do Gladiador** e derrota **O Açougueiro** — saindo com o **cutelo** dele para enfrentar O Coveiro no piso 3.
+Após derrotar o Gladiador, o jogador sobe a escada da arena(faça uma animação do castelo inteiro e seus pisos, cada um correspondendo a uma fase) e emerge nas **cozinhas do castelo**: um piso de fogões acesos, mesas de preparo, despensa, câmara de carnes e uma **adega labiríntica de barris**. Os servos da cozinha vivem sob o terror do Açougueiro, que manda no piso a cutelo. O jogador atravessa o fogo dos fornos e o labirinto da adega, ouve três servos que conhecem os vícios do chefe, arromba a câmara de carnes com o **machado do Gladiador** e derrota **O Açougueiro** — saindo com o **cutelo** dele para enfrentar O Coveiro no piso 3.
 
 **Pilar de design desta fase:** herdado da Fase 1 — *nada de procedural aparente* — somado a um eixo próprio: ⚠ **calor e comida como linguagem do piso**. Onde o calabouço era pedra fria e escuridão, a cozinha é fogo, vapor, gordura e barulho de metal. A cura vem de comida, o perigo vem das chamas, e o chefe é ouvido (batidas de cutelo na mesa) antes de ser visto.
 
