@@ -26,6 +26,10 @@ Abra `castelo.html` em qualquer navegador (ou adicione à tela inicial do iPhone
 - **Trapo** (cura +40) — botão menor ou Q (2 iniciais; há mais 4 escondidos nas catacumbas)
 - **Ação contextual** (FORÇAR / FALAR / ABRIR) — botão âmbar ou E
 - **Golpe de facão** (depois de achá-lo nas catacumbas) — botão ⚔ ou F; o facão fica na mão do jogador e abre um popup de Inventário ao ser pego
+- **Bolsa/Inventário** — botão ☰ ou I
+- **Esparadrapo** (cura 25% da vida) — dois na areia, um em cada canto de cima, só durante a luta com o Gladiador; repostos a cada tentativa
+
+Cada botão traz a tecla correspondente impressa no rótulo.
 
 ## Arquitetura: MOTOR × CONTEÚDO
 

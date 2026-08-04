@@ -79,6 +79,13 @@
     font-size:9px; letter-spacing:.1em; color:#b3a8c6; position:relative; overflow:hidden;}
   .circ:active{background:#2f2547;}
   .circ .n{font-size:17px; color:var(--osso);}
+  /* atalho de teclado impresso no rótulo do botão */
+  .circ .k{font-family:var(--mono); font-style:normal; font-size:8px; letter-spacing:.06em;
+    color:#8d84a3; border:1px solid #4a3d63; border-radius:2px; padding:0 3px; line-height:1.35; margin-top:2px;}
+  #btnAcao .k{color:#b98a4e; border-color:#6a4c24;}
+  #btnGolpe .k{color:#c08a76; border-color:#6d3b2f;}
+  /* no toque não há teclado: o chip some e o botão volta ao layout original */
+  @media (pointer:coarse){ .circ .k{display:none;} }
   .circ .carga{position:absolute; left:0; right:0; bottom:0; background:#e8a13c2e; transform-origin:bottom;}
   .circ.off{opacity:.35;}
   #btnAcao{width:86px; height:86px; border-color:var(--brasa); color:var(--brasa); background:#2a1d10d9; display:none;}
@@ -171,11 +178,11 @@
   <div id="aviso"></div>
 
   <div id="acoes">
-    <div class="circ" id="btnBolsa"><span class="n">☰</span><span>BOLSA</span></div>
-    <div class="circ" id="btnPocao"><span class="n" id="sPocoes">2</span><span>TRAPO</span></div>
-    <div class="circ" id="btnDash"><span class="n">»</span><span>ROLAR</span><div class="carga" id="cargaDash"></div></div>
-    <div class="circ" id="btnGolpe"><span class="n">⚔</span><span>GOLPE</span><div class="carga" id="cargaGolpe"></div></div>
-    <div class="circ" id="btnAcao"><span class="n" id="acaoIcone">✥</span><span id="acaoRotulo">FORÇAR</span></div>
+    <div class="circ" id="btnBolsa"><span class="n">☰</span><span>BOLSA</span><i class="k">I</i></div>
+    <div class="circ" id="btnPocao"><span class="n" id="sPocoes">2</span><span>TRAPO</span><i class="k">Q</i></div>
+    <div class="circ" id="btnDash"><span class="n">»</span><span>ROLAR</span><i class="k">ESPAÇO</i><div class="carga" id="cargaDash"></div></div>
+    <div class="circ" id="btnGolpe"><span class="n">⚔</span><span>GOLPE</span><i class="k">F</i><div class="carga" id="cargaGolpe"></div></div>
+    <div class="circ" id="btnAcao"><span class="n" id="acaoIcone">✥</span><span id="acaoRotulo">FORÇAR</span><i class="k">E</i></div>
   </div>
 
   <div id="dialogo">
@@ -2233,7 +2240,16 @@ const CAL = {                      // geografia do piso (planta: torre + celas +
   PORTAO:{x:10, y:14}              // grade entre o corredor das celas e a torre
 };
 let ancora = null, portao = null, espinhos = [], trapos = [], vistoCata = false;
-let ratazanas = [], facao = null;
+let ratazanas = [], facao = null, esparadrapos = [];
+
+/* esparadrapos da arena: um em cada canto de cima da torre, 25% de vida cada.
+   São repostos toda vez que a luta com o Gladiador começa. */
+function criarEsparadrapos(){
+  esparadrapos = [
+    {x:6.6, y:5.4, pego:false},    // canto superior esquerdo da areia
+    {x:14.4, y:5.4, pego:false}    // canto superior direito da areia
+  ];
+}
 
 function construirCalabouco(){
   const t = new Uint8Array(CAL.LARG*CAL.ALT).fill(PAREDE);
@@ -2464,6 +2480,46 @@ function desenharTrapos(ox, oy){
     ctx.fillStyle = 'rgba(0,0,0,.18)';
     ctx.fillRect(-tam*.16, -tam*.09, tam*.32, tam*.04);
     ctx.fillRect(-tam*.02, -tam*.09, tam*.03, tam*.18);
+    ctx.restore();
+  });
+}
+
+/* --- esparadrapos da arena: cura de 25% nos cantos de cima da torre --- */
+function desenharEsparadrapos(ox, oy){
+  esparadrapos.forEach(ep => {
+    if(ep.pego) return;
+    const px = ox + ep.x*tam, py = oy + ep.y*tam;
+    const pulso = .5 + Math.sin(tempo*3.1 + ep.x)*.5;
+    const fl = Math.sin(tempo*2.6 + ep.x*2)*tam*.06;
+    // halo verde pulsando: dá para ver do outro lado da areia
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
+    g.addColorStop(0, 'rgba(143,196,138,' + (.30 + pulso*.18) + ')');
+    g.addColorStop(1, 'rgba(143,196,138,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(px, py, tam*(.6 + pulso*.12), 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.16, tam*.20, tam*.08, 0, 0, TAU); ctx.fill();
+
+    ctx.save(); ctx.translate(px, py - tam*.06 + fl); ctx.rotate(-.35);
+    const l = tam*.46, a = tam*.17;
+    // fita bege com as pontas mais escuras
+    ctx.fillStyle = '#e6ddc4'; ctx.fillRect(-l/2, -a/2, l, a);
+    ctx.fillStyle = 'rgba(120,104,74,.35)';
+    ctx.fillRect(-l/2, -a/2, l*.22, a); ctx.fillRect(l/2 - l*.22, -a/2, l*.22, a);
+    // furinhos da fita
+    ctx.fillStyle = 'rgba(90,78,58,.45)';
+    for(let k=-1;k<=1;k++){
+      ctx.beginPath(); ctx.arc(-l*.32, k*a*.28, tam*.014, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc( l*.32, k*a*.28, tam*.014, 0, TAU); ctx.fill();
+    }
+    // gaze branca no meio
+    ctx.fillStyle = '#f6f2e6'; ctx.fillRect(-l*.17, -a*.62, l*.34, a*1.24);
+    ctx.strokeStyle = 'rgba(90,78,58,.35)'; ctx.lineWidth = 1;
+    ctx.strokeRect(-l*.17, -a*.62, l*.34, a*1.24);
+    // cruz verde
+    ctx.fillStyle = '#6fae68';
+    ctx.fillRect(-l*.035, -a*.42, l*.07, a*.84);
+    ctx.fillRect(-l*.115, -a*.13, l*.23, a*.26);
     ctx.restore();
   });
 }
@@ -2944,6 +3000,7 @@ const PISO_CALABOUCO = {
     ancora = {x:5.5, y:21, forca:0, alvo:100, tensao:0, puxada:0};
     portao = {aberto:false};
     vistoCata = false;
+    esparadrapos = [];
     espinhos = [
       {x:10.5, y:18.5, fase:0},   {x:10.5, y:25.5, fase:1.3},   // corredor das celas
       {x:35.5, y:13.5, fase:.7},                                 // corredor da guarnição
@@ -3000,6 +3057,7 @@ const PISO_CALABOUCO = {
     if(etapa === 'livre' && portao.aberto && jog.y < CAL.PORTAO.y - .9){
       fecharPortao();
       criarChefe();
+      criarEsparadrapos();     // dois curativos nos cantos de cima da areia
       etapa = 'chefe';
     }
     espinhos.forEach(e => {
@@ -3024,6 +3082,20 @@ const PISO_CALABOUCO = {
       for(let k=0;k<10;k++) faisca(tp.x, tp.y, '#8fc48a', .09);
       atualizarHUD();
     });
+    /* esparadrapos: só valem na luta, e só somem se houver vida para repor */
+    if(etapa === 'chefe'){
+      esparadrapos.forEach(ep => {
+        if(ep.pego || jog.hp >= jog.hpMax) return;
+        if(Math.hypot(ep.x-jog.x, ep.y-jog.y) > .65) return;
+        ep.pego = true;
+        const cura = Math.round(jog.hpMax*.25);
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        sTrapo();
+        flutuar(ep.x, ep.y-.5, '+' + cura, '#8fc48a');
+        for(let k=0;k<16;k++) faisca(ep.x, ep.y, '#8fc48a', .11);
+        atualizarHUD();
+      });
+    }
     ratazanas.forEach(rz => {
       if(rz.hp <= 0) return;
       rz.fase += dt;
@@ -3096,6 +3168,7 @@ const PISO_CALABOUCO = {
   desenharCenario(ox, oy){
     desenharEspinhos(ox, oy);
     desenharTrapos(ox, oy);
+    if(etapa === 'chefe') desenharEsparadrapos(ox, oy);
     desenharFacao(ox, oy);
     desenharRatazanas(ox, oy);
     if(etapa === 'preso' || ancora.forca > 0) desenharAncora(ox, oy);
