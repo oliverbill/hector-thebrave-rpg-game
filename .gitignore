@@ -3,3 +3,5 @@
 output.bin
 output.aiff
 .gstack/
+audio/.DS_Store
+.DS_Store
