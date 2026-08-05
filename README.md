@@ -85,7 +85,8 @@ Construído sobre a mesma receita — uma paleta quente, um construtor de mapa, 
 - **Mapa 46×54**: cozinha grande com fogões, câmara de carnes (arena), salão central com rosácea, refeitório, despensa, **adega labiríntica de barris** (mesmo backtracker+braiding das catacumbas, semente própria) e escada de chegada da arena
 - **Labaredas cíclicas** nos corredores e bocas dos fornos — o papel dos espinhos, com janela de dano aprendível
 - **Pão** (cura 15% + ração) espalhado; **caldo quente** (25%) nos cantos da câmara, só durante a luta, reposto a cada tentativa
-- **Porta de tábuas arrombável**: exige o **machado do Gladiador** empunhado e os 3 servos ouvidos; a machadada toca o GIF da porta se despedaçando
+- **Porta de tábuas arrombável**: exige o **machado do Gladiador** empunhado e os 3 servos ouvidos; a machadada parte a porta ao meio em animação procedural (bandas girando nas dobradiças, lascas voando)
+- **Realismo pintado no cache** (gancho `pintarCache`): tábuas corridas, fornos de tijolo em brasa, mesas de preparo com talhos, lajes no salão, prateleiras na despensa, sangue arrastado e **carcaças balançando** na câmara
 - **O Açougueiro**: combo de 2 talhos e **três batidas de faca na mesa** antes da investida — exatamente `comboGolpes:2, batidasEm:[1.2,.8,.4]`, zero linhas alteradas na máquina de estados. Fraquezas: `pausa` (Cozinheiro), `avental` (Copeiro), `mesa` (Faxineira). Vozes reais gravadas em `audio/fase2/vozes/`
 - **Transição de piso**: vencer o Gladiador agora oferece "Subir a escada", que carrega o piso 2 com a bolsa intacta
 

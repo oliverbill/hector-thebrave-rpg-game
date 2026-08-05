@@ -1040,6 +1040,7 @@ function desenharCache(){
       }
     }
   }
+  if(piso.pintarCache) piso.pintarCache(cmx, T);   // detalhe de piso por cima dos tiles, por baixo do decor
   decor.forEach(d => desenharDecorCache(d, T));
 }
 
@@ -3283,9 +3284,8 @@ function construirCozinhas(){
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
 
   /* ---- decoração ---- */
-  // cozinha: mesas de preparo, panelas, o caos de todo dia
-  [[9,12],[10,12],[14,12.2],[15,12.2],[19,12],[20,12]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
-  [[9.6,11.4],[14.5,11.6],[19.8,11.5],[24.5,9.5]].forEach(([x,y]) => dec.push({tipo:'tigela',x,y}));
+  // cozinha: as mesas de preparo são pintadas no cache; aqui só a louça e o caos
+  [[9.6,11.9],[14.5,12.1],[19.8,12.0],[24.5,9.5]].forEach(([x,y]) => dec.push({tipo:'tigela',x,y}));
   dec.push({tipo:'barril', x:4.5, y:16.4}); dec.push({tipo:'barril', x:5.3, y:16.8});
   dec.push({tipo:'poca', x:12, y:15}); dec.push({tipo:'teia', x:3.4, y:6.4, flip:false});
   dec.push({tipo:'sangue', x:22.5, y:13.5});                  // a mesa de cortar carne fica perto da câmara
@@ -3410,18 +3410,50 @@ function desenharCaldos(ox, oy){
 /* --- a porta da câmara de carnes: tábuas que só o machado abre --- */
 const imgPorta = new Image(); imgPorta.src = 'img/fase2/porta.png';
 function desenharPorta2(ox, oy){
-  if(porta2.aberta) return;
   const P = COZ.PORTA;
-  const px = ox + P.x*tam, py = oy + P.y*tam;
-  if(imgPorta.complete && imgPorta.naturalWidth > 0){
-    ctx.drawImage(imgPorta, px - tam*.3, py - tam*.15, tam*1.6, tam*P.alt + tam*.3);
-  } else {
-    // tábuas de reserva enquanto a imagem carrega
-    for(let k=0;k<4;k++){
+  const x0 = ox + P.x*tam - tam*.3, y0 = oy + P.y*tam - tam*.15;
+  const w = tam*1.6, h = tam*P.alt + tam*.3;
+  const pronta = imgPorta.complete && imgPorta.naturalWidth > 0;
+  if(!porta2.aberta){
+    if(pronta) ctx.drawImage(imgPorta, x0, y0, w, h);
+    else for(let k=0;k<4;k++){
       ctx.fillStyle = 'rgb(' + Math.round(122*(.8+k*.05)) + ',' + Math.round(82*(.8+k*.05)) + ',48)';
-      ctx.fillRect(px + k*tam*.25, py, tam*.22, tam*P.alt);
+      ctx.fillRect(x0 + tam*.3 + k*tam*.25, y0 + tam*.15, tam*.22, tam*P.alt);
     }
+    return;
   }
+  /* a porta se partindo ao meio: as duas bandas giram para fora e tombam */
+  const q = porta2.quebra;
+  if(q <= 0 || !pronta) return;
+  const p = 1 - q;                                   // progresso da queda
+  const iw = imgPorta.naturalWidth, ih = imgPorta.naturalHeight;
+  const queda = p*p;                                 // acelera como um tombo de verdade
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, q*2.2);
+  // banda esquerda: dobradiça no canto inferior esquerdo
+  ctx.save();
+  ctx.translate(x0 + w*.06, y0 + h*.97);
+  ctx.rotate(-queda*1.25 - p*.08);
+  ctx.drawImage(imgPorta, 0, 0, iw/2, ih, -w*.06, -h*.97 + queda*tam*.5, w/2, h);
+  ctx.restore();
+  // banda direita: dobradiça no canto inferior direito
+  ctx.save();
+  ctx.translate(x0 + w*.94, y0 + h*.97);
+  ctx.rotate(queda*1.35 + p*.08);
+  ctx.drawImage(imgPorta, iw/2, 0, iw - iw/2, ih, -w*.44, -h*.97 + queda*tam*.55, w/2, h);
+  ctx.restore();
+  // o rasgo do machado: um clarão em zigue-zague onde a lâmina desceu
+  if(q > .45){
+    ctx.strokeStyle = 'rgba(255,236,190,' + ((q-.45)*1.6) + ')';
+    ctx.lineWidth = Math.max(1.5, tam*.09*q);
+    ctx.beginPath();
+    ctx.moveTo(x0 + w*.52, y0 + h*.04);
+    ctx.lineTo(x0 + w*.44, y0 + h*.32);
+    ctx.lineTo(x0 + w*.56, y0 + h*.55);
+    ctx.lineTo(x0 + w*.47, y0 + h*.82);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 function arrombarPorta(){
   const sabidos = informantes.filter(p => p.feito).length;
@@ -3437,27 +3469,23 @@ function arrombarPorta(){
     return;
   }
   porta2.aberta = true;
+  porta2.quebra = 1;                                    // a animação da porta se partindo
   const P = COZ.PORTA;
   for(let y=P.y; y<P.y+P.alt; y++) mapa[idx(P.x,y)] = CHAO;
   desenharCache();
-  sBaterParede(); tremor = 16;
-  for(let k=0;k<24;k++) faisca(P.x + .5, P.y + 1.5, '#b98a4a', .2);
-  mostrarGifPorta();
+  jog.golpe = .2; jog.angulo = 0;                       // a machadada que abre
+  sEspadaCorta();
+  setTimeout(sBaterParede, 130); tremor = 16;
+  /* lascas de madeira voando do rasgo */
+  for(let k=0;k<26;k++){
+    const a = -Math.PI/2 + (Math.random()-.5)*2.4;
+    particulas.push({x:P.x + .5 + (Math.random()-.5)*.5, y:P.y + .4 + Math.random()*2.2,
+      vx:Math.cos(a)*(1.5+Math.random()*3.5), vy:Math.sin(a)*(1.5+Math.random()*2.5),
+      vida:.6 + Math.random()*.5, cor: Math.random()<.5 ? '#8a5a2c' : '#c99a58', tam:.10});
+  }
+  for(let k=0;k<12;k++) faisca(P.x + .5, P.y + 1.5, '#b98a4a', .2);
   tocarBgm('audio/fase2/portao-acougueiro.mp3', .16);   // a música da câmara: as vozes ficam na frente
   avisar('A porta se despedaça', 'a câmara de carnes espera');
-}
-/* o GIF da porta sendo arrombada a machadadas, por cima do jogo (canvas não anima GIF) */
-function mostrarGifPorta(){
-  const P = COZ.PORTA;
-  const sx = W/2 + (P.x + .5 - camX)*tam, sy = H/2 + (P.y + 1.5 - camY)*tam;
-  const g = document.createElement('img');
-  g.src = 'img/fase2/porta-arrombada.gif?' + Date.now();   // recomeça o GIF a cada arrombada
-  const lado = tam*6;
-  g.style.cssText = 'position:fixed; left:' + Math.round(sx - lado/2) + 'px; top:' + Math.round(sy - lado/2)
-    + 'px; width:' + Math.round(lado) + 'px; z-index:40; pointer-events:none;'
-    + 'filter:drop-shadow(0 0 18px rgba(0,0,0,.8));';
-  document.body.appendChild(g);
-  setTimeout(() => g.remove(), 1600);
 }
 
 /* --- o Açougueiro: números e desenho --- */
@@ -3571,6 +3599,185 @@ function desenharAcougueiro(c, ox, oy){
   }
 }
 
+/* --- pintura de realismo no cache: tábuas, fornos, mesas, prateleiras, sangue ---
+   Roda uma vez por construção de mapa (gancho pintarCache), por baixo do decor. */
+function pintarCozinhasCache(cmx, T){
+  const rndDe = (x,y) => hash(x*3.7, y*9.1);
+
+  /* tábuas corridas nos pisos de madeira: cozinha, câmara e escada */
+  const pranchas = (x1,y1,x2,y2) => {
+    for(let y=y1; y<=y2; y++){
+      for(let k=0; k<3; k++){
+        const py = y*T + k*T/3;
+        cmx.strokeStyle = 'rgba(38,24,12,.30)'; cmx.lineWidth = 1.6;
+        cmx.beginPath(); cmx.moveTo(x1*T, py); cmx.lineTo((x2+1)*T, py); cmx.stroke();
+        // emendas verticais desencontradas, prancha a prancha
+        for(let x=x1; x<=x2; x++){
+          const h2 = rndDe(x, y*3+k);
+          if(h2 > .6){
+            const ex = x*T + T*(.2 + h2*.6);
+            cmx.strokeStyle = 'rgba(38,24,12,.22)'; cmx.lineWidth = 1.4;
+            cmx.beginPath(); cmx.moveTo(ex, py); cmx.lineTo(ex, py + T/3); cmx.stroke();
+          }
+          // veios e nós da madeira
+          if(h2 > .82){
+            cmx.strokeStyle = 'rgba(30,18,8,.16)'; cmx.lineWidth = 1;
+            cmx.beginPath();
+            cmx.ellipse(x*T + T*h2*.8, py + T/6, T*.06, T*.025, .3, 0, TAU);
+            cmx.stroke();
+          }
+        }
+      }
+      // variação de tom entre pranchas: tiras horizontais quase transparentes
+      for(let k=0; k<3; k++){
+        const h3 = rndDe(y, k);
+        cmx.fillStyle = h3 > .5 ? 'rgba(255,220,170,' + (h3-.5)*.10 + ')' : 'rgba(20,10,4,' + (.5-h3)*.12 + ')';
+        cmx.fillRect(x1*T, y*T + k*T/3, (x2-x1+1)*T, T/3);
+      }
+    }
+  };
+  pranchas(3,6,28,17);      // cozinha
+  pranchas(31,4,43,16);     // câmara de carnes
+  pranchas(37,47,43,52);    // escada de chegada
+
+  /* fornos de tijolo na parede norte da cozinha, com a boca em brasa */
+  [5,9,13,17,21,25].forEach(fx => {
+    const cx = (fx + .5)*T, topo = 4.35*T, lar = T*1.9, alt2 = T*2.1;
+    // corpo de tijolos
+    cmx.fillStyle = '#4a3226';
+    cmx.beginPath();
+    cmx.moveTo(cx - lar/2, topo + alt2);
+    cmx.lineTo(cx - lar/2, topo + alt2*.35);
+    cmx.quadraticCurveTo(cx, topo - alt2*.12, cx + lar/2, topo + alt2*.35);
+    cmx.lineTo(cx + lar/2, topo + alt2);
+    cmx.closePath(); cmx.fill();
+    // fiadas de tijolo
+    cmx.strokeStyle = 'rgba(20,12,8,.55)'; cmx.lineWidth = 1.4;
+    for(let r=1; r<4; r++){
+      cmx.beginPath();
+      cmx.moveTo(cx - lar/2, topo + alt2*.35 + r*T*.34);
+      cmx.lineTo(cx + lar/2, topo + alt2*.35 + r*T*.34);
+      cmx.stroke();
+    }
+    // a boca em arco, negra, com brasa no fundo
+    const bl = lar*.52, bt = topo + alt2*.42;
+    cmx.fillStyle = '#0b0603';
+    cmx.beginPath();
+    cmx.moveTo(cx - bl/2, topo + alt2);
+    cmx.lineTo(cx - bl/2, bt + T*.3);
+    cmx.quadraticCurveTo(cx, bt - T*.22, cx + bl/2, bt + T*.3);
+    cmx.lineTo(cx + bl/2, topo + alt2);
+    cmx.closePath(); cmx.fill();
+    const g = cmx.createRadialGradient(cx, topo + alt2 - T*.1, 0, cx, topo + alt2 - T*.1, bl*.62);
+    g.addColorStop(0, 'rgba(255,140,40,.85)'); g.addColorStop(.55, 'rgba(200,70,15,.45)'); g.addColorStop(1, 'rgba(120,30,5,0)');
+    cmx.fillStyle = g;
+    cmx.fillRect(cx - bl/2, bt, bl, topo + alt2 - bt);
+    // fuligem subindo pela parede
+    cmx.fillStyle = 'rgba(10,6,4,.30)';
+    cmx.beginPath(); cmx.ellipse(cx, topo + alt2*.1, lar*.30, T*.5, 0, 0, TAU); cmx.fill();
+  });
+
+  /* mesas compridas de preparo na cozinha, com marcas de corte */
+  [[8.3,11.5],[13.3,11.7],[18.3,11.6]].forEach(([mx,my]) => {
+    const x = mx*T, y = my*T, lm = T*2.6, am = T*1.15;
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.fillRect(x + T*.06, y + T*.10, lm, am);            // sombra
+    cmx.fillStyle = '#7a5430'; cmx.fillRect(x, y, lm, am);  // tampo
+    cmx.fillStyle = 'rgba(255,225,175,.14)'; cmx.fillRect(x, y, lm, T*.14);
+    cmx.strokeStyle = 'rgba(30,18,8,.5)'; cmx.lineWidth = 1.6;
+    cmx.strokeRect(x, y, lm, am);
+    for(let k=1; k<4; k++){                                 // tábuas do tampo
+      cmx.beginPath(); cmx.moveTo(x, y + am*k/4); cmx.lineTo(x + lm, y + am*k/4);
+      cmx.strokeStyle = 'rgba(30,18,8,.28)'; cmx.stroke();
+    }
+    // talhos e manchas de trabalho
+    cmx.strokeStyle = 'rgba(25,12,6,.5)'; cmx.lineWidth = 1.2;
+    for(let k=0; k<5; k++){
+      const hx = x + lm*(.15 + rndDe(mx, k)*.7), hy = y + am*(.2 + rndDe(k, my)*.6);
+      cmx.beginPath(); cmx.moveTo(hx, hy); cmx.lineTo(hx + T*.22, hy + T*.06*(k%2? 1 : -1)); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(122,26,22,.35)';
+    cmx.beginPath(); cmx.ellipse(x + lm*.7, y + am*.4, T*.22, T*.12, .4, 0, TAU); cmx.fill();
+  });
+
+  /* salão: lajes grandes de pedra (2x2) e desgaste no caminho */
+  cmx.strokeStyle = 'rgba(24,18,28,.35)'; cmx.lineWidth = 2.2;
+  for(let x=14; x<=31; x+=2){ cmx.beginPath(); cmx.moveTo(x*T, 30*T); cmx.lineTo(x*T, 43*T); cmx.stroke(); }
+  for(let y=30; y<=43; y+=2){ cmx.beginPath(); cmx.moveTo(14*T, y*T); cmx.lineTo(31*T, y*T); cmx.stroke(); }
+  cmx.fillStyle = 'rgba(255,240,210,.05)';
+  cmx.beginPath(); cmx.ellipse(23*T, 36.5*T, T*6.5, T*5.5, 0, 0, TAU); cmx.fill();
+
+  /* despensa: prateleiras na parede do fundo, com potes e sacas */
+  const py2 = 27.2*T;
+  cmx.fillStyle = '#5a3e26'; cmx.fillRect(33*T, py2, 9.5*T, T*.22);
+  cmx.fillStyle = '#503722'; cmx.fillRect(33*T, py2 + T*.55, 9.5*T, T*.22);
+  for(let k=0; k<11; k++){
+    const jx = (33.4 + k*.85)*T, alto = rndDe(k, 7) > .5;
+    cmx.fillStyle = ['#8a5a30','#6d7a4a','#96683c','#7a4a3a'][k%4];
+    cmx.beginPath();
+    cmx.ellipse(jx, py2 - T*.16, T*.13, T*(alto? .22 : .15), 0, 0, TAU);
+    cmx.fill();
+    if(k%3 === 0){
+      cmx.beginPath();
+      cmx.ellipse(jx + T*.35, py2 + T*.55 - T*.14, T*.12, T*.14, 0, 0, TAU);
+      cmx.fill();
+    }
+  }
+  // sacas de grão encostadas
+  [[34.5,39.2],[35.4,39.4],[41.8,32.6]].forEach(([sx,sy]) => {
+    cmx.fillStyle = '#9a8358';
+    cmx.beginPath(); cmx.ellipse(sx*T, sy*T, T*.34, T*.42, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(50,38,20,.6)'; cmx.lineWidth = 1.4;
+    cmx.beginPath(); cmx.moveTo(sx*T - T*.14, sy*T - T*.34); cmx.lineTo(sx*T + T*.14, sy*T - T*.34); cmx.stroke();
+  });
+
+  /* câmara de carnes: o chão conta a história — poças largas e marcas de arrasto */
+  [[35,7,1.6],[38.5,10.5,2.1],[33.5,12,1.2],[40.5,7.5,1.3]].forEach(([bx,by,br]) => {
+    const g = cmx.createRadialGradient(bx*T, by*T, 0, bx*T, by*T, br*T);
+    g.addColorStop(0, 'rgba(96,14,14,.42)'); g.addColorStop(.7, 'rgba(70,10,10,.22)'); g.addColorStop(1, 'rgba(60,8,8,0)');
+    cmx.fillStyle = g;
+    cmx.beginPath(); cmx.ellipse(bx*T, by*T, br*T, br*T*.62, rndDe(bx,by)*2, 0, TAU); cmx.fill();
+  });
+  cmx.strokeStyle = 'rgba(86,12,12,.30)'; cmx.lineWidth = T*.14; cmx.lineCap = 'round';
+  cmx.beginPath(); cmx.moveTo(36.6*T, 12.4*T); cmx.quadraticCurveTo(35.2*T, 10.6*T, 34*T, 8*T); cmx.stroke();
+  cmx.lineCap = 'butt';
+
+  /* adega: vinho derramado perto dos barris e palha pelos cantos */
+  [[6,46.6],[23.6,51.9],[29.4,52.2],[14.5,46]].forEach(([vx,vy]) => {
+    cmx.fillStyle = 'rgba(70,18,46,.35)';
+    cmx.beginPath(); cmx.ellipse(vx*T, vy*T, T*.42, T*.2, rndDe(vx,vy), 0, TAU); cmx.fill();
+  });
+}
+
+/* --- carcaças penduradas na câmara, balançando de leve --- */
+function desenharCarcacas(ox, oy){
+  [[33.9,4.15],[38.9,4.15]].forEach(([cx,cy],i) => {
+    const px = ox + cx*tam, py = oy + cy*tam;
+    const bal = Math.sin(tempo*.9 + i*2.1)*.05;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(bal);
+    // gancho e corrente curta
+    ctx.strokeStyle = '#3a3442'; ctx.lineWidth = Math.max(1.5, tam*.06);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, tam*.35); ctx.stroke();
+    // a peça de carne: massa escura com gordura marmorizada
+    const alt = tam*1.15, lar = tam*.62;
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(0, tam*.4 + alt + tam*.35, lar*.7, tam*.12, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#5e2020';
+    ctx.beginPath();
+    ctx.moveTo(0, tam*.35);
+    ctx.quadraticCurveTo(-lar*.75, tam*.6 + alt*.3, -lar*.42, tam*.35 + alt);
+    ctx.quadraticCurveTo(0, tam*.5 + alt*1.08, lar*.42, tam*.35 + alt);
+    ctx.quadraticCurveTo(lar*.75, tam*.6 + alt*.3, 0, tam*.35);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(230,200,190,.30)'; ctx.lineWidth = Math.max(1, tam*.035);
+    ctx.beginPath(); ctx.moveTo(-lar*.2, tam*.55); ctx.quadraticCurveTo(-lar*.4, tam*.5 + alt*.5, -lar*.15, tam*.3 + alt*.9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(lar*.16, tam*.6); ctx.quadraticCurveTo(lar*.38, tam*.5 + alt*.45, lar*.1, tam*.3 + alt*.8); ctx.stroke();
+    ctx.restore();
+  });
+}
+
 /* --- rosácea do salão central, desenhada por cima do cache --- */
 function desenharRosacea(ox, oy){
   const R = COZ.ROSACEA;
@@ -3605,6 +3812,7 @@ const PISO_COZINHAS = {
     luzAmbiente:'#b3a08a'  // piso quente: os fornos nunca apagam
   },
   construir: construirCozinhas,
+  pintarCache: pintarCozinhasCache,
   spawn:{x:40, y:50},
   trapos:2,
   intro:{
@@ -3724,7 +3932,7 @@ const PISO_COZINHAS = {
   aoIniciar(){
     /* limpa o que é do calabouço, para nada vazar de um piso ao outro */
     espinhos = []; trapos = []; facao = null; esparadrapos = [];
-    porta2 = {aberta:false};
+    porta2 = {aberta:false, quebra:0};
     vistoAdega = false; vistoCisterna = false;
     caldos = [];
     labaredas = [
@@ -3759,6 +3967,7 @@ const PISO_COZINHAS = {
     avisar('As cozinhas', 'siga o cheiro de fumaça');
   },
   atualizar(dt){
+    if(porta2.quebra > 0) porta2.quebra = Math.max(0, porta2.quebra - dt/.9);
     labaredas.forEach(e => {
       const h = alturaLabareda(e);
       if(h >= 1 && !e.acesa){ e.acesa = true; if(Math.hypot(e.x-jog.x, e.y-jog.y) < 8) sFerro(); }
@@ -3834,6 +4043,7 @@ const PISO_COZINHAS = {
   },
   desenharCenario(ox, oy){
     desenharRosacea(ox, oy);
+    desenharCarcacas(ox, oy);
     desenharLabaredas(ox, oy);
     desenharPaes(ox, oy);
     if(etapa === 'chefe') desenharCaldos(ox, oy);

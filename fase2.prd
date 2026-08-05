@@ -36,6 +36,7 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 2. **Vozes e som de batida do chefe saíram do motor para o `cfg`** — o motor tinha `vozChefe('fase1/gladiador-*')` hardcoded em três pontos; agora lê `cfg.sons:{entrada,golpe,levaGolpe}` e `cfg.somBatida`. Era um vazamento MOTOR×CONTEÚDO que a Fase 2 obrigou a corrigir.
 3. **`atualizarRatazanas()` compartilhada** — a lógica saiu do `atualizar` do piso 1 para função de conteúdo reutilizável (as ratazanas da despensa e da adega são as mesmas do calabouço, F2-RF-11).
 4. **`?piso=N` na URL** — pula direto a um piso herdando as recompensas dos anteriores; é o acesso de teste.
+5. **Gancho `pintarCache(cmx, T)`** (05/08) — uma linha no motor que deixa o piso pintar detalhe de chão no cache do mapa (por cima dos tiles, por baixo do decor). É o que permite tábuas corridas, fornos de tijolo, mesas, prateleiras e sangue sem custo por quadro.
 
 O Açougueiro em si confirmou a promessa do README: 100% expressável no `cfg` existente (`comboGolpes:2, batidasEm:[1.2,.8,.4]`), zero mudança na máquina de estados.
 
@@ -81,7 +82,7 @@ O Açougueiro em si confirmou a promessa do README: 100% expressável no `cfg` e
 |---|---|---|
 | F2-RF-10 | Cura da fase: **pão e caldo** espalhados pela cozinha e despensa, no lugar dos trapos — mesmo botão `Q`, cura de 15% (pão) | proposta 04/08 (padrão RF-16 da Fase 1) |
 | F2-RF-11 | Inimigo comum: **ratazanas da despensa** (reuso das da Fase 1) e, na adega, **baratas/ratos maiores** | proposta 04/08 |
-| F2-RF-12 | O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão. O arrombamento usa a porta de `img/fase2/porta.jpg` e o GIF `img/fase2/porta-arrombada.gif` como animação | proposta 04/08; GIF: 04/08 — *"use o gif da porta sendo arrombada"* |
+| F2-RF-12 | O machado arromba portas de tábuas (câmara de carnes e ⚠ um atalho opcional na adega); com ele empunhado, dano de golpe maior que o do facão. O arrombamento é uma **animação procedural**: a porta (`img/fase2/porta.png`) se parte ao meio, as bandas giram nas dobradiças e tombam, com lascas voando e o rasgo do machado | proposta 04/08; animação: 05/08 — *"retire o gif... Faça uma animação da porta sendo partida pelo machado"* |
 | F2-RF-13 | Análogo dos esparadrapos: **duas postas de carne** nos cantos da câmara, 25% de vida, só durante a luta, repostas a cada tentativa | herdado do padrão da sessão de 04/08 na Fase 1 |
 
 **HERDADO:** golpe nunca é automático; item achado pausa e abre popup Inventário; lâmina para fora, colada à mão; popup sem fundo e em tamanho uniforme; "olhar o inventário" lista tudo; sangue e gemidos no acerto.
@@ -122,7 +123,7 @@ RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 pre
 
 ## 5. Decisões revertidas — PREENCHER DURANTE
 
-*(vazio — fase ainda não começou)*
+1. **GIF da porta arrombada → animação procedural.** O `porta-arrombada.gif` (04/08) veio com o xadrez de transparência impresso no fundo e tocava por cima do canvas como um quadro estranho — *"ficou horrível"* (05/08). Substituído por animação em canvas: a `porta.png` se parte ao meio, as bandas giram nas dobradiças e tombam, com lascas de madeira e o clarão do rasgo. O GIF e o `porta.jpg` saíram do repositório.
 
 ---
 
@@ -144,7 +145,7 @@ RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 pre
 
 ## 7. Adições posteriores — PREENCHER DEPOIS
 
-*(vazio)*
+- **05/08 — passe de realismo no cenário**, a pedido: *"Nao da p fazer o cenario mais parecido com a imagem de inspiração? A imagem é bem realista e o cenario nao acompanha"*. Via `pintarCache`: tábuas corridas com emendas e nós nos pisos de madeira, seis fornos de tijolo com boca em brasa na parede norte da cozinha, três mesas compridas de preparo com talhos e manchas, lajes 2×2 no salão, prateleiras com potes e sacas na despensa, poças largas de sangue com marca de arrasto na câmara, vinho derramado na adega — e **carcaças penduradas balançando** nos ganchos da câmara (por quadro, no `desenharCenario`).
 
 ---
 
@@ -158,7 +159,6 @@ Herdadas em aberto da Fase 1, ainda valem:
 Próprias da construção de 04/08:
 
 - **Animação do castelo entre pisos** (pedido no §1) não feita — a transição hoje é véu → intro do piso seguinte
-- **`porta-arrombada.gif` tem o xadrez de transparência impresso no fundo** — o GIF toca com o quadriculado visível; o asset precisa ser reexportado com fundo transparente ou escuro
 - **Sons ambiente da cozinha (F2-RF-18)** — fogo/panelas/vapor baixados em `audio/fase2/sons/` mas ainda não integrados ao jogo
 - **Balanceamento do chefe (F2-RF-15)** não testado com jogador real — números de partida valem até a primeira sessão de jogo
 - Retrato do Açougueiro no Apêndice A: em uso o próprio `butcher.png` (sprite e retrato são a mesma imagem)
@@ -178,7 +178,7 @@ Pedir **antes** de começar o áudio — foi o que mais travou a Fase 1.
 | Retrato chefe | O Açougueiro | PNG sem fundo | pendente |
 | Item | Avental de Aço do Açougueiro (popup + bolsa) | PNG sem fundo | recebido — `img/fase2/avental.jpg`; converter para PNG e recortar o fundo |
 | Item | Pão e caldo (cura, F2-RF-10) | PNG sem fundo | **prontos** — `img/fase2/pao.png` e `caldo.png`, recortados |
-| Cenário | Porta da câmara de carnes + animação de arrombamento | JPG + GIF | recebidos — `img/fase2/porta.jpg` e `porta-arrombada.gif` |
+| Cenário | Porta da câmara de carnes | PNG sem fundo | pronta — `img/fase2/porta.png` (animação de arrombamento é procedural; GIF descartado, ver §5) |
 | Voz NPC | 3 falas × 3 personagens (9 clipes) | gravação real → MP3, −14 a −17 LUFS | recebidas — `audio/fase2/vozes/`, normalizadas (−15,4 a −17,1 LUFS) |
 | Voz chefe | entrada, golpe, leva golpe | idem | recebidas — `audio/fase2/vozes/acougueiro-*.mp3`, normalizadas |
 | Trilha | BGM das cozinhas (loop) | MP3 | recebida — `audio/fase2/trilha-fase2.mp3` |
