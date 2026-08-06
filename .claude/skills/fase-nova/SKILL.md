@@ -48,6 +48,7 @@ Fazer as perguntas com **AskUserQuestion**, em blocos de até 4, sempre com opç
 **Bloco 4 — itens e combate (§3.4):**
 - *Consumível de cura* da fase (o "pão e caldo" desta) e percentual.
 - *Inimigo comum* — reaproveitar ratazanas/baratas ou criar novo.
+- **HP e ataque de CADA ameaça/inimigo** — perguntar explicitamente, um a um (obstáculo cíclico incluído), com faixas de referência das fases prontas nas opções: ratazana 18 HP/mordida 6 · barata 34 HP/mordida 9 · espinho e labareda ~9-11 de dano por janela. As respostas entram no PRD como números oficiais (sem ⚠).
 - *Cura da arena* (o análogo dos esparadrapos/caldos), 25%.
 
 **Bloco 5 — chefe (§3.5) e áudio (§3.6):** ver etapas 5 e 6 — as respostas entram no PRD na hora.
@@ -121,7 +122,7 @@ O motor lê tudo do `cfg` — mexer no motor é sinal de que a abstração não 
 
 Propor ao usuário (AskUserQuestion, 3 opções + Outro) **uma mecânica nova de verdade** para o chefe da vez — não só números diferentes. Direções que o motor comporta com pouco acréscimo: ataque em área ao redor, projétil/arremesso, invocação de lacaios, fase 2 com moveset trocado abaixo de X% de vida, ataque que muda o cenário (apagar luzes, alagar, incendiar), agarrão que exige esquiva no tempo certo, contra-ataque se golpeado no momento errado.
 
-Registrar no PRD (§3.5) o `cfg` proposto — HP, tempos, danos, alcances, janelas — deixando claro que os números valem **até a primeira sessão de jogo real** (balanceamento nunca fecha no papel).
+**Perguntar também os números do chefão** (AskUserQuestion): HP total e o dano de cada golpe do moveset novo, com as referências dos anteriores nas opções (Gladiador 560 HP, combo 18/18/28, investida 24 · Açougueiro 700 HP, talhos 26/34, investida 30). Registrar no PRD (§3.5) o `cfg` completo — HP, tempos, danos, alcances, janelas — com os valores respondidos como oficiais; só o que o usuário não decidir leva ⚠, e tudo vale **até a primeira sessão de jogo real** (balanceamento nunca fecha no papel).
 
 ---
 
