@@ -4506,28 +4506,28 @@ function pintarCozinhasCache(cmx, T){
       pItem('i11', e.x1 + 1.6, 12.35, 2.1);   // mesa branca de preparo
       pItem('i22', e.x1 + 4.2, 12.3, 1.9);    // mesa com chaleira e cenouras
       pItem('i41', e.x1 + 3.0, 13.55, 1.5);   // vasos e ervas
-      // restos de vegetais sobre as mesas do fundo
-      pItem('c72', e.x1 + 1.25, 11.78, .55);  // salada verde
-      pItem('c82', e.x1 + 2.0, 11.9, .5);     // legumes picados
-      pItem('c30', e.x1 + 4.0, 11.85, .5);    // sobras roxas
-      pItem('c83', e.x1 + 4.6, 12.0, .5);     // cesta de vegetais
+      // restos de vegetais sobre o TAMPO das mesas do fundo
+      pItem('c72', e.x1 + 1.15, 11.12, .72);  // salada verde, no tampo alto
+      pItem('c82', e.x1 + 2.05, 11.22, .66);  // legumes picados
+      pItem('c30', e.x1 + 3.95, 11.5, .66);   // sobras roxas
+      pItem('c83', e.x1 + 4.6, 11.66, .62);   // cesta de vegetais
     } else if(e.tema === 'paes'){
       pItem('i34', e.x1 + 1.7, 12.5, 2.3);    // o forno duplo
       pItem('i31', e.x1 + 4.3, 12.35, 2.0);   // a ilha da masseira
       pItem('i13', e.x1 + 3.0, 13.6, 1.6);    // mesa de potes
-      // pães e bolos saindo do forno
-      pItem('c33', e.x1 + 3.9, 11.8, .55);    // a pilha de pães
-      pItem('c43', e.x1 + 4.7, 11.95, .55);   // o pão recheado
-      pItem('c50', e.x1 + 2.85, 12.95, .55);  // a torta dourada
-      pItem('c60', e.x1 + 3.5, 13.05, .5);    // o bolo na travessa
+      // pães e bolos sobre a ilha e a mesa de potes
+      pItem('c33', e.x1 + 3.8, 11.68, .72);   // a pilha de pães
+      pItem('c43', e.x1 + 4.75, 11.82, .66);  // o pão recheado
+      pItem('c50', e.x1 + 2.8, 12.88, .68);   // a torta dourada
+      pItem('c60', e.x1 + 3.5, 12.98, .6)     // o bolo na travessa
     } else {
       pItem('i03', e.x1 + 1.7, 12.5, 2.2);    // o fogão-lareira
       pItem('i23', e.x1 + 4.3, 12.4, 1.9);    // o varal de panelas
       pItem('i20', e.x1 + 3.0, 13.55, 1.3);   // o banco da carne
-      // as carnes da casa
-      pItem('c53', e.x1 + 1.4, 12.05, .55);   // coxas assadas
-      pItem('c02', e.x1 + 2.15, 12.1, .5);    // a posta de carne
-      pItem('c63', e.x1 + 3.05, 13.15, .6);   // o espeto
+      // as carnes da casa, sobre a bancada do fogão e o banco
+      pItem('c53', e.x1 + 1.35, 11.78, .72);  // coxas assadas
+      pItem('c02', e.x1 + 2.2, 11.88, .62);   // a posta de carne
+      pItem('c63', e.x1 + 3.05, 13.1, .72);   // o espeto
     }
     /* o balcão que fecha o cômodo para a cozinha: tampo, face e a comida do tema */
     cmx.fillStyle = 'rgba(0,0,0,.32)';
