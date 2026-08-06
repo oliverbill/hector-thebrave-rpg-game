@@ -5,3 +5,5 @@ output.aiff
 .gstack/
 audio/.DS_Store
 .DS_Store
+.claude/worktrees/
+.DS_Store
