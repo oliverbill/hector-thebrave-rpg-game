@@ -3464,34 +3464,28 @@ function desenharPortasInternas(ox, oy){
   portasInternas.forEach(p => {
     if(p.ab > .98) return;                       // escancarada: some da vista
     if(!p.vert){
-      /* porta de FRENTE, na arte da referência: duas bandas que recuam
-         girando para dentro (a largura colapsa rumo à ombreira) */
-      const w = tam*1.0, h = tam*1.55;
+      /* porta de FRENTE, na arte da referência: UMA folha só ocupando o vão,
+         com a dobradiça na ombreira esquerda — abre girando para dentro
+         (a largura colapsa rumo à dobradiça, escurecendo) */
+      const w = tam*2.0, h = tam*1.6;
       const yBase = oy + (p.y + .18)*tam;        // a soleira, um passo dentro do vão
-      const esc = Math.max(.05, 1 - p.ab*1.05);
-      // sombra da porta no chão
+      const esc = Math.max(.04, 1 - p.ab*1.05);
+      // sombra da porta no chão, encolhendo junto
       ctx.fillStyle = 'rgba(0,0,0,' + (.3*(1 - p.ab)) + ')';
       ctx.beginPath();
-      ctx.ellipse(ox + (p.x + 1)*tam, yBase + tam*.05, tam*(1 - p.ab*.6), tam*.14, 0, 0, TAU);
+      ctx.ellipse(ox + (p.x + 1*esc)*tam, yBase + tam*.05, tam*esc, tam*.14, 0, 0, TAU);
       ctx.fill();
-      // banda esquerda (dobradiça na ombreira esquerda)
       ctx.save();
       ctx.translate(ox + p.x*tam, yBase);
       ctx.scale(esc, 1);
-      pintarPortaArte(ctx, 0, -h, w, h, false);
-      ctx.fillStyle = 'rgba(0,0,0,' + (p.ab*.45) + ')'; ctx.fillRect(0, -h, w, h);
-      ctx.restore();
-      // banda direita (dobradiça na ombreira direita), com a argola
-      ctx.save();
-      ctx.translate(ox + (p.x + 2)*tam, yBase);
-      ctx.scale(-esc, 1);
       pintarPortaArte(ctx, 0, -h, w, h, true);
-      ctx.fillStyle = 'rgba(0,0,0,' + (p.ab*.45) + ')'; ctx.fillRect(0, -h, w, h);
+      ctx.fillStyle = 'rgba(0,0,0,' + (p.ab*.5) + ')'; ctx.fillRect(0, -h, w, h);
       ctx.restore();
       return;
     }
-    /* portas nas paredes verticais: folhas de tábuas cravejadas girando na dobradiça */
-    const esp = tam*.19, folha = tam*1.0;
+    /* portas nas paredes verticais: UMA folha de tábuas cravejadas, do tamanho
+       do vão, girando na dobradiça de cima */
+    const esp = tam*.19, folha = tam*2.0;
     const giro = p.ab*1.8;                       // 0 fechada -> ~103 graus aberta
     const desenharFolha = (hx, hy, angBase, dir) => {
       ctx.save();
@@ -3522,15 +3516,21 @@ function desenharPortasInternas(ox, oy){
       ctx.beginPath(); ctx.arc(0, 0, esp*.15, 0, TAU); ctx.fill();
       ctx.restore();
     };
-    desenharFolha(p.x + .5, p.y,     Math.PI/2,  1);
-    desenharFolha(p.x + .5, p.y + 2, -Math.PI/2, -1);
+    desenharFolha(p.x + .5, p.y, Math.PI/2, 1);   // uma folha só, do vão inteiro
   });
 }
 
 /* --- baratas grandes da cisterna: corpo alongado, antenas e seis patas remando --- */
-/* --- a água da cisterna respira: ondulações abrindo devagar sobre o cache --- */
+/* --- a água da cisterna respira: brilho frio pulsando e ondulações sobre o cache --- */
 function desenharCisterna(ox, oy){
   const cx = ox + 23*tam, cy = oy + 46*tam;
+  // o brilho azulado que sobe da água — se vê de longe, como as piscinas da inspiração
+  const pulso = .6 + Math.sin(tempo*1.6)*.4;
+  const gL = ctx.createRadialGradient(cx, cy, 0, cx, cy, tam*2.4);
+  gL.addColorStop(0, 'rgba(90,210,230,' + (.16 + pulso*.08) + ')');
+  gL.addColorStop(1, 'rgba(90,210,230,0)');
+  ctx.fillStyle = gL;
+  ctx.beginPath(); ctx.arc(cx, cy, tam*2.4, 0, TAU); ctx.fill();
   for(let i=0; i<2; i++){
     const t2 = (tempo*.35 + i*.5) % 1;
     ctx.strokeStyle = 'rgba(160,225,240,' + (.24*(1 - t2)) + ')';
@@ -4034,9 +4034,9 @@ function pintarCozinhasCache(cmx, T){
   // a água: funda no meio, redemoinho e um brilho de superfície
   const wx = 22*T, wy = 45*T, ww = 2*T, wh = 2*T;
   const gA = cmx.createRadialGradient(wx + ww/2, wy + wh/2, 0, wx + ww/2, wy + wh/2, ww*.78);
-  gA.addColorStop(0, '#2a6c7e'); gA.addColorStop(.6, '#1c4a58'); gA.addColorStop(1, '#10262e');
+  gA.addColorStop(0, '#3f97ac'); gA.addColorStop(.6, '#27687a'); gA.addColorStop(1, '#153a46');
   cmx.fillStyle = gA; cmx.fillRect(wx, wy, ww, wh);
-  cmx.strokeStyle = 'rgba(150,220,235,.30)'; cmx.lineWidth = 2.2;
+  cmx.strokeStyle = 'rgba(175,235,248,.45)'; cmx.lineWidth = 2.2;
   for(let k=0; k<3; k++){
     cmx.beginPath();
     cmx.arc(wx + ww/2, wy + wh/2, ww*(.12 + k*.14), k*1.8, k*1.8 + 4.2);
