@@ -3257,14 +3257,17 @@ function construirCozinhas(){
   cavar(22,18,23,29);
   cavar(6,18,7,30);
 
-  /* ---- salão central com a rosácea ---- */
+  /* ---- salão central com a rosácea e quatro pilares ---- */
   cavar(14,30,30,42);
-  /* ---- refeitório dos servos, a oeste ---- */
+  [[19,33],[27,33],[19,40],[27,40]].forEach(([px2,py2]) => { t[ix(px2,py2)] = PAREDE; });   // pilares
+  /* ---- refeitório dos servos, a oeste (duas portas para o salão) ---- */
   cavar(3,31,12,41);
-  cavar(13,35,13,36);           // porta refeitório -> salão
-  /* ---- despensa, a leste ---- */
+  cavar(13,35,13,36);           // porta norte refeitório -> salão
+  cavar(13,39,13,40);           // porta sul
+  /* ---- despensa, a leste (duas portas para o salão) ---- */
   cavar(32,28,43,40);
-  cavar(31,34,31,35);           // porta salão -> despensa
+  cavar(31,34,31,35);           // porta norte salão -> despensa
+  cavar(31,38,31,39);           // porta sul
 
   /* ---- escada de chegada (vinda da arena) e corredor de serviço ---- */
   cavar(37,47,43,52,CHAO2);
@@ -3372,6 +3375,75 @@ function desenharLabaredas(ox, oy){
     if(Math.random() < .3*h)
       particulas.push({x:e.x + (Math.random()-.5)*.3, y:e.y - .4,
         vx:(Math.random()-.5)*.3, vy:-1.2 - Math.random()*.8, vida:.5, cor:'rgba(255,170,60,.8)', tam:.07});
+  });
+}
+
+/* --- portas internas entre os cômodos: abrem sozinhas quando o jogador chega,
+   com as duas folhas girando nas dobradiças, e fecham quando ele se afasta --- */
+let portasInternas = [];
+function criarPortasInternas(){
+  portasInternas = [
+    {x:13, y:35, vert:true},    // refeitório <-> salão, norte
+    {x:13, y:39, vert:true},    // refeitório <-> salão, sul
+    {x:31, y:34, vert:true},    // salão <-> despensa, norte
+    {x:31, y:38, vert:true},    // salão <-> despensa, sul
+    {x:22, y:30, vert:false},   // salão -> corredor central
+    {x:22, y:18, vert:false},   // corredor central -> cozinha
+    {x:6,  y:18, vert:false},   // corredor oeste -> cozinha
+    {x:6,  y:31, vert:false},   // corredor oeste -> refeitório
+    {x:39, y:41, vert:false}    // despensa -> corredor de serviço
+  ].map(p => ({...p, ab:0, rangeu:false}));
+}
+function atualizarPortasInternas(dt){
+  portasInternas.forEach(p => {
+    const cx = p.vert ? p.x + .5 : p.x + 1, cy = p.vert ? p.y + 1 : p.y;
+    const perto = Math.hypot(cx - jog.x, cy - jog.y) < 2.0;
+    const alvo = perto ? 1 : 0;
+    const antes = p.ab;
+    p.ab += (alvo - p.ab)*Math.min(1, dt*5);
+    if(alvo === 1 && antes < .04 && p.ab >= .04 && !p.rangeu){
+      p.rangeu = true;
+      if(Math.hypot(cx - jog.x, cy - jog.y) < 9) sRanger(.35);   // o rangido da madeira
+    }
+    if(alvo === 0 && p.ab < .04) p.rangeu = false;
+  });
+}
+function desenharPortasInternas(ox, oy){
+  portasInternas.forEach(p => {
+    if(p.ab > .98) return;                       // escancarada: some da vista
+    const esp = tam*.17, folha = tam*1.0;
+    const giro = p.ab*1.8;                       // 0 fechada -> ~103 graus aberta
+    const desenharFolha = (hx, hy, angBase, dir) => {
+      ctx.save();
+      ctx.translate(ox + hx*tam, oy + hy*tam);
+      ctx.rotate(angBase + dir*giro);
+      // sombra da folha
+      ctx.fillStyle = 'rgba(0,0,0,.35)';
+      ctx.fillRect(0, esp*.25, folha, esp);
+      // madeira com tábuas
+      ctx.fillStyle = '#6d4a28';
+      ctx.fillRect(0, -esp/2, folha, esp);
+      ctx.fillStyle = 'rgba(30,18,8,.5)';
+      ctx.fillRect(0, -esp/2 + esp*.45, folha, 1.5);
+      ctx.fillStyle = 'rgba(255,220,170,.16)';
+      ctx.fillRect(0, -esp/2, folha, 2);
+      // faixa de ferro e dobradiça
+      ctx.fillStyle = '#33302e';
+      ctx.fillRect(folha*.7, -esp/2, esp*.4, esp);
+      ctx.beginPath(); ctx.arc(0, 0, esp*.32, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(210,205,220,.25)';
+      ctx.beginPath(); ctx.arc(0, 0, esp*.15, 0, TAU); ctx.fill();
+      ctx.restore();
+    };
+    if(p.vert){
+      // folhas penduradas nas ombreiras de cima e de baixo, abrindo para oeste
+      desenharFolha(p.x + .5, p.y,     Math.PI/2,  1);
+      desenharFolha(p.x + .5, p.y + 2, -Math.PI/2, -1);
+    } else {
+      // folhas nas ombreiras esquerda e direita, abrindo para o sul
+      desenharFolha(p.x,     p.y, 0,       1);
+      desenharFolha(p.x + 2, p.y, Math.PI, -1);
+    }
   });
 }
 
@@ -3719,6 +3791,247 @@ function desenharAcougueiro(c, ox, oy){
    Roda uma vez por construção de mapa (gancho pintarCache), por baixo do decor. */
 function pintarCozinhasCache(cmx, T){
   const rndDe = (x,y) => hash(x*3.7, y*9.1);
+  const anda2 = v => v === CHAO || v === CHAO2 || v === PONTE;
+
+  /* ---- paredes no estilo da referência: fiadas de tijolo com juntas
+     desencontradas e cantaria clara na borda que encosta no chão ---- */
+  for(let y=0; y<COZ.ALT; y++) for(let x=0; x<COZ.LARG; x++){
+    if(mapa[y*COZ.LARG + x] !== PAREDE) continue;
+    const vizinhoChao =
+      (y+1 < COZ.ALT && anda2(mapa[(y+1)*COZ.LARG + x])) ||
+      (y-1 >= 0 && anda2(mapa[(y-1)*COZ.LARG + x])) ||
+      (x+1 < COZ.LARG && anda2(mapa[y*COZ.LARG + x+1])) ||
+      (x-1 >= 0 && anda2(mapa[y*COZ.LARG + x-1]));
+    if(!vizinhoChao) continue;                       // só onde a parede aparece
+    const px2 = x*T, py2 = y*T, h = rndDe(x, y);
+    // fiadas de tijolo (2 por tile), juntas desencontradas por fiada
+    cmx.strokeStyle = 'rgba(16,10,8,.5)'; cmx.lineWidth = 1.6;
+    for(let f=0; f<2; f++){
+      const fy = py2 + (f+1)*T/2 - T/4 + T/4*f;      // linhas em T/2
+      cmx.beginPath(); cmx.moveTo(px2, py2 + (f+1)*T/2); cmx.lineTo(px2+T, py2 + (f+1)*T/2); cmx.stroke();
+      const off = ((x + y + f) % 2)*T/4;
+      for(let j=0; j<2; j++){
+        const jx = px2 + off + j*T/2;
+        if(jx > px2 && jx < px2+T){
+          cmx.beginPath(); cmx.moveTo(jx, py2 + f*T/2); cmx.lineTo(jx, py2 + (f+1)*T/2); cmx.stroke();
+        }
+      }
+    }
+    // variação de tom tijolo a tijolo
+    if(h > .6){
+      cmx.fillStyle = 'rgba(255,200,150,' + ((h-.6)*.12) + ')';
+      cmx.fillRect(px2 + T*(h*.4), py2 + T*(h>.8? .5 : 0), T/2, T/2);
+    } else if(h < .3){
+      cmx.fillStyle = 'rgba(10,6,4,' + ((.3-h)*.30) + ')';
+      cmx.fillRect(px2, py2 + T*(h*1.5|0)*.5, T/2, T/2);
+    }
+    // cantaria clara na borda com o chão (como na referência)
+    if(y+1 < COZ.ALT && anda2(mapa[(y+1)*COZ.LARG + x])){
+      cmx.fillStyle = '#9a8d80';
+      cmx.fillRect(px2, py2 + T - T*.16, T, T*.16);
+      cmx.strokeStyle = 'rgba(20,14,10,.55)'; cmx.lineWidth = 1.4;
+      cmx.strokeRect(px2 + 1, py2 + T - T*.16, T*.5 - 1, T*.16);
+      cmx.strokeRect(px2 + T*.5, py2 + T - T*.16, T*.5 - 1, T*.16);
+      cmx.fillStyle = 'rgba(255,245,230,.22)';
+      cmx.fillRect(px2, py2 + T - T*.16, T, 2);
+    }
+    if(y-1 >= 0 && anda2(mapa[(y-1)*COZ.LARG + x])){
+      cmx.fillStyle = '#7c7166';
+      cmx.fillRect(px2, py2, T, T*.12);
+      cmx.strokeStyle = 'rgba(20,14,10,.5)'; cmx.lineWidth = 1.2;
+      cmx.strokeRect(px2 + 1, py2, T*.5 - 1, T*.12);
+      cmx.strokeRect(px2 + T*.5, py2, T*.5 - 1, T*.12);
+    }
+  }
+
+  /* ---- lajões de pedra nas salas (tudo que é CHAO): juntas grossas,
+     lascas nos cantos e rachaduras — o chão da referência ---- */
+  for(let y=0; y<COZ.ALT; y++) for(let x=0; x<COZ.LARG; x++){
+    if(mapa[y*COZ.LARG + x] !== CHAO) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+7, y+3);
+    // manchas de tom (lajes que não são irmãs)
+    if(h > .55){
+      cmx.fillStyle = h > .8 ? 'rgba(240,235,225,.06)' : 'rgba(8,6,10,.10)';
+      cmx.fillRect(px2+2, py2+2, T-4, T-4);
+    }
+    // lasca no canto
+    if(h > .72){
+      cmx.fillStyle = 'rgba(8,6,10,.35)';
+      const c1 = [[px2,py2],[px2+T,py2],[px2,py2+T],[px2+T,py2+T]][(h*4)|0 % 4] || [px2,py2];
+      cmx.beginPath();
+      cmx.moveTo(c1[0], c1[1]);
+      cmx.lineTo(c1[0] + (c1[0]===px2? T*.22 : -T*.22), c1[1]);
+      cmx.lineTo(c1[0], c1[1] + (c1[1]===py2? T*.22 : -T*.22));
+      cmx.closePath(); cmx.fill();
+    }
+    // rachadura atravessando a laje
+    if(h > .9){
+      cmx.strokeStyle = 'rgba(8,6,10,.45)'; cmx.lineWidth = 1.6;
+      cmx.beginPath();
+      cmx.moveTo(px2 + T*.15, py2 + T*(.2 + h*.3));
+      cmx.lineTo(px2 + T*.5, py2 + T*.55);
+      cmx.lineTo(px2 + T*.62, py2 + T*.9);
+      cmx.stroke();
+    }
+  }
+
+  /* ---- ralos de cozinha no chão (as grades da referência) ---- */
+  const pRalo = (x, y) => {
+    const px2 = x*T, py2 = y*T, l = T*.72;
+    cmx.fillStyle = '#171219';
+    cmx.fillRect(px2 - l/2, py2 - l/2, l, l);
+    cmx.strokeStyle = '#4a4352'; cmx.lineWidth = 2.4;
+    cmx.strokeRect(px2 - l/2, py2 - l/2, l, l);
+    cmx.strokeStyle = 'rgba(120,110,130,.6)'; cmx.lineWidth = 1.6;
+    for(let k=1; k<4; k++){
+      cmx.beginPath(); cmx.moveTo(px2 - l/2 + k*l/4, py2 - l/2 + 2); cmx.lineTo(px2 - l/2 + k*l/4, py2 + l/2 - 2); cmx.stroke();
+      cmx.beginPath(); cmx.moveTo(px2 - l/2 + 2, py2 - l/2 + k*l/4); cmx.lineTo(px2 + l/2 - 2, py2 - l/2 + k*l/4); cmx.stroke();
+    }
+  };
+  [[25.5,15.5],[16.5,40.5],[29.5,31.5],[36.5,14.5],[4.5,40.5]].forEach(([x,y]) => pRalo(x,y));
+
+  /* ---- pilares do salão (por cima dos tiles de parede que os marcam) ---- */
+  [[19,33],[27,33],[19,40],[27,40]].forEach(([x,y]) => {
+    const cx = (x+.5)*T, cy = (y+.5)*T;
+    // remendo de chão por baixo
+    cmx.fillStyle = 'rgb(122,106,84)';
+    cmx.fillRect(x*T, y*T, T, T);
+    // base quadrada, fuste redondo e sombra
+    cmx.fillStyle = 'rgba(0,0,0,.4)';
+    cmx.beginPath(); cmx.ellipse(cx + T*.08, cy + T*.14, T*.42, T*.3, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#5c5348';
+    cmx.fillRect(cx - T*.4, cy - T*.4, T*.8, T*.8);
+    cmx.strokeStyle = 'rgba(18,12,8,.6)'; cmx.lineWidth = 2;
+    cmx.strokeRect(cx - T*.4, cy - T*.4, T*.8, T*.8);
+    cmx.fillStyle = '#8a7d6e';
+    cmx.beginPath(); cmx.arc(cx, cy, T*.32, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,245,230,.25)';
+    cmx.beginPath(); cmx.arc(cx - T*.09, cy - T*.09, T*.17, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(18,12,8,.5)'; cmx.lineWidth = 1.6;
+    cmx.beginPath(); cmx.arc(cx, cy, T*.32, 0, TAU); cmx.stroke();
+  });
+
+  /* ---- a variedade de itens da referência, tema cozinha ---- */
+  const pFrigideira = (x, y) => {
+    const px2 = x*T, py2 = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.beginPath(); cmx.ellipse(px2, py2 + T*.06, T*.3, T*.14, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = '#4a3a20'; cmx.lineWidth = Math.max(2, T*.08);
+    cmx.beginPath(); cmx.moveTo(px2 + T*.26, py2 - T*.04); cmx.lineTo(px2 + T*.62, py2 - T*.16); cmx.stroke();
+    cmx.fillStyle = '#22202a';
+    cmx.beginPath(); cmx.ellipse(px2, py2, T*.27, T*.18, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#100e16';
+    cmx.beginPath(); cmx.ellipse(px2, py2, T*.19, T*.12, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(220,215,230,.3)';
+    cmx.beginPath(); cmx.ellipse(px2 - T*.07, py2 - T*.06, T*.09, T*.04, .5, 0, TAU); cmx.fill();
+  };
+  const pJarra = (x, y, cor) => {
+    const px2 = x*T, py2 = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(px2, py2 + T*.2, T*.24, T*.09, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = cor;
+    cmx.beginPath();
+    cmx.moveTo(px2 - T*.09, py2 - T*.3);
+    cmx.quadraticCurveTo(px2 - T*.3, py2 - T*.05, px2 - T*.17, py2 + T*.18);
+    cmx.lineTo(px2 + T*.17, py2 + T*.18);
+    cmx.quadraticCurveTo(px2 + T*.3, py2 - T*.05, px2 + T*.09, py2 - T*.3);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(10,6,4,.5)';
+    cmx.beginPath(); cmx.ellipse(px2, py2 - T*.3, T*.1, T*.045, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,245,230,.25)';
+    cmx.beginPath(); cmx.ellipse(px2 - T*.1, py2 - T*.08, T*.05, T*.14, .2, 0, TAU); cmx.fill();
+  };
+  const pQueijo = (x, y) => {
+    const px2 = x*T, py2 = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.28)';
+    cmx.beginPath(); cmx.ellipse(px2, py2 + T*.09, T*.22, T*.08, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#d8a83c';
+    cmx.beginPath(); cmx.ellipse(px2, py2, T*.21, T*.13, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#eec55e';
+    cmx.beginPath(); cmx.ellipse(px2, py2 - T*.035, T*.21, T*.11, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#d8a83c';                        // a fatia tirada
+    cmx.beginPath(); cmx.moveTo(px2, py2 - T*.03);
+    cmx.lineTo(px2 + T*.21, py2 - T*.09); cmx.lineTo(px2 + T*.17, py2 + T*.02);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(120,80,20,.5)';
+    [[-.08,-.05],[.02,-.08],[.06,.01]].forEach(([fx,fy]) => {
+      cmx.beginPath(); cmx.arc(px2 + fx*T, py2 + fy*T, T*.02, 0, TAU); cmx.fill();
+    });
+  };
+  const pGarrafas = (x, y, n) => {
+    for(let k=0; k<n; k++){
+      const px2 = (x + k*.28)*T, py2 = (y + (k%2)*.12)*T;
+      cmx.fillStyle = 'rgba(0,0,0,.3)';
+      cmx.beginPath(); cmx.ellipse(px2, py2 + T*.16, T*.1, T*.05, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = k%2 ? '#274a28' : '#3a2436';
+      cmx.fillRect(px2 - T*.07, py2 - T*.18, T*.14, T*.32);
+      cmx.fillRect(px2 - T*.028, py2 - T*.32, T*.056, T*.16);
+      cmx.fillStyle = 'rgba(255,245,230,.3)';
+      cmx.fillRect(px2 - T*.05, py2 - T*.15, T*.03, T*.2);
+      cmx.fillStyle = '#8a1f1f';
+      cmx.fillRect(px2 - T*.028, py2 - T*.34, T*.056, T*.045);
+    }
+  };
+  const pCesto = (x, y) => {
+    const px2 = x*T, py2 = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.beginPath(); cmx.ellipse(px2, py2 + T*.16, T*.3, T*.1, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#8a6a38';
+    cmx.beginPath();
+    cmx.moveTo(px2 - T*.3, py2 - T*.08);
+    cmx.quadraticCurveTo(px2, py2 + T*.28, px2 + T*.3, py2 - T*.08);
+    cmx.lineTo(px2 + T*.26, py2 - T*.14); cmx.lineTo(px2 - T*.26, py2 - T*.14);
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = 'rgba(40,26,10,.6)'; cmx.lineWidth = 1.3;
+    for(let k=-2; k<=2; k++){
+      cmx.beginPath(); cmx.moveTo(px2 + k*T*.11, py2 - T*.12); cmx.lineTo(px2 + k*T*.13, py2 + T*.12); cmx.stroke();
+    }
+    // cebolas e uma abóbora dentro
+    [[-.13,-.16,'#c9873a'],[.02,-.2,'#d8a03c'],[.15,-.15,'#b06a2a']].forEach(([fx,fy,c]) => {
+      cmx.fillStyle = c;
+      cmx.beginPath(); cmx.arc(px2 + fx*T, py2 + fy*T, T*.085, 0, TAU); cmx.fill();
+    });
+  };
+  const pLinguicas = (x, y) => {
+    const px2 = x*T, py2 = y*T;
+    cmx.strokeStyle = '#4a3018'; cmx.lineWidth = 1.4;
+    cmx.beginPath(); cmx.moveTo(px2 - T*.3, py2); cmx.lineTo(px2 + T*.3, py2); cmx.stroke();
+    for(let k=-1; k<=1; k++){
+      cmx.fillStyle = '#7c2a20';
+      for(let e=0; e<3; e++){
+        cmx.beginPath();
+        cmx.ellipse(px2 + k*T*.22, py2 + T*.1 + e*T*.13, T*.05, T*.075, 0, 0, TAU);
+        cmx.fill();
+      }
+      cmx.fillStyle = 'rgba(255,200,170,.25)';
+      cmx.beginPath(); cmx.ellipse(px2 + k*T*.22 - T*.015, py2 + T*.12, T*.015, T*.1, 0, 0, TAU); cmx.fill();
+    }
+  };
+  const pFaca = (x, y, ang) => {
+    const px2 = x*T, py2 = y*T;
+    cmx.save(); cmx.translate(px2, py2); cmx.rotate(ang);
+    cmx.fillStyle = '#3a2a16';
+    cmx.fillRect(-T*.26, -T*.03, T*.14, T*.06);
+    cmx.fillStyle = '#b9b4c4';
+    cmx.beginPath();
+    cmx.moveTo(-T*.12, -T*.045); cmx.lineTo(T*.3, -T*.02);
+    cmx.lineTo(T*.24, T*.045); cmx.lineTo(-T*.12, T*.045);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(255,255,255,.4)';
+    cmx.fillRect(-T*.1, -T*.02, T*.34, T*.015);
+    cmx.restore();
+  };
+
+  pFrigideira(14.8, 11.9); pFrigideira(23.8, 10.2);
+  pJarra(4.2, 10.5, '#3a5a8c'); pJarra(35.5, 33.5, '#7a4a3a');
+  pJarra(10.5, 32.5, '#3a5a8c'); pJarra(15.2, 31.5, '#7a4a3a');
+  pJarra(30.2, 41.2, '#3a5a8c');
+  pQueijo(38.5, 32.2); pQueijo(39.4, 32.6); pQueijo(6.2, 12.6);
+  pGarrafas(7.3, 45.6, 3); pGarrafas(24.3, 46.2, 2); pGarrafas(30.3, 52.2, 3);
+  pGarrafas(41.0, 33.4, 2);
+  pCesto(5.5, 13.5); pCesto(8.5, 39.5); pCesto(34.5, 36.5);
+  pLinguicas(7.2, 5.15); pLinguicas(19.2, 5.15); pLinguicas(23.2, 5.15);
+  pFaca(9.2, 11.7, .4); pFaca(37, 12.4, -.3); pFaca(19.6, 11.9, 2.6);
 
   /* tábuas corridas nos pisos de madeira: cozinha, câmara e escada */
   const pranchas = (x1,y1,x2,y2) => {
@@ -4050,6 +4363,7 @@ const PISO_COZINHAS = {
     /* limpa o que é do calabouço, para nada vazar de um piso ao outro */
     espinhos = []; trapos = []; facao = null; esparadrapos = [];
     porta2 = {aberta:false, quebra:0};
+    criarPortasInternas();
     vistoAdega = false; vistoCisterna = false;
     caldos = [];
     labaredas = [
@@ -4085,6 +4399,7 @@ const PISO_COZINHAS = {
   },
   atualizar(dt){
     if(porta2.quebra > 0) porta2.quebra = Math.max(0, porta2.quebra - dt/.9);
+    atualizarPortasInternas(dt);
     labaredas.forEach(e => {
       const h = alturaLabareda(e);
       if(h >= 1 && !e.acesa){ e.acesa = true; if(Math.hypot(e.x-jog.x, e.y-jog.y) < 8) sFerro(); }
@@ -4173,6 +4488,7 @@ const PISO_COZINHAS = {
   },
   desenharCenario(ox, oy){
     desenharRosacea(ox, oy);
+    desenharPortasInternas(ox, oy);
     desenharCarcacas(ox, oy);
     desenharLabaredas(ox, oy);
     desenharPaes(ox, oy);
