@@ -938,11 +938,12 @@ function calarVoz(){
    sobe pela escada e para no piso seguinte, que passa a brilhar. */
 const NOMES_PISOS = ['O Calabouço','As Cozinhas','Salas de Funeral','Lab do Alquimista','Dormitórios','A Torre'];
 function animarCastelo(de, para, aoFim){
+  /* de = null: é a abertura do jogo — a luz nasce no portão e sobe ao piso 1 */
   const cv = document.createElement('canvas');
   cv.style.cssText = 'position:fixed; inset:0; width:100%; height:100%; z-index:60; background:#07050c;';
   document.body.appendChild(cv);
   const c = cv.getContext('2d');
-  const t0 = performance.now(), DUR = 3400, N = NOMES_PISOS.length;
+  const t0 = performance.now(), DUR = de == null ? 3000 : 3400, N = NOMES_PISOS.length;
 
   const quadro = (t) => {
     const p = Math.min(1, (t - t0)/DUR);
@@ -950,68 +951,125 @@ function animarCastelo(de, para, aoFim){
     cv.height = Math.floor(window.innerHeight*dpr);
     c.setTransform(dpr,0,0,dpr,0,0);
     const W = window.innerWidth, H = window.innerHeight;
+    // céu de noite fechada com estrelas paradas
     c.fillStyle = '#07050c'; c.fillRect(0,0,W,H);
+    for(let k=0; k<40; k++){
+      const hx = Math.sin(k*127.1)*43758.5453, sx = (hx - Math.floor(hx))*W;
+      const hy = Math.sin(k*311.7)*43758.5453, sy = (hy - Math.floor(hy))*H*.5;
+      c.fillStyle = 'rgba(220,225,255,' + (.12 + (k%3)*.08) + ')';
+      c.fillRect(sx, sy, 1.6, 1.6);
+    }
 
-    // o castelo ocupa a altura útil, com o piso 1 embaixo
-    const alt = Math.min(H*.74, 540), larg = Math.min(W*.5, alt*.6);
-    const x0 = (W - larg)/2 - 40, base = H*.5 + alt/2;
+    const alt = Math.min(H*.56, 430), larg = Math.min(W*.44, alt*.58);
+    const x0 = (W - larg)/2 - 40, base = H*.56 + alt/2;
     const hA = alt/N, andarY = i => base - (i + 1)*hA;
+    const AME = Math.max(6, hA*.22);              // altura das ameias
+    const tLar = larg*.2;                          // largura das torres laterais
 
     const alpha = p < .12 ? p/.12 : p > .9 ? (1 - p)/.1 : 1;
     c.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-    // a luz sobe do piso vencido para o seguinte (suavizada)
-    const s = Math.max(0, Math.min(1, (p - .2)/.5));
-    const sub = s*s*(3 - 2*s);
-    const luzY = (andarY(de) + hA/2) + ((andarY(para) + hA/2) - (andarY(de) + hA/2))*sub;
+    // a luz: nasce no portão (abertura) ou no piso vencido, e sobe ao piso alvo
+    const s2 = Math.max(0, Math.min(1, (p - .2)/.5));
+    const sub = s2*s2*(3 - 2*s2);
+    const luzDe = de == null ? base - hA*.2 : andarY(de) + hA/2;
+    const luzY = luzDe + ((andarY(para) + hA/2) - luzDe)*sub;
 
+    const pedra = (x, y, w2, h2, tom) => {          // parede de cantaria com fiadas
+      c.fillStyle = tom; c.fillRect(x, y, w2, h2);
+      c.strokeStyle = 'rgba(8,5,12,.5)'; c.lineWidth = 1;
+      for(let fy = y + hA*.33; fy < y + h2; fy += hA*.33){
+        c.beginPath(); c.moveTo(x, fy); c.lineTo(x + w2, fy); c.stroke();
+      }
+      c.strokeStyle = 'rgba(150,130,170,.35)'; c.lineWidth = 1.6;
+      c.strokeRect(x, y, w2, h2);
+    };
+    const ameias = (x, y, w2) => {                  // os dentes do topo
+      c.fillStyle = '#332a40';
+      const dw = Math.max(7, w2/9);
+      for(let ax = x; ax < x + w2 - 1; ax += dw*2) c.fillRect(ax, y - AME, Math.min(dw, x + w2 - ax), AME);
+      c.strokeStyle = 'rgba(150,130,170,.3)'; c.lineWidth = 1;
+      c.strokeRect(x, y - AME, w2, AME);
+    };
+
+    // torres laterais, mais altas que o corpo, com seteiras
+    const topoCorpo = base - alt;
+    const tAltura = alt + hA*1.15;
+    [[x0 - tLar + 4], [x0 + larg - 4]].forEach(([tx]) => {
+      pedra(tx, base - tAltura, tLar, tAltura, '#241c30');
+      ameias(tx - tLar*.08, base - tAltura, tLar*1.16);
+      c.fillStyle = 'rgba(20,16,28,.9)';
+      for(let k=1; k<4; k++) c.fillRect(tx + tLar/2 - 2, base - tAltura + k*tAltura/4.4, 4, hA*.4);
+    });
+    // mastros e bandeiras tremulando nas torres
+    [[x0 - tLar/2 + 4, 1], [x0 + larg + tLar/2 - 4, -1]].forEach(([mx, dir]) => {
+      c.strokeStyle = '#4a4058'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(mx, base - tAltura - AME); c.lineTo(mx, base - tAltura - AME - hA*.9); c.stroke();
+      const fy = base - tAltura - AME - hA*.9, ond = Math.sin(p*14)*3;
+      c.fillStyle = '#7c2020';
+      c.beginPath();
+      c.moveTo(mx, fy); c.lineTo(mx + dir*(hA*.75), fy + hA*.16 + ond*.4); c.lineTo(mx, fy + hA*.34);
+      c.closePath(); c.fill();
+    });
+
+    // corpo central: os seis pisos
     for(let i = 0; i < N; i++){
       const y = andarY(i);
-      const acesa = i === de ? 1 - sub*.65 : i === para ? sub : 0;
-      c.fillStyle = '#221a2a'; c.fillRect(x0, y, larg, hA - 2);
-      c.fillStyle = 'rgba(255,190,110,' + (.05 + acesa*.3) + ')';
+      const acesa = de == null
+        ? (i === para ? sub : 0)
+        : (i === de ? 1 - sub*.65 : i === para ? sub : 0);
+      pedra(x0, y, larg, hA - 2, '#2a2136');
+      c.fillStyle = 'rgba(255,190,110,' + (.04 + acesa*.3) + ')';
       c.fillRect(x0 + 3, y + 3, larg - 6, hA - 8);
-      c.strokeStyle = 'rgba(150,130,170,' + (.25 + acesa*.5) + ')';
-      c.lineWidth = 2; c.strokeRect(x0, y, larg, hA - 2);
-      c.strokeStyle = 'rgba(10,7,14,.5)'; c.lineWidth = 1;
-      for(let k = 1; k < 3; k++){
-        c.beginPath(); c.moveTo(x0, y + k*hA/3); c.lineTo(x0 + larg, y + k*hA/3); c.stroke();
-      }
+      // janelas em arco (retângulo com topo redondo)
       for(let k = 0; k < 3; k++){
+        const jw = larg*.09, jh = hA*.36;
         const jx = x0 + larg*(.18 + k*.3), jy = y + hA*.3;
-        c.fillStyle = acesa > .05 ? 'rgba(255,196,96,' + (.35 + acesa*.65) + ')' : 'rgba(40,32,52,.9)';
-        c.fillRect(jx, jy, larg*.09, hA*.34);
+        c.fillStyle = acesa > .05 ? 'rgba(255,196,96,' + (.35 + acesa*.65) + ')' : 'rgba(30,24,42,.95)';
+        c.beginPath();
+        c.moveTo(jx, jy + jh); c.lineTo(jx, jy + jw/2);
+        c.arc(jx + jw/2, jy + jw/2, jw/2, Math.PI, 0);
+        c.lineTo(jx + jw, jy + jh);
+        c.closePath(); c.fill();
       }
       c.font = '600 ' + Math.round(Math.min(14, hA*.32)) + 'px ui-monospace, Menlo, monospace';
       c.textAlign = 'left';
       c.fillStyle = 'rgba(240,230,255,' + (.22 + acesa*.7) + ')';
-      c.fillText((i+1) + '. ' + NOMES_PISOS[i], x0 + larg + 14, y + hA*.62);
-      if(i < N - 1){
-        c.strokeStyle = 'rgba(150,130,170,.3)'; c.lineWidth = 1.5;
-        for(let d2 = 0; d2 < 4; d2++){
-          const dy = y + hA*(.12 + d2*.12);
-          c.beginPath(); c.moveTo(x0 + larg*.45, dy); c.lineTo(x0 + larg*.55, dy); c.stroke();
-        }
-      }
+      c.fillText((i+1) + '. ' + NOMES_PISOS[i], x0 + larg + tLar + 12, y + hA*.62);
     }
+    // ameias no alto do corpo e a torre de menagem central
+    ameias(x0, topoCorpo, larg);
+    const mLar = larg*.3, mX = x0 + (larg - mLar)/2, mAlt = hA*1.5;
+    pedra(mX, topoCorpo - mAlt, mLar, mAlt, '#2c2338');
+    ameias(mX - mLar*.08, topoCorpo - mAlt, mLar*1.16);
 
-    c.fillStyle = '#2c2136';
+    // o portão em arco na base, com a luz da abertura nascendo nele
+    const gw = larg*.2, gx = x0 + (larg - gw)/2;
+    c.fillStyle = de == null ? 'rgba(255,190,100,' + (.25 + (1 - sub)*.5) + ')' : '#171221';
     c.beginPath();
-    c.moveTo(x0 - larg*.06, base - alt);
-    c.lineTo(x0 + larg/2, base - alt - larg*.22);
-    c.lineTo(x0 + larg*1.06, base - alt);
+    c.moveTo(gx, base); c.lineTo(gx, base - hA*.5);
+    c.arc(gx + gw/2, base - hA*.5, gw/2, Math.PI, 0);
+    c.lineTo(gx + gw, base);
     c.closePath(); c.fill();
-    c.fillStyle = '#181222'; c.fillRect(x0 - larg*.1, base, larg*1.2, 8);
+    c.strokeStyle = 'rgba(150,130,170,.4)'; c.lineWidth = 2; c.stroke();
+    // o chão
+    c.fillStyle = '#181222'; c.fillRect(x0 - tLar - larg*.1, base, larg + 2*tLar + larg*.2, 8);
 
-    const g = c.createRadialGradient(x0 + larg*.5, luzY, 0, x0 + larg*.5, luzY, larg*.45);
+    // a tocha subindo
+    const g = c.createRadialGradient(x0 + larg*.5, luzY, 0, x0 + larg*.5, luzY, larg*.5);
     g.addColorStop(0, 'rgba(255,200,110,.85)'); g.addColorStop(1, 'rgba(255,150,60,0)');
     c.fillStyle = g;
-    c.beginPath(); c.arc(x0 + larg*.5, luzY, larg*.45, 0, TAU); c.fill();
+    c.beginPath(); c.arc(x0 + larg*.5, luzY, larg*.5, 0, TAU); c.fill();
 
     c.textAlign = 'center';
     c.font = '600 13px ui-monospace, Menlo, monospace';
     c.fillStyle = 'rgba(232,161,60,' + (.5 + sub*.5) + ')';
-    c.fillText('SUBINDO AO PISO ' + (para + 1), W/2, base + 44);
+    c.fillText(de == null ? 'HECTOR, THE BRAVE' : 'SUBINDO AO PISO ' + (para + 1), W/2, base + 44);
+    if(de == null){
+      c.font = '600 10px ui-monospace, Menlo, monospace';
+      c.fillStyle = 'rgba(157,148,173,' + (.4 + sub*.4) + ')';
+      c.fillText('PISO ' + (para + 1) + ' — ' + NOMES_PISOS[para].toUpperCase(), W/2, base + 62);
+    }
     c.globalAlpha = 1;
 
     if(p < 1) requestAnimationFrame(quadro);
@@ -2304,7 +2362,6 @@ el('comecar').addEventListener('click', () => {
   }
   iniciarPiso(PISOS[pisoAtual]);
   tocarBgm(PISOS[pisoAtual].bgm);
-  if(atalhoChefe && piso.irAoChefe) piso.irAoChefe();   // ?chefe=1: direto para a luta (teste)
 });
 
 /* ---------- música de fundo (loop por piso) ---------- */
@@ -5335,6 +5392,16 @@ let atalhoChefe = false, atalhoTransicao = false;
 })();
 piso = PISOS[pisoAtual];
 redimensionar();
+
+/* o áudio só pode nascer de um gesto: destrava tudo no primeiro toque/tecla */
+function destravarAudio(){
+  iniAudio(); try{ if(ac && ac.state === 'suspended') ac.resume(); }catch(e){}
+  if(bgmAudio && bgmAudio.paused){ try{ bgmAudio.play().catch(() => {}); }catch(e){} }
+  else if(!bgmAudio && piso && piso.bgm && etapa !== 'menu') tocarBgm(piso.bgm);
+}
+['pointerdown','touchstart','keydown'].forEach(ev =>
+  window.addEventListener(ev, destravarAudio, {capture:true}));
+
 if(atalhoTransicao && pisoAtual + 1 < PISOS.length){
   /* monta o estado de vitória sem a luta: tarefas feitas, prêmio na bolsa,
      véu de vitória com "Subir a escada" — o clique roda a animação do castelo */
@@ -5345,7 +5412,16 @@ if(atalhoTransicao && pisoAtual + 1 < PISOS.length){
   etapa = 'fim';
   mostrarVeu(piso.textos.vitoria());
 } else {
-  mostrarVeu({...piso.intro, placar:''});
+  /* sem tela inicial: a animação do castelo abre o jogo e a fase começa sozinha */
+  el('veu').classList.add('oculto');
+  animarCastelo(null, pisoAtual, () => {
+    iniciarPiso(piso);
+    tocarBgm(piso.bgm);
+    const tit = piso.intro.titulo.replace(/<em>/, ' · ').replace(/<[^>]+>/g, '');
+    const sub = piso.intro.texto.replace(/<[^>]+>/g, '').split(/(?<=\.)\s/)[0];
+    avisar(tit, sub);
+    if(atalhoChefe && piso.irAoChefe) piso.irAoChefe();
+  });
 }
 requestAnimationFrame(quadro);
 </script>
