@@ -97,7 +97,7 @@ Mecânica inédita — **ele cava e some** (questionário 06/08, recomendado ace
 | F3-RF-16 | Após **2 mergulhos**, ele emerge **exausto** (*"morto de cansado"*) — janela longa | fala do Sacristão, ditada pelo usuário |
 | F3-RF-17 | Ele carrega uma **lanterna** que ilumina só a frente; pelas costas, dano dobrado | fala da Lavadeira, ditada pelo usuário |
 | F3-RF-18 | Fraquezas × chaves: `rastro` (Carpinteiro) → ⚠ ×2.2 no atordoado pós-erro (e o ponto de emersão fica telegrafado mais cedo); `lanterna` (Lavadeira) → ⚠ ×2.1 pelas costas; `mergulhos` (Sacristão) → ⚠ ×2.2 no exausto (e contador de mergulhos no HUD) | questionário 06/08 |
-| F3-RF-19 | ⚠ Números de partida: `hp:900, raio:1.0, pazadaDano:34 (14 com Avental), irromperDano:36, irromperRaio:2.2, persegueVel:3.4, persegueT:2.6, atordoadoT:2.2, exaustoT:2.4, tremorPasso:7` — corpo 2× o jogador (~4,6 tiles), pernas desenhadas que andam | processo /fase-nova, etapas 4–5 |
+| F3-RF-19 | Números oficiais (questionário 06/08): `hp:850, pazadaDano:34 (14 com Avental), irromperDano:36`. ⚠ ainda de partida: `raio:1.0, irromperRaio:2.2, persegueVel:3.4, persegueT:2.6, atordoadoT:2.2, exaustoT:2.4, tremorPasso:7` — corpo 2× o jogador (~4,6 tiles), pernas desenhadas que andam | questionário 06/08 — HP 850, pazada 34→14, irromper 36 (uma edição anterior do arquivo trazia 900; prevaleceu a resposta explícita do questionário) |
 | F3-RF-20 | Fala de abertura com legenda antes da luta, voz gravada real — texto a fechar em F3-FALAS.md | herdado (RF-27/28) |
 
 **Falas-segredo, nas palavras do usuário (base para F3-FALAS.md):**
