@@ -276,6 +276,20 @@ const PAREDE = 0, CHAO = 1, GRADE = 2, CHAO2 = 3,   // CHAO2: piso alternativo (
 let LARG = 1, ALT = 1;
 
 const el = id => document.getElementById(id);
+/* escreve estilo/texto só quando muda: tocar no DOM todo quadro força o
+   navegador a recalcular estilo mesmo com o mesmo valor */
+const uiUltimo = {};
+function uiEstilo(id, prop, valor){
+  const chave = id + '.' + prop;
+  if(uiUltimo[chave] === valor) return;
+  uiUltimo[chave] = valor;
+  el(id).style[prop] = valor;
+}
+function uiTexto(id, valor){
+  if(uiUltimo['#' + id] === valor) return;
+  uiUltimo['#' + id] = valor;
+  el(id).textContent = valor;
+}
 const irand = n => Math.floor(Math.random()*n);
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 const idx = (x,y) => y*LARG + x;
@@ -1027,14 +1041,28 @@ function animarCastelo(de, para, aoFim){
 let ambientes = [];
 function criarAmbientes(lista){
   pararAmbientes();
-  ambientes = (lista || []).map(a => ({...a, audio:null, vol:0}));
+  ambientes = (lista || []).map(a => ({...a, audio:null, vol:0, volAplicado:0}));
+  /* pré-carrega os clipes já na entrada do piso: criar o Audio no meio do jogo
+     baixa e decodifica o mp3 na primeira aproximação — e isso engasga o quadro */
+  ambientes.forEach(a => {
+    try{
+      a.audio = new Audio(a.url);
+      a.audio.loop = true; a.audio.preload = 'auto'; a.audio.volume = 0;
+    }catch(e){}
+  });
 }
 function pararAmbientes(){
   ambientes.forEach(a => { if(a.audio){ try{ a.audio.pause(); }catch(e){} } });
   ambientes = [];
 }
-function atualizarAmbientes(){
+let ambRelogio = 0;
+function atualizarAmbientes(dt){
   if(!ambientes.length || !jog) return;
+  /* mexer em HTMLAudio 60 vezes por segundo custa caro: ajusta ~8x/s, que o
+     ouvido não distingue, e só escreve volume quando ele mudou de verdade */
+  ambRelogio += dt;
+  if(ambRelogio < .12) return;
+  const passo = ambRelogio; ambRelogio = 0;
   ambientes.forEach(a => {
     // o foco mais perto entre os pontos declarados manda no volume
     let d = Infinity;
@@ -1042,16 +1070,18 @@ function atualizarAmbientes(){
     const perto = a.raio, longe = a.raio + (a.desvanece || 5);
     const f = d >= longe ? 0 : d <= perto ? 1 : 1 - (d - perto)/(longe - perto);
     const alvo = f*f*(a.ganho || .35)*(dialogo ? .25 : 1);   // cala junto com a música na fala
-    a.vol += (alvo - a.vol)*.12;
-    if(a.vol < .01){
+    a.vol += (alvo - a.vol)*Math.min(1, passo*6);
+    if(a.vol < .006){
       if(a.audio && !a.audio.paused){ try{ a.audio.pause(); }catch(e){} }
       return;
     }
     if(!a.audio){
       try{ a.audio = new Audio(a.url); a.audio.loop = true; }catch(e){ return; }
     }
-    a.audio.volume = Math.min(1, a.vol);
-    if(a.audio.paused){ try{ a.audio.play().catch(() => {}); }catch(e){} }
+    const v = Math.min(1, a.vol);
+    if(Math.abs(v - a.volAplicado) > .004){ a.audio.volume = v; a.volAplicado = v; }
+    // histerese: só religa com folga acima do ponto de pausa, para não tremelicar
+    if(a.audio.paused && a.vol > .012){ try{ a.audio.play().catch(() => {}); }catch(e){} }
   });
 }
 
@@ -1873,17 +1903,17 @@ function atualizar(dt){
   }
 
   if(piso.atualizar) piso.atualizar(dt);
-  atualizarAmbientes();
+  atualizarAmbientes(dt);
   informantes.forEach(p => p.fase += dt);
   definirInteracao();
 
   camX += (jog.x - camX)*Math.min(1, dt*7);
   camY += (jog.y - camY)*Math.min(1, dt*7);
 
-  el('cargaDash').style.transform = 'scaleY(' + jog.dashCd + ')';
+  uiEstilo('cargaDash', 'transform', 'scaleY(' + jog.dashCd.toFixed(2) + ')');
   el('btnDash').classList.toggle('off', jog.dashCd > 0 || jog.dashOff);
   el('btnPocao').classList.toggle('off', jog.pocoes <= 0);
-  el('vidaFill').style.transform = 'scaleX(' + Math.max(0, jog.hp/jog.hpMax) + ')';
+  uiEstilo('vidaFill', 'transform', 'scaleX(' + Math.max(0, jog.hp/jog.hpMax).toFixed(3) + ')');
 }
 function definirInteracao(){
   interacao = null;
@@ -1899,8 +1929,8 @@ function definirInteracao(){
   const b = el('btnAcao');
   if(interacao){
     b.classList.add('on');
-    el('acaoRotulo').textContent = interacao.rotulo;
-    el('acaoIcone').textContent = interacao.icone;
+    uiTexto('acaoRotulo', interacao.rotulo);
+    uiTexto('acaoIcone', interacao.icone);
   } else b.classList.remove('on');
 }
 
@@ -1915,6 +1945,12 @@ function redimensionar(){
 }
 window.addEventListener('resize', redimensionar);
 
+let vinheta = null, vinhetaW = 0, vinhetaH = 0;
+/* fora do enquadramento? (coordenadas de tela, com margem em px) —
+   evita pagar gradientes e sprites de tudo que a câmera nem vê */
+function foraDaVista(px, py, m){
+  return px < -m || px > W + m || py < -m || py > H + m;
+}
 function desenhar(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle = '#0c0912'; ctx.fillRect(0,0,W,H);
@@ -1923,7 +1959,13 @@ function desenhar(){
   let ox = W/2 - camX*tam, oy = H/2 - camY*tam;
   if(tremor > 0){ ox += (Math.random()-.5)*tremor; oy += (Math.random()-.5)*tremor; }
 
-  ctx.drawImage(cacheMapa, ox, oy, LARG*tam, ALT*tam);
+  /* só a fatia visível do cache: escalar o mapa inteiro por quadro pesa nos mapas grandes */
+  const Tc = cacheMapa.width/LARG;
+  const u0 = Math.max(0, -ox/tam), v0 = Math.max(0, -oy/tam);
+  const u1 = Math.min(LARG, (W - ox)/tam), v1 = Math.min(ALT, (H - oy)/tam);
+  if(u1 > u0 && v1 > v0)
+    ctx.drawImage(cacheMapa, u0*Tc, v0*Tc, (u1-u0)*Tc, (v1-v0)*Tc,
+                  ox + u0*tam, oy + v0*tam, (u1-u0)*tam, (v1-v0)*tam);
 
   if(piso.desenharCenario) piso.desenharCenario(ox, oy);
   destrocos.forEach(d => {
@@ -1951,13 +1993,17 @@ function desenhar(){
   lcx.globalCompositeOperation = 'lighter';
   const k = dpr/2;
   braseiros.forEach(b => {
+    const bx = ox + b.x*tam, by = oy + b.y*tam;
+    if(foraDaVista(bx, by, tam*4)) return;
     const tr = .88 + Math.sin(tempo*7 + b.fase)*.07 + Math.sin(tempo*16 + b.fase)*.04;
-    luzRadial((ox + b.x*tam)*k, (oy + b.y*tam)*k, tam*3.6*tr*k, 'rgba(226,146,58,.85)');
+    luzRadial(bx*k, by*k, tam*3.6*tr*k, 'rgba(226,146,58,.85)');
   });
   informantes.forEach(p => {   // facho dourado sobre quem ainda tem segredo para contar
     if(p.feito || (piso.falarLiberado && !piso.falarLiberado())) return;
+    const px = ox + p.x*tam, py = oy + p.y*tam;
+    if(foraDaVista(px, py, tam*3.4)) return;
     const tr = .75 + Math.sin(tempo*3 + p.fase)*.25;
-    luzRadial((ox + p.x*tam)*k, (oy + p.y*tam)*k, tam*3.0*tr*k, 'rgba(240,190,90,.6)');
+    luzRadial(px*k, py*k, tam*3.0*tr*k, 'rgba(240,190,90,.6)');
   });
   luzRadial((ox + jog.x*tam)*k, (oy + jog.y*tam)*k, tam*2.4*k, 'rgba(255,214,160,.45)');
   lcx.globalCompositeOperation = 'source-over';
@@ -1968,6 +2014,7 @@ function desenhar(){
   ctx.globalCompositeOperation = 'lighter';
   braseiros.forEach(b => {
     const px = ox + b.x*tam, py = oy + b.y*tam;
+    if(foraDaVista(px, py, tam*1.3)) return;
     const f = .8 + Math.sin(tempo*9 + b.fase)*.2;
     const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.85*f));
     g.addColorStop(0, 'rgba(255,224,160,.7)');
@@ -1988,9 +2035,12 @@ function desenhar(){
   });
   ctx.globalAlpha = 1;
 
-  const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.5, W/2, H/2, Math.max(W,H)*.85);
-  vg.addColorStop(0, 'rgba(6,4,10,0)'); vg.addColorStop(1, 'rgba(6,4,10,.6)');
-  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+  if(!vinheta || vinhetaW !== W || vinhetaH !== H){   // o gradiente só muda com a janela
+    vinheta = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.5, W/2, H/2, Math.max(W,H)*.85);
+    vinheta.addColorStop(0, 'rgba(6,4,10,0)'); vinheta.addColorStop(1, 'rgba(6,4,10,.6)');
+    vinhetaW = W; vinhetaH = H;
+  }
+  ctx.fillStyle = vinheta; ctx.fillRect(0,0,W,H);
 
   if(joyAtivo){
     ctx.strokeStyle = 'rgba(232,161,60,.3)'; ctx.lineWidth = 2;
@@ -2014,6 +2064,7 @@ function imgRetrato(url){
 }
 function desenharInformante(p, ox, oy){
   const px = ox + p.x*tam, py = oy + p.y*tam, r = tam*.26;
+  if(foraDaVista(px, py, tam*3.5)) return;
   const resp = Math.sin(p.fase*1.6)*tam*.03;
   /* loop de GIF: o tempo anda em quadros discretos (8 por segundo), repetindo o ciclo */
   const q = Math.floor(p.fase*8)/8;
@@ -2149,7 +2200,7 @@ function desenharJogador(ox, oy){
 
 /* ---------- HUD, véu e fluxo ---------- */
 function atualizarHUD(){
-  el('vidaFill').style.transform = 'scaleX(' + Math.max(0, jog.hp/jog.hpMax) + ')';
+  uiEstilo('vidaFill', 'transform', 'scaleX(' + Math.max(0, jog.hp/jog.hpMax).toFixed(3) + ')');
   el('sPocoes').textContent = jog.pocoes;
   informantes.forEach((p,i) => {
     const d = el('seg-' + i);
@@ -2766,6 +2817,7 @@ function atualizarRatazanas(dt, paradas){
 function desenharRatazanas(ox, oy){
   ratazanas.forEach(rz => {
     if(rz.hp <= 0) return;
+    if(foraDaVista(ox + rz.x*tam, oy + rz.y*tam, tam*1.5)) return;
     if(rz.barata){ desenharBarata(rz, ox, oy); return; }
     const px = ox + rz.x*tam, py = oy + rz.y*tam, r = tam*.20;
     ctx.fillStyle = 'rgba(0,0,0,.3)';
@@ -3276,7 +3328,7 @@ const PISO_CALABOUCO = {
     const bg = el('btnGolpe');
     bg.classList.toggle('on', etapa !== 'preso');
     bg.classList.toggle('off', jog.recarga > 0);
-    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    uiEstilo('cargaGolpe', 'transform', 'scaleY(' + Math.min(1, jog.recarga/.36).toFixed(2) + ')');
     if(!vistoCata && jog.y > 34.5){
       vistoCata = true;
       avisar('As catacumbas', 'a Ladra se esconde no fundo — siga a luz dourada');
@@ -3482,6 +3534,7 @@ function alturaLabareda(e){
 function desenharLabaredas(ox, oy){
   labaredas.forEach(e => {
     const px = ox + e.x*tam, py = oy + e.y*tam;
+    if(foraDaVista(px, py, tam*1.6)) return;
     // a boca de ferro no chão, sempre visível
     ctx.fillStyle = 'rgba(0,0,0,.5)';
     ctx.beginPath(); ctx.ellipse(px, py, tam*.34, tam*.2, 0, 0, TAU); ctx.fill();
@@ -3596,6 +3649,7 @@ function pintarPortaArte(g, x, y, w, h, comArgola){
 function desenharPortasInternas(ox, oy){
   portasInternas.forEach(p => {
     if(p.ab > .98) return;                       // escancarada: some da vista
+    if(foraDaVista(ox + (p.x + .5)*tam, oy + (p.y + .5)*tam, tam*2.6)) return;
     if(!p.vert){
       /* porta de FRENTE, na arte da referência: UMA folha só ocupando o vão,
          com a dobradiça na ombreira esquerda — abre girando para dentro
@@ -3705,6 +3759,7 @@ function desenharAjudantes(ox, oy){
     const im = imgsAjudantes[a.img];
     if(!(im.complete && im.naturalWidth > 0)) return;
     const px = ox + a.x*tam, py = oy + a.y*tam;
+    if(foraDaVista(px, py, tam*1.6)) return;
     const alt = tam*1.15;                                // bem menor que o Cozinheiro
     const lar = im.naturalWidth*(alt/im.naturalHeight);
     /* o mesmo loop de GIF dos informantes: balança, respira e quica */
@@ -3726,6 +3781,7 @@ function desenharAjudantes(ox, oy){
 /* --- a água da cisterna respira: brilho frio pulsando e ondulações sobre o cache --- */
 function desenharCisterna(ox, oy){
   const cx = ox + 23*tam, cy = oy + 46*tam;
+  if(foraDaVista(cx, cy, tam*2.8)) return;
   // o brilho azulado que sobe da água — se vê de longe, como as piscinas da inspiração
   const pulso = .6 + Math.sin(tempo*1.6)*.4;
   const gL = ctx.createRadialGradient(cx, cy, 0, cx, cy, tam*2.4);
@@ -3796,6 +3852,7 @@ function desenharPaes(ox, oy){
   paes.forEach(pa => {
     if(pa.pego) return;
     const px = ox + pa.x*tam, py = oy + pa.y*tam;
+    if(foraDaVista(px, py, tam*.9)) return;
     const fl = Math.sin(tempo*2.4 + pa.x*3)*tam*.05;
     const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.5));
     g.addColorStop(0, 'rgba(143,196,138,.30)'); g.addColorStop(1, 'rgba(143,196,138,0)');
@@ -3819,6 +3876,7 @@ function desenharCaldos(ox, oy){
   caldos.forEach(cd => {
     if(cd.pego) return;
     const px = ox + cd.x*tam, py = oy + cd.y*tam;
+    if(foraDaVista(px, py, tam)) return;
     const pulso = .5 + Math.sin(tempo*3.1 + cd.x)*.5;
     const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
     g.addColorStop(0, 'rgba(143,196,138,' + (.30 + pulso*.18) + ')');
@@ -3863,6 +3921,7 @@ function desenharPorta2(ox, oy){
   const P = COZ.PORTA;
   const x0 = ox + P.x*tam - tam*.3, y0 = oy + P.y*tam - tam*.15;
   const w = tam*1.6, h = tam*P.alt + tam*.3;
+  if(foraDaVista(x0 + w/2, y0 + h/2, tam*3)) return;
   const pronta = imgPorta.complete && imgPorta.naturalWidth > 0;
   if(!porta2.aberta){
     if(pronta) ctx.drawImage(imgPorta, x0, y0, w, h);
@@ -4956,6 +5015,7 @@ function pintarCozinhasCache(cmx, T){
 function desenharCarcacas(ox, oy){
   [[33.9,4.15],[38.9,4.15]].forEach(([cx,cy],i) => {
     const px = ox + cx*tam, py = oy + cy*tam;
+    if(foraDaVista(px, py + tam, tam*2.2)) return;
     const bal = Math.sin(tempo*.9 + i*2.1)*.05;
     ctx.save();
     ctx.translate(px, py);
@@ -4986,6 +5046,7 @@ function desenharRosacea(ox, oy){
   /* a água da GRANDE cisterna do salão: brilho frio pulsando e ondulações */
   const R = COZ.ROSACEA;
   const px = ox + R.x*tam, py = oy + (R.y - .05)*tam;
+  if(foraDaVista(px, py, tam*3.8)) return;
   const pulso = .6 + Math.sin(tempo*1.3)*.4;
   const gL = ctx.createRadialGradient(px, py, 0, px, py, tam*3.6);
   gL.addColorStop(0, 'rgba(90,210,230,' + (.14 + pulso*.08) + ')');
@@ -5246,7 +5307,7 @@ const PISO_COZINHAS = {
     const bg = el('btnGolpe');
     bg.classList.add('on');
     bg.classList.toggle('off', jog.recarga > 0);
-    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    uiEstilo('cargaGolpe', 'transform', 'scaleY(' + Math.min(1, jog.recarga/.36).toFixed(2) + ')');
     if(jog.y < 18.5 && jog.x < 29) marcarTarefa('t-fogo');
     if(jog.y > 44.2 && jog.x < 34) marcarTarefa('t-adega');
     if(!vistoAdega && jog.y > 44.2 && jog.x < 34){
