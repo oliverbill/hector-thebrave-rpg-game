@@ -1,7 +1,7 @@
 # PRD — Fase 3: As Salas de Funeral
 
 **Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
-**Fase:** 3 de 6 — salas de funeral, cripta e colombário, e O Coveiro
+**Fase:** 3 de 6 — salas de funeral, capela, cripta e colombário, e O Coveiro
 **Status:** rascunho aprovado em questionário — aguardando "ok" para construção
 **Escrito em:** 06/08/2026
 
@@ -50,7 +50,7 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 
 | # | Requisito | Origem |
 |---|---|---|
-| F3-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase3-funeral rooms.png`), **sempre com paredes visiveis**: capela com mosaico circular, salas de serviço, cripta alagada com caixões boiando, colombário, oficina | fixado — imagem de inspiração |
+| F3-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase3-funeral rooms.png`), **sempre com paredes visiveis**: capela com mosaico circular, salas de serviço, cripta alagada com caixões boiando, colombário, oficina do carpinteiro | fixado — imagem de inspiração |
 | F3-RF-02 | Regiões **sempre com detalhes em alto relevo**: **escada de chegada** (das cozinhas), **capela de velório** (mosaico circular no chão, esquifes), **sala de preparação dos corpos**, **oficina de caixões + depósito**, **cripta alagada**, **colombário em labirinto**, **quarto do Coveiro**, **cova grande** (arena) | questionário 06/08 — regiões marcadas |
 | F3-RF-03 | Obstáculo cíclico duplo: **mãos dos mortos** (25 HP, ataque de 5) irrompem do chão em ritmo fixo (janela de dano aprendível) **e velas que apagam** — trechos escurecem em ciclo e, no escuro, os vultos(45 HP, ataque de 9) atacam | questionário 06/08 — *"1 e 3"* |
 | F3-RF-04 | Labirinto (`gerarLabirinto`, semente própria) no **colombário**; travessia falsa: a **escada desmoronada** que parece levar à arena mas termina no buraco | questionário 06/08 — recomendado aceito |
