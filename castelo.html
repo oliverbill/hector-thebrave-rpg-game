@@ -4633,6 +4633,115 @@ function pintarCozinhasCache(cmx, T){
     cmx.closePath(); cmx.fill();
   }
 
+  /* ---- a adega vira cave de vinhos (referências adega.jpg / adega2.jpg):
+     tijolo quente, nichos de garrafas deitadas, prateleiras, lanternas,
+     a pirâmide de barris e o tonel de cobre ---- */
+  const facesAdega = [];
+  for(let y=43; y<=52; y++) for(let x=4; x<=33; x++){
+    if(!ehParede(x,y)) continue;
+    const viz = ehChao2(x,y+1) || ehChao2(x,y-1) || ehChao2(x+1,y) || ehChao2(x-1,y)
+      || ehChao2(x+1,y+1) || ehChao2(x-1,y+1) || ehChao2(x+1,y-1) || ehChao2(x-1,y-1);
+    if(!viz) continue;
+    // a tonalidade quente de tijolo da cave, por cima da pedra
+    cmx.fillStyle = 'rgba(158,82,38,.20)';
+    cmx.fillRect(x*T, y*T, T, T);
+    if(ehChao2(x, y+1) && y >= 44) facesAdega.push([x, y]);
+  }
+  facesAdega.forEach(([x, y], i) => {
+    const px2 = x*T, py2 = y*T;
+    if(i % 3 === 0){
+      /* nicho de garrafas deitadas: moldura de madeira com 4 casas */
+      cmx.fillStyle = '#63431f'; cmx.fillRect(px2 + T*.08, py2 + T*.1, T*.84, T*.64);
+      cmx.fillStyle = '#2e1d0c'; cmx.fillRect(px2 + T*.14, py2 + T*.16, T*.72, T*.52);
+      cmx.strokeStyle = '#7a5430'; cmx.lineWidth = Math.max(1.5, T*.05);
+      cmx.beginPath();
+      cmx.moveTo(px2 + T*.5, py2 + T*.12); cmx.lineTo(px2 + T*.5, py2 + T*.72);
+      cmx.moveTo(px2 + T*.1, py2 + T*.42); cmx.lineTo(px2 + T*.9, py2 + T*.42);
+      cmx.stroke();
+      [[.31,.29],[.69,.29],[.31,.57],[.69,.57]].forEach(([fx,fy]) => {
+        const bx = px2 + T*fx, by = py2 + T*fy;
+        cmx.fillStyle = '#16301c';
+        cmx.beginPath(); cmx.arc(bx, by, T*.105, 0, TAU); cmx.fill();
+        cmx.fillStyle = '#2f5c38';
+        cmx.beginPath(); cmx.arc(bx, by, T*.065, 0, TAU); cmx.fill();
+        cmx.fillStyle = '#c9a86a';
+        cmx.beginPath(); cmx.arc(bx, by, T*.028, 0, TAU); cmx.fill();
+      });
+    } else if(i % 3 === 1){
+      /* prateleira de garrafas em pé, com o brilho âmbar da referência */
+      cmx.fillStyle = '#63431f'; cmx.fillRect(px2 + T*.06, py2 + T*.58, T*.88, T*.09);
+      cmx.fillStyle = 'rgba(255,235,190,.18)'; cmx.fillRect(px2 + T*.06, py2 + T*.58, T*.88, 1.6);
+      for(let k=0; k<4; k++){
+        const bx = px2 + T*(.17 + k*.22), alto = T*(.3 + rndDe(x+k, y)*.1);
+        cmx.fillStyle = ['#274a28','#5c1f22','#8a6a2e','#274a28'][k%4];
+        cmx.fillRect(bx - T*.05, py2 + T*.58 - alto, T*.1, alto);
+        cmx.fillRect(bx - T*.02, py2 + T*.58 - alto - T*.09, T*.04, T*.09);
+        cmx.fillStyle = 'rgba(255,240,210,.35)';
+        cmx.fillRect(bx - T*.035, py2 + T*.58 - alto + T*.03, T*.022, alto*.6);
+      }
+    } else {
+      /* lanterna de parede acesa */
+      const cx2 = px2 + T*.5, ty2 = py2 + T*.2;
+      const gL2 = cmx.createRadialGradient(cx2, ty2 + T*.2, 0, cx2, ty2 + T*.2, T*.75);
+      gL2.addColorStop(0, 'rgba(255,190,90,.4)'); gL2.addColorStop(1, 'rgba(255,190,90,0)');
+      cmx.fillStyle = gL2; cmx.fillRect(px2 - T*.3, py2 - T*.1, T*1.6, T*1.2);
+      cmx.strokeStyle = '#2c241c'; cmx.lineWidth = Math.max(1.5, T*.05);
+      cmx.strokeRect(cx2 - T*.09, ty2, T*.18, T*.3);
+      cmx.beginPath(); cmx.moveTo(cx2 - T*.13, ty2); cmx.lineTo(cx2 + T*.13, ty2); cmx.stroke();
+      cmx.fillStyle = '#ffd27a';
+      cmx.beginPath(); cmx.ellipse(cx2, ty2 + T*.16, T*.05, T*.09, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,255,230,.85)';
+      cmx.beginPath(); cmx.ellipse(cx2, ty2 + T*.14, T*.022, T*.045, 0, 0, TAU); cmx.fill();
+    }
+  });
+  /* a pirâmide de barris vistos de frente, na primeira cela da adega */
+  const pBarrilFrente = (cx2, cy2, r2) => {
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(cx2 + r2*.15, cy2 + r2*1.02, r2*1.05, r2*.3, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#4a3016';
+    cmx.beginPath(); cmx.arc(cx2, cy2, r2, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#7a5230';
+    cmx.beginPath(); cmx.arc(cx2, cy2, r2*.82, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(30,16,6,.6)'; cmx.lineWidth = Math.max(1.2, r2*.1);
+    cmx.beginPath(); cmx.arc(cx2, cy2, r2*.55, 0, TAU); cmx.stroke();
+    cmx.fillStyle = '#3a2410';
+    cmx.beginPath(); cmx.arc(cx2, cy2, r2*.22, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,225,170,.25)';
+    cmx.beginPath(); cmx.arc(cx2 - r2*.35, cy2 - r2*.35, r2*.2, 0, TAU); cmx.fill();
+  };
+  pBarrilFrente(4.6*T, 46.35*T, T*.34); pBarrilFrente(5.35*T, 46.35*T, T*.34);
+  pBarrilFrente(4.97*T, 45.72*T, T*.34);
+  /* o tonel de cobre, junto ao alçapão da despensa */
+  (() => {
+    const cx2 = 31.7*T, cy2 = 45.6*T, l2 = T*.62, a2 = T*.85;
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(cx2, cy2 + a2*.52, l2*.62, T*.12, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#a86a2e';
+    cmx.beginPath();
+    cmx.moveTo(cx2 - l2/2, cy2 - a2*.4);
+    cmx.quadraticCurveTo(cx2 - l2*.68, cy2, cx2 - l2/2, cy2 + a2*.44);
+    cmx.lineTo(cx2 + l2/2, cy2 + a2*.44);
+    cmx.quadraticCurveTo(cx2 + l2*.68, cy2, cx2 + l2/2, cy2 - a2*.4);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = '#7a4a1e';
+    [-.28, .02, .3].forEach(f => cmx.fillRect(cx2 - l2*.62, cy2 + a2*f, l2*1.24, T*.05));
+    cmx.fillStyle = '#c98a3e';
+    cmx.beginPath(); cmx.ellipse(cx2, cy2 - a2*.42, l2*.5, T*.09, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,235,200,.3)';
+    cmx.fillRect(cx2 - l2*.34, cy2 - a2*.3, l2*.12, a2*.6);
+  })();
+  /* velas acesas na câmara da Faxineira */
+  [[16.6,51.35],[17.1,51.25],[18.3,51.4]].forEach(([vx,vy]) => {
+    const cx2 = vx*T, cy2 = vy*T;
+    const gV2 = cmx.createRadialGradient(cx2, cy2 - T*.2, 0, cx2, cy2 - T*.2, T*.5);
+    gV2.addColorStop(0, 'rgba(255,200,110,.35)'); gV2.addColorStop(1, 'rgba(255,200,110,0)');
+    cmx.fillStyle = gV2; cmx.fillRect(cx2 - T*.5, cy2 - T*.7, T, T);
+    cmx.fillStyle = '#e8e2d2';
+    cmx.fillRect(cx2 - T*.035, cy2 - T*.18, T*.07, T*.18);
+    cmx.fillStyle = '#ffd27a';
+    cmx.beginPath(); cmx.ellipse(cx2, cy2 - T*.22, T*.03, T*.06, 0, 0, TAU); cmx.fill();
+  });
+
   /* remendo de chão por baixo do tanque: nenhum canto de "muro" aparece */
   for(let y=33; y<=40; y++) for(let x=20; x<=27; x++){
     if(!naBacia(x,y)) continue;
