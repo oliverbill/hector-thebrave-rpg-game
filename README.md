@@ -94,4 +94,11 @@ Para testar um piso direto: **`castelo.html?piso=2`** — herda as recompensas d
 
 ## Testes
 
-O jogo foi validado com bots simulados em Node.js (canvas stub): rompimento da corrente, trava do portão em 0/3 e 2/3, comportamento do chefe fiel aos segredos (2 batidas → investida; 3 golpes → exaustão), e balanço da luta em quatro perfis de jogador (hábil/desatento × informado/desinformado).
+```bash
+node testes/geometria.js          # flood-fill de todos os pisos (sai 1 se quebrar)
+node testes/geometria.js --mapa   # imprime também o mapa em ASCII
+```
+
+Valida que todo NPC é alcançável (contando quem fica atrás de grade, que se fala através dela), que as regiões se conectam e que a arena do chefe só abre depois do gatilho.
+
+Antes disso, o jogo tinha sido validado com bots simulados em Node.js (canvas stub): rompimento da corrente, trava do portão em 0/3 e 2/3, comportamento do chefe fiel aos segredos (2 batidas → investida; 3 golpes → exaustão), e balanço da luta em quatro perfis de jogador (hábil/desatento × informado/desinformado).

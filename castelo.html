@@ -904,8 +904,11 @@ function sTarefa(){
 
 let audioFala = null;
 /* a música abaixa enquanto um preso fala, para a voz ficar na frente */
+/* enquanto a legenda estiver aberta a música fica baixa, mesmo que o clipe
+   já tenha acabado — quem manda voltar o volume é fechar a fala, não o áudio */
 function abaixarBgm(falando){
-  if(bgmAudio){ try{ fundirBgm(falando ? BGM_VOL_FALA : bgmVolAtual); }catch(e){} }
+  const baixa = falando || !!dialogo;
+  if(bgmAudio){ try{ fundirBgm(baixa ? BGM_VOL_FALA : bgmVolAtual); }catch(e){} }
 }
 /* Só gravações reais: nada de voz sintetizada (pilar da fase 1, RF-29).
    Sem clipe, a legenda fala sozinha — e pular com espaço não narra nada. */
@@ -928,6 +931,127 @@ function falarVoz(texto, voz, url){
 function calarVoz(){
   if(audioFala){ try{ audioFala.pause(); audioFala.currentTime = 0; }catch(e){} audioFala = null; }
   abaixarBgm(false);
+}
+
+/* ---------- animação do castelo entre pisos ----------
+   Corte do castelo inteiro, um andar por fase: a luz acende no piso vencido,
+   sobe pela escada e para no piso seguinte, que passa a brilhar. */
+const NOMES_PISOS = ['O Calabouço','As Cozinhas','Salas de Funeral','Lab do Alquimista','Dormitórios','A Torre'];
+function animarCastelo(de, para, aoFim){
+  const cv = document.createElement('canvas');
+  cv.style.cssText = 'position:fixed; inset:0; width:100%; height:100%; z-index:60; background:#07050c;';
+  document.body.appendChild(cv);
+  const c = cv.getContext('2d');
+  const t0 = performance.now(), DUR = 3400, N = NOMES_PISOS.length;
+
+  const quadro = (t) => {
+    const p = Math.min(1, (t - t0)/DUR);
+    cv.width = Math.floor(window.innerWidth*dpr);
+    cv.height = Math.floor(window.innerHeight*dpr);
+    c.setTransform(dpr,0,0,dpr,0,0);
+    const W = window.innerWidth, H = window.innerHeight;
+    c.fillStyle = '#07050c'; c.fillRect(0,0,W,H);
+
+    // o castelo ocupa a altura útil, com o piso 1 embaixo
+    const alt = Math.min(H*.74, 540), larg = Math.min(W*.5, alt*.6);
+    const x0 = (W - larg)/2 - 40, base = H*.5 + alt/2;
+    const hA = alt/N, andarY = i => base - (i + 1)*hA;
+
+    const alpha = p < .12 ? p/.12 : p > .9 ? (1 - p)/.1 : 1;
+    c.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    // a luz sobe do piso vencido para o seguinte (suavizada)
+    const s = Math.max(0, Math.min(1, (p - .2)/.5));
+    const sub = s*s*(3 - 2*s);
+    const luzY = (andarY(de) + hA/2) + ((andarY(para) + hA/2) - (andarY(de) + hA/2))*sub;
+
+    for(let i = 0; i < N; i++){
+      const y = andarY(i);
+      const acesa = i === de ? 1 - sub*.65 : i === para ? sub : 0;
+      c.fillStyle = '#221a2a'; c.fillRect(x0, y, larg, hA - 2);
+      c.fillStyle = 'rgba(255,190,110,' + (.05 + acesa*.3) + ')';
+      c.fillRect(x0 + 3, y + 3, larg - 6, hA - 8);
+      c.strokeStyle = 'rgba(150,130,170,' + (.25 + acesa*.5) + ')';
+      c.lineWidth = 2; c.strokeRect(x0, y, larg, hA - 2);
+      c.strokeStyle = 'rgba(10,7,14,.5)'; c.lineWidth = 1;
+      for(let k = 1; k < 3; k++){
+        c.beginPath(); c.moveTo(x0, y + k*hA/3); c.lineTo(x0 + larg, y + k*hA/3); c.stroke();
+      }
+      for(let k = 0; k < 3; k++){
+        const jx = x0 + larg*(.18 + k*.3), jy = y + hA*.3;
+        c.fillStyle = acesa > .05 ? 'rgba(255,196,96,' + (.35 + acesa*.65) + ')' : 'rgba(40,32,52,.9)';
+        c.fillRect(jx, jy, larg*.09, hA*.34);
+      }
+      c.font = '600 ' + Math.round(Math.min(14, hA*.32)) + 'px ui-monospace, Menlo, monospace';
+      c.textAlign = 'left';
+      c.fillStyle = 'rgba(240,230,255,' + (.22 + acesa*.7) + ')';
+      c.fillText((i+1) + '. ' + NOMES_PISOS[i], x0 + larg + 14, y + hA*.62);
+      if(i < N - 1){
+        c.strokeStyle = 'rgba(150,130,170,.3)'; c.lineWidth = 1.5;
+        for(let d2 = 0; d2 < 4; d2++){
+          const dy = y + hA*(.12 + d2*.12);
+          c.beginPath(); c.moveTo(x0 + larg*.45, dy); c.lineTo(x0 + larg*.55, dy); c.stroke();
+        }
+      }
+    }
+
+    c.fillStyle = '#2c2136';
+    c.beginPath();
+    c.moveTo(x0 - larg*.06, base - alt);
+    c.lineTo(x0 + larg/2, base - alt - larg*.22);
+    c.lineTo(x0 + larg*1.06, base - alt);
+    c.closePath(); c.fill();
+    c.fillStyle = '#181222'; c.fillRect(x0 - larg*.1, base, larg*1.2, 8);
+
+    const g = c.createRadialGradient(x0 + larg*.5, luzY, 0, x0 + larg*.5, luzY, larg*.45);
+    g.addColorStop(0, 'rgba(255,200,110,.85)'); g.addColorStop(1, 'rgba(255,150,60,0)');
+    c.fillStyle = g;
+    c.beginPath(); c.arc(x0 + larg*.5, luzY, larg*.45, 0, TAU); c.fill();
+
+    c.textAlign = 'center';
+    c.font = '600 13px ui-monospace, Menlo, monospace';
+    c.fillStyle = 'rgba(232,161,60,' + (.5 + sub*.5) + ')';
+    c.fillText('SUBINDO AO PISO ' + (para + 1), W/2, base + 44);
+    c.globalAlpha = 1;
+
+    if(p < 1) requestAnimationFrame(quadro);
+    else { cv.remove(); aoFim(); }
+  };
+  requestAnimationFrame(quadro);
+}
+
+/* ---------- camadas de ambiente por proximidade ----------
+   O piso declara focos de som (`piso.ambientes`); cada um toca em loop e o
+   volume cai com a distância do jogador. Fora do alcance, o clipe pausa. */
+let ambientes = [];
+function criarAmbientes(lista){
+  pararAmbientes();
+  ambientes = (lista || []).map(a => ({...a, audio:null, vol:0}));
+}
+function pararAmbientes(){
+  ambientes.forEach(a => { if(a.audio){ try{ a.audio.pause(); }catch(e){} } });
+  ambientes = [];
+}
+function atualizarAmbientes(){
+  if(!ambientes.length || !jog) return;
+  ambientes.forEach(a => {
+    // o foco mais perto entre os pontos declarados manda no volume
+    let d = Infinity;
+    a.pontos.forEach(([px, py]) => { d = Math.min(d, Math.hypot(px - jog.x, py - jog.y)); });
+    const perto = a.raio, longe = a.raio + (a.desvanece || 5);
+    const f = d >= longe ? 0 : d <= perto ? 1 : 1 - (d - perto)/(longe - perto);
+    const alvo = f*f*(a.ganho || .35)*(dialogo ? .25 : 1);   // cala junto com a música na fala
+    a.vol += (alvo - a.vol)*.12;
+    if(a.vol < .01){
+      if(a.audio && !a.audio.paused){ try{ a.audio.pause(); }catch(e){} }
+      return;
+    }
+    if(!a.audio){
+      try{ a.audio = new Audio(a.url); a.audio.loop = true; }catch(e){ return; }
+    }
+    a.audio.volume = Math.min(1, a.vol);
+    if(a.audio.paused){ try{ a.audio.play().catch(() => {}); }catch(e){} }
+  });
 }
 
 /* ---------- mapa e cache do cenário ---------- */
@@ -1621,7 +1745,7 @@ function venceu(){
   el('chefeBarra').classList.remove('on');
   const premioNovo = piso.recompensa && adicionarAoInventario(piso.recompensa);
   if(piso.aoVencer) piso.aoVencer();
-  pararBgm();
+  pararBgm(); pararAmbientes();
   setTimeout(() => mostrarVeu(piso.textos.vitoria()), 1500);
   if(premioNovo) setTimeout(() => abrirPopupInventario(piso.recompensa, 'Guardar'), 1600);
 }
@@ -1629,7 +1753,7 @@ function morrer(){
   jog.hp = 0; vivo = false;
   for(let k=0;k<30;k++) faisca(jog.x, jog.y, '#c0455a', .16);
   sMorrer();
-  pararBgm();
+  pararBgm(); pararAmbientes();
   setTimeout(() => mostrarVeu(piso.textos.derrota()), 1100);
 }
 function usarTrapo(){
@@ -1746,6 +1870,7 @@ function atualizar(dt){
   }
 
   if(piso.atualizar) piso.atualizar(dt);
+  atualizarAmbientes();
   informantes.forEach(p => p.fase += dt);
   definirInteracao();
 
@@ -2137,6 +2262,7 @@ function iniciarPiso(p){
   etapa = 'inicio'; vivo = true; pausado = false;
   particulas = []; riscos = []; destrocos = [];
   chefe = null; dialogo = null; interacao = null;
+  el('dialogo').classList.remove('on'); calarVoz();   // nada do piso anterior fica na tela
   intel = {};
   jog = {x:p.spawn.x, y:p.spawn.y, vx:0, vy:0, raio:.30, hp:100, hpMax:100, dano:10,
          angulo:-Math.PI/2, golpe:0, recarga:0, dash:0, dashCd:0, invul:0, flash:0,
@@ -2150,6 +2276,7 @@ function iniciarPiso(p){
   redimensionar();
   atualizarHUD();
   el('veu').classList.add('oculto');
+  criarAmbientes(p.ambientes);
   if(p.aoIniciar) p.aoIniciar();
 }
 el('comecar').addEventListener('click', () => {
@@ -2158,10 +2285,21 @@ el('comecar').addEventListener('click', () => {
     tocarBgm(piso.bgm);
     return;
   }
-  if(etapa === 'fim' && pisoAtual + 1 < PISOS.length){   // transição de piso: a vitória sobe a escada
+  /* transição de piso: a vitória sobe a escada. A animação do castelo faz as
+     vezes da tela de início — quando ela acaba, o piso novo já começa jogando */
+  if(etapa === 'fim' && pisoAtual + 1 < PISOS.length){
+    const de = pisoAtual;
     pisoAtual++;
     etapa = 'menu';
-    mostrarVeu({...PISOS[pisoAtual].intro, placar:''});
+    el('veu').classList.add('oculto');
+    animarCastelo(de, pisoAtual, () => {
+      const p = PISOS[pisoAtual];
+      iniciarPiso(p);
+      tocarBgm(p.bgm);
+      const tit = p.intro.titulo.replace(/<em>/, ' · ').replace(/<[^>]+>/g, '');
+      const sub = p.intro.texto.replace(/<[^>]+>/g, '').split(/(?<=\.)\s/)[0];
+      avisar(tit, sub);
+    });
     return;
   }
   iniciarPiso(PISOS[pisoAtual]);
@@ -4882,6 +5020,23 @@ const PISO_COZINHAS = {
   },
   construir: construirCozinhas,
   pintarCache: pintarCozinhasCache,
+  /* camadas de ambiente: o volume sobe conforme o jogador chega perto (F2-RF-18) */
+  ambientes:[
+    { url:'audio/fase2/sons/fogo-crepitando-3.mp3', ganho:.34, raio:4.5, desvanece:6,
+      pontos:[[7.5,6.5],[15.5,6.5],[23.5,6.5],[37,8]] },            // fornos e o fogão da câmara
+    { url:'audio/fase2/sons/vapor.mp3', ganho:.2, raio:3.5, desvanece:5,
+      pontos:[[10.8,15.6],[26.8,15.8],[22.5,20.5],[6.5,21.5]] },    // panelas e corredores em chamas
+    { url:'audio/fase2/sons/estacao-conversa.mp3', ganho:.42, raio:5, desvanece:5,
+      pontos:[[6.5,13],[14.5,13],[22.5,13]] },                       // o falatório das estações
+    { url:'audio/fase2/sons/estacao-cozinha.mp3', ganho:.3, raio:4.5, desvanece:5,
+      pontos:[[6.5,13],[14.5,13],[22.5,13]] },                       // louça e panelas por cima
+    { url:'audio/fase2/sons/estacao-facas.mp3', ganho:.34, raio:4, desvanece:4,
+      pontos:[[6.5,13.4],[22.5,13.4]] },                             // facas e martelos de carne
+    { url:'audio/fase2/sons/panelas-batendo.mp3', ganho:.26, raio:3.5, desvanece:4,
+      pontos:[[14.5,13.4]] },                                        // a masseira batendo formas
+    { url:'audio/fase2/sons/fogo-crepitando-2.mp3', ganho:.22, raio:3.5, desvanece:5,
+      pontos:[[5.5,46.5],[17,51.5],[30.5,51.5]] }                    // as lanternas e velas da adega
+  ],
   spawn:{x:40, y:50},
   trapos:2,
   intro:{

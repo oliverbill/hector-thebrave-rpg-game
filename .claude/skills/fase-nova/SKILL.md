@@ -60,18 +60,14 @@ Ao fim: escrever `faseN.prd` inteiro a partir do `fase-template.prd`, com **toda
 
 Buscar em **pt.pinterest.com** com a chave `"medieval rpg 2d" + tema` (ex.: `medieval rpg 2d cozinha`, `medieval rpg 2d cripta`).
 
-**O caminho que funciona é o navegador headless** — o HTML cru vem sem imagens (carregadas por JS) e o endpoint `BaseSearchResource` devolve 403:
+**Raspar com Playwright** — o script `testes/pinterest.py` do repositório já faz tudo (o HTML cru vem sem imagens, carregadas por JS, e o endpoint `BaseSearchResource` devolve 403; por isso navegador de verdade):
 
 ```bash
-B="$HOME/.claude/skills/gstack/browse/dist/browse"
-"$B" goto "https://pt.pinterest.com/search/pins/?q=medieval%20rpg%202d%20TEMA"
-sleep 4
-"$B" js "window.scrollBy(0, 2000); 'rola para carregar mais'"
-sleep 3
-"$B" js "[...document.images].map(i=>i.src).filter(s=>/i\.pinimg\.com/.test(s)).map(s=>s.replace(/\/\d+x\d*\//,'/originals/')).filter((v,i,a)=>a.indexOf(v)===i).join('\n')"
+python3 testes/pinterest.py "cozinha" --dest img/faseN --n 8
+python3 testes/pinterest.py "coveiro" --dest img/faseN --n 6 --prefixo npc
 ```
 
-Baixar com `curl -A "<UA de navegador>"` para `img/faseN/`, nomes em kebab-case pelo que a imagem é (`fogao.jpg`, `barris.jpg`). Validar com `file` que é imagem de verdade.
+Ele monta a chave `"medieval rpg 2d" + tema`, rola o feed para carregar mais pins, prefere a versão `/originals/` (com a servida como reserva), baixa com **curl** (o `urllib` do macOS falha com `CERTIFICATE_VERIFY_FAILED`) e descarta miniatura por dimensão (< 400 px de lado). Se o Chromium do Playwright faltar: `python3 -m playwright install chromium`.
 
 Buscar **um termo por família de objeto** do §3.1 do PRD (mobília, utensílios, obstáculo, porta, janela, itens de cura) e trazer 3–5 opções de cada.
 
@@ -87,7 +83,7 @@ uvx --with onnxruntime "rembg[cli]" i entrada.jpg saida.png     # arte/foto
 
 ## 3. Imagens dos personagens → revisão
 
-Mesmo mecanismo, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinheira`, `medieval rpg 2d coveiro`).
+Mesmo script, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinheira`, `medieval rpg 2d coveiro`).
 
 - Um recorte por informante, **PNG sem fundo**, corpo inteiro, de pé.
 - Conferir o recorte olhando o PNG (`Read`) antes de instalar: rembg corta braços e pernas quando o fundo é claro ou o membro se confunde com o cenário — se sair pela metade, escolher **outra figura** em vez de insistir.
@@ -99,7 +95,7 @@ Mesmo mecanismo, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinh
 
 ## 4. Imagem do chefão → revisão
 
-Mesmo mecanismo, chave `"medieval rpg 2d" + chefe` (ex.: `medieval rpg 2d butcher boss`).
+Mesmo script, chave `"medieval rpg 2d" + chefe` (ex.: `medieval rpg 2d butcher boss`).
 
 Requisitos herdados, inegociáveis:
 
@@ -171,7 +167,16 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 
 - 3 estações/cômodos **sólidos** subdividindo a área principal — o jogador contorna e vê por cima do balcão, nunca entra.
 - ~5 coadjuvantes por estação, **menores que o informante** daquele tema, que andam entre a bancada e o fundo, param, trabalham e viram para onde caminham (loop de 8 quadros, como `desenharInformante`).
-- **Som ambiente por proximidade**: ao chegar perto de uma estação, tocar em loop uma camada de **grupo conversando + utensílios batendo** (na cozinha: facas e martelos de carne), com volume caindo pela distância e parando ao se afastar. Buscar os clipes com `/buscar-sfx-prd`.
+- **Som ambiente por proximidade**: declarar em `piso.ambientes` os focos de som — o motor toca em loop, sobe o volume conforme o jogador chega e pausa o clipe ao se afastar:
+
+```js
+ambientes:[
+  { url:'audio/faseN/sons/estacao-conversa.mp3', ganho:.42, raio:5, desvanece:5,
+    pontos:[[6.5,13],[14.5,13],[22.5,13]] }   // um ponto por estação
+]
+```
+
+  Nas estações, empilhar **grupo conversando + utensílios batendo** (na cozinha: facas e martelos de carne). Buscar os clipes com `/buscar-sfx-prd` e normalizar para **−20 LUFS** (ambiente fica abaixo de voz).
 
 ---
 
@@ -180,11 +185,11 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 
 - **Motor × Conteúdo**: piso é objeto de dados + ganchos. Nada de hardcode de fase no motor.
-- **Transição de piso**: vitória oferece "Subir a escada" e carrega o piso seguinte com a bolsa intacta.
+- **Transição de piso**: a vitória oferece "Subir a escada" → roda a **animação do castelo** (corte dos 6 andares, a luz sobe do piso vencido para o próximo) → o piso novo **começa jogando sozinho**, sem tela de início; o texto de intro vira aviso na tela. Basta acrescentar o nome do piso em `NOMES_PISOS`.
 - **Morte sem perder progresso**: `retomar()` reergue antes da arena com segredos, bolsa e caminho. **A música da luta é disparada na entrada da arena, não no momento em que a porta abre** — senão não volta na segunda tentativa (bug da Fase 2).
 - **Golpe nunca automático**; botão GOLPE / `F`.
 - **Diálogo com botão PULAR**, que vale como ouvir por inteiro (segredo + contador + callback).
-- **Ducking**: BGM cai para `.08` enquanto há fala.
+- **Ducking**: BGM cai para `.08` enquanto há fala **e enquanto a legenda estiver aberta** — quem devolve o volume é fechar a fala, não o áudio acabar.
 - **Item do chefe** vai à bolsa com popup e serve contra o chefe seguinte.
 - **Atalhos de teste**: `?piso=N` e `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena). Implementar os dois na fase nova.
 - Escala de personagem por `escala` no informante; vozes e som de batida do chefe pelo `cfg` (`sons`, `somBatida`, `tremorPasso`).
@@ -194,7 +199,7 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 ## Verificação antes de entregar
 
 1. **Sintaxe**: extrair o `<script>` do `castelo.html` e `node --check`.
-2. **Geometria**: flood-fill em Node a partir do spawn — todo NPC, item, porta e a arena do chefe alcançáveis; a arena **inalcançável** antes de abrir; nada de tile sólido isolando caminho.
+2. **Geometria**: `node testes/geometria.js` — flood-fill do spawn em todos os pisos. Acrescentar o piso novo ao array `PISOS` do teste com os alvos (`fala` para NPC, que pode estar atrás de grade; `alcanca` para região; `anda` + `selado` para a arena do chefe). O teste sai com código 1 se algo quebrar.
 3. **Navegador headless**: carregar `?piso=N`, checar `console --errors` vazio e tirar screenshots das regiões novas — olhar as imagens, não só o log.
 4. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
 5. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.

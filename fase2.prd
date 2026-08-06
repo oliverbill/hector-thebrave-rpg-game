@@ -147,6 +147,8 @@ RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 pre
 
 ## 7. Adições posteriores — PREENCHER DEPOIS
 
+- **06/08 — gaps fechados**: camadas de **som ambiente por proximidade** (`piso.ambientes`, novo no motor) com o falatório e as facas das estações; **animação do castelo** entre pisos, depois da qual **a fase começa sozinha** (*"não precisa mais da tela inicial com o botão"*); **ducking** preso à legenda aberta, não ao fim do áudio; limpeza da legenda ao iniciar um piso; e `testes/geometria.js` como teste automatizado dos pisos.
+
 - **06/08 — voz sintetizada removida do motor**: pular uma fala (espaço ou PULAR) cancelava o clipe gravado, a `play()` pendente rejeitava e o `.catch` caía no fallback de síntese, que narrava a fala inteira com voz de robô. O fallback, o `escolherVoz()` e todo o uso de `speechSynthesis` saíram — só gravações reais tocam, como manda o RF-29. Sem clipe, a legenda fala sozinha. Origem: *"quando eu pulo as vozes... toca uma voz sintetizada. Remova-a"*.
 
 - **06/08 (pós-merge) — a adega vira cave de vinhos**, pelas referências `img/fase2/adega.jpg` e `adega2.jpg`: tonalidade quente de tijolo em toda a cave, e as faces do labirinto decoradas automaticamente alternando **nichos de garrafas deitadas** (moldura de madeira, 4 casas, rolha à vista), **prateleiras de garrafas em pé** com brilho âmbar e **lanternas de parede acesas**; a **pirâmide de barris** vistos de frente na primeira cela, o **tonel de cobre** junto ao alçapão e velas acesas na câmara da Faxineira.
@@ -162,13 +164,13 @@ RNF-01 a RNF-05 do template, sem exceção. Destaque para o RNF-05: a Fase 1 pre
 
 Herdadas em aberto da Fase 1, ainda valem:
 
-- A música volta ao volume cheio quando o **áudio** da fala termina, não quando o jogador **fecha** a legenda
-- Não há teste automatizado rodando em CI: a validação de 04/08 foi por navegador headless (geometria validada por flood-fill em Node)
+- ~~A música volta ao volume cheio quando o **áudio** da fala termina~~ — resolvido em 06/08: o ducking segue enquanto a legenda estiver aberta
+- ~~Não há teste automatizado~~ — `node testes/geometria.js` valida os dois pisos (flood-fill do spawn, NPCs a distância de fala, arena selada até abrir) e sai com código 1 em falha. Falta rodá-lo em CI.
 
 Próprias da construção de 04/08:
 
-- **Animação do castelo entre pisos** (pedido no §1) não feita — a transição hoje é véu → intro do piso seguinte
-- **Sons ambiente da cozinha (F2-RF-18)** — fogo/panelas/vapor baixados em `audio/fase2/sons/` mas ainda não integrados ao jogo
+- ~~Animação do castelo entre pisos~~ — feita em 06/08: corte dos 6 andares com a luz subindo do piso vencido ao seguinte, e **a fase nova começa sozinha ao fim dela** (sem tela de início)
+- ~~Sons ambiente da cozinha (F2-RF-18)~~ — integrados em 06/08 via `piso.ambientes`: fogo nos fornos, vapor/panelas na cozinha, grupo conversando + facas nas estações e lanternas da adega, com volume por proximidade
 - **Balanceamento do chefe (F2-RF-15)** não testado com jogador real — números de partida valem até a primeira sessão de jogo
 - Retrato do Açougueiro no Apêndice A: em uso o próprio `butcher.png` (sprite e retrato são a mesma imagem)
 - ~~Texto da fala de abertura do Açougueiro~~ — fechado em F2-FALAS.md: *"Se eu cozinho, eu não lavo! Agora vou lhe mostrar um truque ou dois!"*
