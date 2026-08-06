@@ -5320,20 +5320,33 @@ const PISOS = [PISO_CALABOUCO, PISO_COZINHAS];
 let pisoAtual = 0;
 
 /* ---------- arranque ---------- */
-/* ?piso=N pula direto a um piso, herdando as recompensas dos anteriores;
-   &chefe=1 vai direto à luta do chefe, com os segredos já ouvidos (teste) */
-let atalhoChefe = false;
+/* ?piso=N   pula direto a um piso, herdando as recompensas dos anteriores
+   &chefe=1  vai direto à luta do chefe, com os segredos já ouvidos
+   &transicao=1  cai na vitória do piso, para rever a subida ao piso seguinte */
+let atalhoChefe = false, atalhoTransicao = false;
 (() => {
   const q = new URLSearchParams(location.search);
   const n = parseInt(q.get('piso') || '1', 10);
   pisoAtual = clamp((isNaN(n) ? 1 : n) - 1, 0, PISOS.length - 1);
   atalhoChefe = q.get('chefe') === '1';
+  atalhoTransicao = q.get('transicao') === '1';
   for(let i = 0; i < pisoAtual; i++)
     if(PISOS[i].recompensa) inventario.push(PISOS[i].recompensa);
 })();
 piso = PISOS[pisoAtual];
-mostrarVeu({...piso.intro, placar:''});
 redimensionar();
+if(atalhoTransicao && pisoAtual + 1 < PISOS.length){
+  /* monta o estado de vitória sem a luta: tarefas feitas, prêmio na bolsa,
+     véu de vitória com "Subir a escada" — o clique roda a animação do castelo */
+  iniciarPiso(piso);
+  informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
+  piso.missao.tarefas.forEach(t => marcarTarefa(t.id));
+  if(piso.recompensa) adicionarAoInventario(piso.recompensa);
+  etapa = 'fim';
+  mostrarVeu(piso.textos.vitoria());
+} else {
+  mostrarVeu({...piso.intro, placar:''});
+}
 requestAnimationFrame(quadro);
 </script>
 </body>

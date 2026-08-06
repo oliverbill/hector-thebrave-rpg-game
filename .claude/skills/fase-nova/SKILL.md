@@ -191,7 +191,7 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 - **Diálogo com botão PULAR**, que vale como ouvir por inteiro (segredo + contador + callback).
 - **Ducking**: BGM cai para `.08` enquanto há fala **e enquanto a legenda estiver aberta** — quem devolve o volume é fechar a fala, não o áudio acabar.
 - **Item do chefe** vai à bolsa com popup e serve contra o chefe seguinte.
-- **Atalhos de teste**: `?piso=N` e `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena). Implementar os dois na fase nova.
+- **Atalhos de teste**: `?piso=N`, `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena) e `?piso=N&transicao=1` (cai na vitória do piso, para rever a subida ao seguinte). Implementar os três na fase nova.
 - Escala de personagem por `escala` no informante; vozes e som de batida do chefe pelo `cfg` (`sons`, `somBatida`, `tremorPasso`).
 
 ---
