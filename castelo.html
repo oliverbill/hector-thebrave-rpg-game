@@ -4507,27 +4507,27 @@ function pintarCozinhasCache(cmx, T){
       pItem('i22', e.x1 + 4.2, 12.3, 1.9);    // mesa com chaleira e cenouras
       pItem('i41', e.x1 + 3.0, 13.55, 1.5);   // vasos e ervas
       // restos de vegetais sobre o TAMPO das mesas do fundo
-      pItem('c72', e.x1 + 1.15, 11.12, .72);  // salada verde, no tampo alto
-      pItem('c82', e.x1 + 2.05, 11.22, .66);  // legumes picados
-      pItem('c30', e.x1 + 3.95, 11.5, .66);   // sobras roxas
-      pItem('c83', e.x1 + 4.6, 11.66, .62);   // cesta de vegetais
+      pItem('c72', e.x1 + 1.15, 11.12, .9);  // salada verde, no tampo alto
+      pItem('c82', e.x1 + 2.1, 11.25, .8);  // legumes picados
+      pItem('c30', e.x1 + 3.95, 11.5, .8);   // sobras roxas
+      pItem('c83', e.x1 + 4.65, 11.7, .78);   // cesta de vegetais
     } else if(e.tema === 'paes'){
       pItem('i34', e.x1 + 1.7, 12.5, 2.3);    // o forno duplo
       pItem('i31', e.x1 + 4.3, 12.35, 2.0);   // a ilha da masseira
       pItem('i13', e.x1 + 3.0, 13.6, 1.6);    // mesa de potes
       // pães e bolos sobre a ilha e a mesa de potes
-      pItem('c33', e.x1 + 3.8, 11.68, .72);   // a pilha de pães
-      pItem('c43', e.x1 + 4.75, 11.82, .66);  // o pão recheado
-      pItem('c50', e.x1 + 2.8, 12.88, .68);   // a torta dourada
-      pItem('c60', e.x1 + 3.5, 12.98, .6)     // o bolo na travessa
+      pItem('c33', e.x1 + 3.8, 11.68, .9);   // a pilha de pães
+      pItem('c43', e.x1 + 4.8, 11.85, .8);  // o pão recheado
+      pItem('c50', e.x1 + 2.8, 12.88, .85);   // a torta dourada
+      pItem('c60', e.x1 + 3.55, 13.0, .75);     // o bolo na travessa
     } else {
       pItem('i03', e.x1 + 1.7, 12.5, 2.2);    // o fogão-lareira
       pItem('i23', e.x1 + 4.3, 12.4, 1.9);    // o varal de panelas
       pItem('i20', e.x1 + 3.0, 13.55, 1.3);   // o banco da carne
       // as carnes da casa, sobre a bancada do fogão e o banco
-      pItem('c53', e.x1 + 1.35, 11.78, .72);  // coxas assadas
-      pItem('c02', e.x1 + 2.2, 11.88, .62);   // a posta de carne
-      pItem('c63', e.x1 + 3.05, 13.1, .72);   // o espeto
+      pItem('c53', e.x1 + 1.35, 11.78, .9);  // coxas assadas
+      pItem('c02', e.x1 + 2.25, 11.9, .78);   // a posta de carne
+      pItem('c63', e.x1 + 3.05, 13.1, .9);   // o espeto
     }
     /* o balcão que fecha o cômodo para a cozinha: tampo, face e a comida do tema */
     cmx.fillStyle = 'rgba(0,0,0,.32)';
@@ -4542,26 +4542,19 @@ function pintarCozinhasCache(cmx, T){
     cmx.fillRect(x0 + larg2*.06, 14.57*T, larg2*.05, T*.4);
     cmx.fillRect(x0 + larg2*.89, 14.57*T, larg2*.05, T*.4);
     if(e.tema === 'legumes'){
-      [[.14,'#c9873a'],[.3,'#6d8a3a'],[.48,'#d8a03c'],[.66,'#b06a2a'],[.84,'#8a5a30']].forEach(([f,c]) => {
-        cmx.fillStyle = c;
-        cmx.beginPath(); cmx.arc(x0 + larg2*f, 14.22*T, T*.09, 0, TAU); cmx.fill();
-      });
+      pItem('c72', x0/T + larg2/T*.16, 14.42, .8);
+      pItem('c82', x0/T + larg2/T*.4,  14.46, .75);
+      pItem('c30', x0/T + larg2/T*.63, 14.44, .75);
+      pItem('c83', x0/T + larg2/T*.85, 14.48, .72);
     } else if(e.tema === 'paes'){
-      [.14,.32,.5,.68,.86].forEach(f => {
-        cmx.fillStyle = '#c08a3e';
-        cmx.beginPath(); cmx.ellipse(x0 + larg2*f, 14.24*T, T*.13, T*.085, 0, 0, TAU); cmx.fill();
-        cmx.fillStyle = 'rgba(255,235,190,.4)';
-        cmx.beginPath(); cmx.ellipse(x0 + larg2*f, 14.2*T, T*.09, T*.04, 0, 0, TAU); cmx.fill();
-      });
+      pItem('c33', x0/T + larg2/T*.16, 14.42, .8);
+      pItem('c50', x0/T + larg2/T*.4,  14.46, .78);
+      pItem('c43', x0/T + larg2/T*.63, 14.44, .75);
+      pItem('c60', x0/T + larg2/T*.85, 14.48, .72);
     } else {
-      [.18,.44,.7].forEach(f => {
-        cmx.fillStyle = '#7c2a20';
-        cmx.beginPath(); cmx.ellipse(x0 + larg2*f, 14.24*T, T*.15, T*.08, .15, 0, TAU); cmx.fill();
-        cmx.fillStyle = 'rgba(230,200,190,.35)';
-        cmx.beginPath(); cmx.ellipse(x0 + larg2*f - T*.03, 14.21*T, T*.06, T*.03, .2, 0, TAU); cmx.fill();
-      });
-      cmx.fillStyle = 'rgba(96,14,14,.4)';
-      cmx.beginPath(); cmx.ellipse(x0 + larg2*.56, 14.34*T, T*.18, T*.045, 0, 0, TAU); cmx.fill();
+      pItem('c53', x0/T + larg2/T*.2,  14.44, .8);
+      pItem('c02', x0/T + larg2/T*.48, 14.46, .72);
+      pItem('c63', x0/T + larg2/T*.76, 14.44, .85);
     }
   });
 
