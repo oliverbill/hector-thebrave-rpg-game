@@ -902,64 +902,30 @@ function sTarefa(){
   }, i*90));
 }
 
-/* voz: síntese de fala do aparelho, com escolha por gênero/perfil */
-function escolherVoz(voz){
-  if(!window.speechSynthesis) return null;
-  const vs = speechSynthesis.getVoices();
-  if(!vs || !vs.length) return null;
-  const pt = vs.filter(v => v.lang && /^pt/i.test(v.lang));
-  const pool = pt.length ? pt : vs;
-  const rxFem = /luciana|helena|joana|paulina|maria|female|feminina|mulher|catarina|ines|in[eê]s/i;
-  const rxMas = /felipe|daniel|jorge|thiago|male|masculino|homem|joaquim|ricardo|diogo|eddy/i;
-  if(voz.genero === 'f'){
-    const f = pool.find(v => rxFem.test(v.name)); if(f) return f;
-    const nf = pool.find(v => !rxMas.test(v.name)); if(nf) return nf;
-  }
-  if(voz.genero === 'm'){
-    const m = pool.find(v => rxMas.test(v.name)); if(m) return m;
-    const nm = pool.find(v => !rxFem.test(v.name)); if(nm) return nm;
-  }
-  return pool[0];
-}
 let audioFala = null;
 /* a música abaixa enquanto um preso fala, para a voz ficar na frente */
 function abaixarBgm(falando){
   if(bgmAudio){ try{ fundirBgm(falando ? BGM_VOL_FALA : bgmVolAtual); }catch(e){} }
 }
+/* Só gravações reais: nada de voz sintetizada (pilar da fase 1, RF-29).
+   Sem clipe, a legenda fala sozinha — e pular com espaço não narra nada. */
 function falarVoz(texto, voz, url){
   try{
     calarVoz();
-    if(url){
-      audioFala = new Audio(url);
-      audioFala.volume = 1;
-      abaixarBgm(true);
-      audioFala.addEventListener('ended', () => abaixarBgm(false), {once:true});
-      const seguir = voz.tosse
-        ? () => { sTosse(); setTimeout(() => audioFala && audioFala.play().catch(() => _falarSintese(texto, voz)), 620); }
-        : () => audioFala.play().catch(() => _falarSintese(texto, voz));
-      audioFala.addEventListener('error', () => _falarSintese(texto, voz), {once:true});
-      seguir();
-      return;
-    }
-    if(!somOk || !window.speechSynthesis) return;
-    if(voz.tosse){ sTosse(); setTimeout(() => _falarSintese(texto, voz), 620); }
-    else _falarSintese(texto, voz);
-  }catch(e){}
-}
-function _falarSintese(texto, voz){
-  try{
-    if(!window.speechSynthesis) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(texto);
-    u.lang = 'pt-BR'; u.pitch = voz.pitch; u.rate = voz.rate; u.volume = 1;
-    const v = escolherVoz(voz); if(v) u.voice = v;
+    if(!url) return;
+    const a = new Audio(url);
+    audioFala = a;
+    a.volume = 1;
     abaixarBgm(true);
-    u.onend = () => abaixarBgm(false);
-    speechSynthesis.speak(u);
+    a.addEventListener('ended', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
+    a.addEventListener('error', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
+    // o clipe só toca se ainda for o atual: pular a fala cancela o que estava a caminho
+    const tocar = () => { if(audioFala === a) a.play().catch(() => {}); };
+    if(voz.tosse){ sTosse(); setTimeout(tocar, 620); }
+    else tocar();
   }catch(e){}
 }
 function calarVoz(){
-  try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
   if(audioFala){ try{ audioFala.pause(); audioFala.currentTime = 0; }catch(e){} audioFala = null; }
   abaixarBgm(false);
 }
@@ -2188,7 +2154,6 @@ function iniciarPiso(p){
 }
 el('comecar').addEventListener('click', () => {
   iniAudio(); try{ if(ac && ac.state === 'suspended') ac.resume(); }catch(e){}
-  try{ if(window.speechSynthesis) speechSynthesis.getVoices(); }catch(e){}
   if(piso.retomar && piso.retomar()){   // morte com progresso: o piso decide onde reerguer o jogador
     tocarBgm(piso.bgm);
     return;
