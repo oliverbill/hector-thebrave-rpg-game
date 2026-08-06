@@ -65,6 +65,7 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 | F3-RF-06 | Três velantes: **O Carpinteiro de Caixões** (chave `rastro`, na oficina — mede as pessoas com o olhar), **A Lavadeira dos Mortos** (chave `lanterna`, na sala de preparação) e **O Sacristão** (chave `mergulhos`, no fundo do colombário — o difícil de achar) | questionário 06/08 — *"Carpinteiro, Lavadeira e Sacristão"* |
 | F3-RF-07 | Retratos e sprites do Pinterest (`testes/pinterest.py`), PNG sem fundo, revisados pelo usuário antes de entrar; escala 1.5× | processo /fase-nova |
 
+
 **HERDADO:** animação em loop, presença no mapa, facho dourado sobre quem tem segredo, PULAR.
 
 ### 3.3 Progressão e missão
