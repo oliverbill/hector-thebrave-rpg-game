@@ -50,8 +50,8 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 
 | # | Requisito | Origem |
 |---|---|---|
-| F3-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase3-funeral rooms.png`): capela com mosaico circular, salas de serviço, cripta alagada com caixões boiando, colombário, oficina | fixado — imagem de inspiração |
-| F3-RF-02 | Regiões: **escada de chegada** (das cozinhas), **capela de velório** (mosaico circular no chão, esquifes), **sala de preparação dos corpos**, **oficina de caixões + depósito**, **cripta alagada**, **colombário em labirinto**, **quarto do Coveiro**, **cova grande** (arena) | questionário 06/08 — regiões marcadas |
+| F3-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase3-funeral rooms.png`), **sempre com paredes visiveis**: capela com mosaico circular, salas de serviço, cripta alagada com caixões boiando, colombário, oficina | fixado — imagem de inspiração |
+| F3-RF-02 | Regiões **sempre com detalhes em alto relevo**: **escada de chegada** (das cozinhas), **capela de velório** (mosaico circular no chão, esquifes), **sala de preparação dos corpos**, **oficina de caixões + depósito**, **cripta alagada**, **colombário em labirinto**, **quarto do Coveiro**, **cova grande** (arena) | questionário 06/08 — regiões marcadas |
 | F3-RF-03 | Obstáculo cíclico duplo: **mãos dos mortos** irrompem do chão em ritmo fixo (janela de dano aprendível) **e velas que apagam** — trechos escurecem em ciclo e, no escuro, os vultos atacam | questionário 06/08 — *"1 e 3"* |
 | F3-RF-04 | Labirinto (`gerarLabirinto`, semente própria) no **colombário**; travessia falsa: a **escada desmoronada** que parece levar à arena mas termina no buraco | questionário 06/08 — recomendado aceito |
 | F3-RF-05 | A cripta alagada usa água em alto-relevo (padrão da grande cisterna da fase 2), com caixões boiando e travessia por passarelas/pedras | derivado da imagem de inspiração |
@@ -96,7 +96,7 @@ Mecânica inédita — **ele cava e some** (questionário 06/08, recomendado ace
 | F3-RF-16 | Após **2 mergulhos**, ele emerge **exausto** (*"morto de cansado"*) — janela longa | fala do Sacristão, ditada pelo usuário |
 | F3-RF-17 | Ele carrega uma **lanterna** que ilumina só a frente; pelas costas, dano dobrado | fala da Lavadeira, ditada pelo usuário |
 | F3-RF-18 | Fraquezas × chaves: `rastro` (Carpinteiro) → ⚠ ×2.2 no atordoado pós-erro (e o ponto de emersão fica telegrafado mais cedo); `lanterna` (Lavadeira) → ⚠ ×2.1 pelas costas; `mergulhos` (Sacristão) → ⚠ ×2.2 no exausto (e contador de mergulhos no HUD) | questionário 06/08 |
-| F3-RF-19 | ⚠ Números de partida: `hp:850, raio:1.0, pazadaDano:34 (14 com Avental), irromperDano:36, irromperRaio:2.2, persegueVel:3.4, persegueT:2.6, atordoadoT:2.2, exaustoT:2.4, tremorPasso:7` — corpo 2× o jogador (~4,6 tiles), pernas desenhadas que andam | processo /fase-nova, etapas 4–5 |
+| F3-RF-19 | ⚠ Números de partida: `hp:900, raio:1.0, pazadaDano:34 (14 com Avental), irromperDano:36, irromperRaio:2.2, persegueVel:3.4, persegueT:2.6, atordoadoT:2.2, exaustoT:2.4, tremorPasso:7` — corpo 2× o jogador (~4,6 tiles), pernas desenhadas que andam | processo /fase-nova, etapas 4–5 |
 | F3-RF-20 | Fala de abertura com legenda antes da luta, voz gravada real — texto a fechar em F3-FALAS.md | herdado (RF-27/28) |
 
 **Falas-segredo, nas palavras do usuário (base para F3-FALAS.md):**
