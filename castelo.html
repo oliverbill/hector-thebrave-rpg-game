@@ -3234,7 +3234,7 @@ const PISO_CALABOUCO = {
 const COZ = {                      // geografia do piso (planta: cozinha ao norte, salão central, adega ao sul)
   LARG:46, ALT:54,
   PORTA:{x:30, y:9, alt:3},        // porta de tábuas da câmara de carnes (coluna x, de y a y+alt-1)
-  ROSACEA:{x:23, y:36, raio:3.4}   // rosácea de pedra no salão central
+  ROSACEA:{x:23.5, y:36.5, raio:2.5}   // a grande cisterna octogonal do salão central
 };
 let labaredas = [], paes = [], caldos = [], porta2 = null, vistoAdega = false, vistoCisterna = false;
 
@@ -3257,9 +3257,13 @@ function construirCozinhas(){
   cavar(22,18,23,29);
   cavar(6,18,7,30);
 
-  /* ---- salão central com a rosácea e quatro pilares ---- */
+  /* ---- salão central com a grande cisterna octogonal e quatro pilares ---- */
   cavar(14,30,30,42);
   [[19,33],[27,33],[19,40],[27,40]].forEach(([px2,py2]) => { t[ix(px2,py2)] = PAREDE; });   // pilares
+  /* a grande cisterna é sólida: se contorna, como na imagem de inspiração */
+  for(let y=33; y<=40; y++) for(let x=20; x<=27; x++){
+    if(Math.hypot(x + .5 - 23.5, y + .5 - 36.5) < 2.45) t[ix(x,y)] = PAREDE;
+  }
   /* ---- refeitório dos servos, a oeste (duas portas para o salão) ---- */
   cavar(3,31,12,41);
   cavar(13,35,13,36);           // porta norte refeitório -> salão
@@ -3293,7 +3297,7 @@ function construirCozinhas(){
   [[5,6.4],[9,6.4],[13,6.4],[17,6.4],[21,6.4],[25,6.4],     // fogões da cozinha
    [4,16],[26,16],                                          // cantos da cozinha
    [22.5,20],[22.5,27],[6.5,21],[6.5,28],                   // corredores em chamas
-   [16,31],[30,31],[16,41],[30,41],[23,36],                 // salão e rosácea
+   [16,31],[30,31],[16,41],[30,41],                         // salão (a grande cisterna tem luz própria)
    [4,32],[11,40],                                          // refeitório
    [33,29],[42,39],[37,34],                                 // despensa
    [33,5],[41,5],[37,15],[30,10],                           // câmara de carnes e porta
@@ -4085,6 +4089,81 @@ function pintarCozinhasCache(cmx, T){
     cmx.strokeRect(px2 + T*.5, py2, T*.5 - 1, T*.12);
   });
 
+  /* ---- A GRANDE CISTERNA do salão: o tanque octogonal monumental da imagem
+     de inspiração, em alto-relevo — parapeito de pedra com face frontal,
+     água funda e a roda ornamental submersa ---- */
+  const octo = (cx2, cy2, R) => {
+    cmx.beginPath();
+    for(let i=0; i<8; i++){
+      const a = i*TAU/8 + TAU/16;
+      const X = cx2 + Math.cos(a)*R, Y = cy2 + Math.sin(a)*R;
+      i ? cmx.lineTo(X, Y) : cmx.moveTo(X, Y);
+    }
+    cmx.closePath();
+  };
+  const bcx = 23.5*T, bcy = 36.5*T, R1 = 2.5*T, R2 = 1.72*T;
+  // sombra no chão, para o sul
+  cmx.fillStyle = 'rgba(0,0,0,.35)';
+  octo(bcx + T*.08, bcy + T*.42, R1*1.02); cmx.fill();
+  // face frontal do parapeito (a altura aparece embaixo)
+  cmx.fillStyle = '#5f554b';
+  octo(bcx, bcy + T*.32, R1); cmx.fill();
+  cmx.fillStyle = 'rgba(0,0,0,.28)';
+  octo(bcx, bcy + T*.32, R1); cmx.fill();
+  cmx.fillStyle = '#655b50';
+  octo(bcx, bcy + T*.24, R1); cmx.fill();
+  // topo do parapeito, iluminado
+  cmx.fillStyle = '#a2978a';
+  octo(bcx, bcy - T*.10, R1); cmx.fill();
+  cmx.strokeStyle = 'rgba(20,14,10,.6)'; cmx.lineWidth = 2.6;
+  octo(bcx, bcy - T*.10, R1); cmx.stroke();
+  cmx.strokeStyle = 'rgba(255,248,235,.35)'; cmx.lineWidth = 1.6;
+  octo(bcx, bcy - T*.12, R1*.985); cmx.stroke();
+  // juntas radiais dos blocos do parapeito
+  cmx.strokeStyle = 'rgba(20,14,10,.5)'; cmx.lineWidth = 1.8;
+  for(let i=0; i<8; i++){
+    const a = i*TAU/8 + TAU/16;
+    cmx.beginPath();
+    cmx.moveTo(bcx + Math.cos(a)*R2, bcy - T*.10 + Math.sin(a)*R2);
+    cmx.lineTo(bcx + Math.cos(a)*R1, bcy - T*.10 + Math.sin(a)*R1);
+    cmx.stroke();
+  }
+  // bisel interno caindo para a água
+  cmx.fillStyle = 'rgba(12,22,28,.55)';
+  octo(bcx, bcy - T*.10, R2*1.1); cmx.fill();
+  // a água
+  const gGC = cmx.createRadialGradient(bcx, bcy - T*.05, 0, bcx, bcy - T*.05, R2);
+  gGC.addColorStop(0, '#3f97ac'); gGC.addColorStop(.65, '#27687a'); gGC.addColorStop(1, '#153a46');
+  cmx.fillStyle = gGC;
+  octo(bcx, bcy - T*.05, R2); cmx.fill();
+  // a roda ornamental, submersa
+  cmx.strokeStyle = 'rgba(215,238,244,.14)'; cmx.lineWidth = 2;
+  [.92, .6, .3].forEach(k => {
+    cmx.beginPath(); cmx.arc(bcx, bcy - T*.05, R2*k, 0, TAU); cmx.stroke();
+  });
+  for(let i=0; i<8; i++){
+    const a = i*TAU/8;
+    cmx.beginPath();
+    cmx.moveTo(bcx + Math.cos(a)*R2*.3, bcy - T*.05 + Math.sin(a)*R2*.3);
+    cmx.lineTo(bcx + Math.cos(a)*R2*.92, bcy - T*.05 + Math.sin(a)*R2*.92);
+    cmx.stroke();
+  }
+  // redemoinho e brilhos de superfície
+  cmx.strokeStyle = 'rgba(175,235,248,.4)'; cmx.lineWidth = 2.2;
+  for(let k=0; k<3; k++){
+    cmx.beginPath();
+    cmx.arc(bcx, bcy - T*.05, R2*(.18 + k*.22), k*1.7, k*1.7 + 3.8);
+    cmx.stroke();
+  }
+  // sombra interna: o parapeito norte paira sobre a água
+  cmx.save();
+  octo(bcx, bcy - T*.05, R2); cmx.clip();
+  const gGS = cmx.createLinearGradient(0, bcy - T*.05 - R2, 0, bcy - T*.05 - R2 + T*.8);
+  gGS.addColorStop(0, 'rgba(0,0,0,.55)'); gGS.addColorStop(1, 'rgba(0,0,0,0)');
+  cmx.fillStyle = gGS;
+  cmx.fillRect(bcx - R2, bcy - T*.05 - R2, R2*2, T*.8);
+  cmx.restore();
+
   /* ---- pilares do salão em vista frontal, como na referência:
      base larga no chão, fuste subindo e capitel no alto ---- */
   [[19,33],[27,33],[19,40],[27,40]].forEach(([x,y]) => {
@@ -4434,24 +4513,31 @@ function desenharCarcacas(ox, oy){
 
 /* --- rosácea do salão central, desenhada por cima do cache --- */
 function desenharRosacea(ox, oy){
+  /* a água da GRANDE cisterna do salão: brilho frio pulsando e ondulações */
   const R = COZ.ROSACEA;
-  const px = ox + R.x*tam, py = oy + R.y*tam, rr = R.raio*tam;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(190,170,140,.28)';
-  ctx.lineWidth = Math.max(1, tam*.08);
-  [1, .72, .4].forEach(k => {
-    ctx.beginPath(); ctx.arc(px, py, rr*k, 0, TAU); ctx.stroke();
-  });
-  for(let i=0;i<8;i++){
-    const a = i*TAU/8 + Math.PI/8;
+  const px = ox + R.x*tam, py = oy + (R.y - .05)*tam;
+  const pulso = .6 + Math.sin(tempo*1.3)*.4;
+  const gL = ctx.createRadialGradient(px, py, 0, px, py, tam*3.6);
+  gL.addColorStop(0, 'rgba(90,210,230,' + (.14 + pulso*.08) + ')');
+  gL.addColorStop(1, 'rgba(90,210,230,0)');
+  ctx.fillStyle = gL;
+  ctx.beginPath(); ctx.arc(px, py, tam*3.6, 0, TAU); ctx.fill();
+  for(let i=0; i<3; i++){
+    const t2 = (tempo*.3 + i/3) % 1;
+    ctx.strokeStyle = 'rgba(160,225,240,' + (.22*(1 - t2)) + ')';
+    ctx.lineWidth = Math.max(1, tam*.05);
     ctx.beginPath();
-    ctx.moveTo(px + Math.cos(a)*rr*.4, py + Math.sin(a)*rr*.4);
-    ctx.lineTo(px + Math.cos(a)*rr, py + Math.sin(a)*rr);
+    ctx.ellipse(px, py, tam*(.2 + t2*1.4), tam*(.12 + t2*.9), 0, 0, TAU);
     ctx.stroke();
   }
-  ctx.strokeStyle = 'rgba(120,96,72,.35)';
-  ctx.beginPath(); ctx.arc(px, py, rr*.16, 0, TAU); ctx.stroke();
-  ctx.restore();
+  // fiapos de luz correndo na superfície
+  const lx = Math.sin(tempo*.6)*tam*.6;
+  ctx.strokeStyle = 'rgba(220,245,250,.16)';
+  ctx.lineWidth = Math.max(1, tam*.05);
+  ctx.beginPath();
+  ctx.moveTo(px - tam*.9 + lx, py - tam*.5);
+  ctx.quadraticCurveTo(px + lx, py - tam*.25, px + tam*.85 + lx, py - tam*.55);
+  ctx.stroke();
 }
 
 /* --- o piso, montado --- */
