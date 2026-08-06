@@ -937,6 +937,15 @@ function falarVoz(texto, voz, url){
     const a = new Audio(url);
     audioFala = a;
     a.volume = 1;
+    /* voz.ganho > 1 empurra a gravação acima do teto do HTMLAudio (volume máx = 1),
+       roteando o elemento pelo Web Audio — precisa para vozes que competem com a cozinha */
+    if(voz.ganho && voz.ganho !== 1 && iniAudio()){
+      try{
+        const fonte = ac.createMediaElementSource(a);
+        const g = ac.createGain(); g.gain.value = voz.ganho;
+        fonte.connect(g); g.connect(masterGain);
+      }catch(e){}
+    }
     abaixarBgm(true);
     a.addEventListener('ended', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
     a.addEventListener('error', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
@@ -1072,7 +1081,7 @@ function atualizarAmbientes(dt){
     a.pontos.forEach(([px, py]) => { d = Math.min(d, Math.hypot(px - jog.x, py - jog.y)); });
     const perto = a.raio, longe = a.raio + (a.desvanece || 5);
     const f = d >= longe ? 0 : d <= perto ? 1 : 1 - (d - perto)/(longe - perto);
-    const alvo = f*f*(a.ganho || .35)*(dialogo ? .25 : 1);   // cala junto com a música na fala
+    const alvo = f*f*(a.ganho || .35)*(dialogo ? .07 : 1);   // na fala os focos quase calam: a voz fica na frente
     a.vol += (alvo - a.vol)*Math.min(1, passo*6);
     if(a.vol < .006){
       if(a.audio && !a.audio.paused){ try{ a.audio.pause(); }catch(e){} }
@@ -5125,7 +5134,7 @@ const PISO_COZINHAS = {
   informantes:[
     { nome:'O Cozinheiro', chave:'pausa', cor:'#d8c7a8', escala:1.5,
       retrato:'img/fase2/cozinheiro.png',
-      voz:{pitch:.7, rate:.9, genero:'m',
+      voz:{pitch:.7, rate:.9, genero:'m', ganho:1.8,
            audios:['audio/fase2/vozes/cozinheiro-1.mp3','audio/fase2/vozes/cozinheiro-2.mp3','audio/fase2/vozes/cozinheiro-3.mp3']},
       x:11.5, y:9.5,       // junto aos fogões da cozinha grande
       falas:[
