@@ -67,6 +67,8 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 
 
 | F3-RF-25 | **Velório na capela**: além das estações de trabalho, um grupo de coadjuvantes **vela um corpo** num esquife (círios, mortalha, cabeças baixas), com **som de choro** subindo por proximidade | pedido 06/08 — *"adicione pessoas velando o corpo com som de choros"* |
+| F3-RF-27 | **Rezadores na capela**: outro grupo de coadjuvantes **rezando** — ajoelhados nos bancos e de pé com as mãos postas, com murmúrio de rezas por proximidade | pedido 06/08 — *"adicione pessoas rezando na capela"* |
+| F3-RF-28 | **Ajudantes de carpintaria na oficina**: grupo trabalhando nos caixões — serrando, martelando, aplainando — com serrote e martelo audíveis por proximidade (a estação de trabalho da oficina) | pedido 06/08 — *"Adicione ajudantes de carpintaria trabalhando"* |
 
 **HERDADO:** animação em loop, presença no mapa, facho dourado sobre quem tem segredo, PULAR.
 
@@ -116,7 +118,7 @@ Mecânica inédita — **ele cava e some** (questionário 06/08, recomendado ace
 | F3-RF-22 | Trilhas: BGM fúnebre do piso + trilha da cova grande — **fornecidas pelo usuário** | questionário 06/08 |
 | F3-RF-23 | SFX via `/buscar-sfx-prd`: terra cavando, emersão/estouro de terra, mãos raspando pedra, sussurro de vulto, sopro apagando vela, gota d'água/eco da cripta, sino fúnebre, madeira de caixão, choro de velório | derivado do §3 |
 | F3-RF-26 | **Grito alto quando um vulto surge** — one-shot no momento em que ele se ergue do escuro, acima do volume do ambiente (o susto é o ponto) | pedido 06/08 — *"Adicione um grito alto quando um vulto surgir"* |
-| F3-RF-24 | Ambientes por proximidade (`piso.ambientes`): gotejar + eco na cripta, **coro fúnebre baixo + o choro do velório na capela (F3-RF-25)**, **serrote e martelo na oficina**, água e rezas na preparação, vento oco no colombário | processo /fase-nova, etapa 8 |
+| F3-RF-24 | Ambientes por proximidade (`piso.ambientes`): gotejar + eco na cripta, **coro fúnebre baixo + o choro do velório na capela (F3-RF-25)**, **serrote e martelo na oficina**, água na preparação, **murmúrio de rezas dos rezadores (F3-RF-27)**, vento oco no colombário | processo /fase-nova, etapa 8 |
 
 ### 3.7 Controles e HUD — HERDADO
 
