@@ -4019,17 +4019,27 @@ function pintarCozinhasCache(cmx, T){
      borda de pedra lavrada com bisel, água funda em redemoinho e a grade de ferro ---- */
   [[21,44],[21,45],[21,46],[21,47],[24,44],[24,45],[24,46],[24,47],[22,47],[23,47]].forEach(([x,y]) => {
     const px2 = x*T, py2 = y*T;
-    cmx.fillStyle = '#8e8378'; cmx.fillRect(px2, py2, T, T);
-    cmx.strokeStyle = 'rgba(20,14,10,.6)'; cmx.lineWidth = 2;
-    cmx.strokeRect(px2 + 1, py2 + 1, T - 2, T - 2);
-    cmx.fillStyle = 'rgba(255,245,230,.22)'; cmx.fillRect(px2 + 1, py2 + 1, T - 2, 3);
+    /* parapeito em ALTO-RELEVO: superfície clara em cima e face frontal
+       sombreada embaixo, como um bloco de pedra com altura de verdade */
+    const face = T*.34;
+    // superfície de cima, iluminada
+    cmx.fillStyle = '#a2978a'; cmx.fillRect(px2, py2, T, T - face);
+    cmx.fillStyle = 'rgba(255,248,235,.3)'; cmx.fillRect(px2, py2, T, 3);
+    cmx.strokeStyle = 'rgba(20,14,10,.55)'; cmx.lineWidth = 1.8;
+    cmx.strokeRect(px2 + 1, py2 + 1, T - 2, T - face - 1);
     cmx.fillStyle = 'rgba(120,110,100,.5)';
-    cmx.fillRect(px2 + T*.5 - 1, py2 + 1, 2, T - 2);          // pedra lavrada em dois blocos
+    cmx.fillRect(px2 + T*.5 - 1, py2 + 1, 2, T - face - 2);   // junta entre os dois blocos
+    // face frontal do bloco, caindo
+    cmx.fillStyle = '#6b6156'; cmx.fillRect(px2, py2 + T - face, T, face);
+    cmx.fillStyle = 'rgba(0,0,0,.35)'; cmx.fillRect(px2, py2 + T - face, T, 2.4);
+    cmx.strokeStyle = 'rgba(15,10,8,.6)'; cmx.lineWidth = 1.4;
+    cmx.strokeRect(px2 + 1, py2 + T - face, T*.5 - 1, face - 1);
+    cmx.strokeRect(px2 + T*.5, py2 + T - face, T*.5 - 1, face - 1);
+    cmx.fillStyle = 'rgba(0,0,0,.28)'; cmx.fillRect(px2, py2 + T - 2.6, T, 2.6);
     // bisel escuro na aresta que cai para a água
     cmx.fillStyle = 'rgba(12,22,28,.55)';
-    if(x === 21) cmx.fillRect(px2 + T - T*.16, py2, T*.16, T);
-    if(x === 24) cmx.fillRect(px2, py2, T*.16, T);
-    if(y === 47) cmx.fillRect(px2, py2, T, T*.16);
+    if(x === 21) cmx.fillRect(px2 + T - T*.14, py2, T*.14, T - face);
+    if(x === 24) cmx.fillRect(px2, py2, T*.14, T - face);
   });
   // a água: funda no meio, redemoinho e um brilho de superfície
   const wx = 22*T, wy = 45*T, ww = 2*T, wh = 2*T;
@@ -4044,10 +4054,19 @@ function pintarCozinhasCache(cmx, T){
   }
   cmx.strokeStyle = 'rgba(220,245,250,.35)'; cmx.lineWidth = 1.4;
   cmx.beginPath(); cmx.arc(wx + ww*.36, wy + wh*.32, ww*.07, 0, TAU); cmx.stroke();
-  // sombra interna no alto: a borda norte paira sobre a água (o alto-relevo)
+  // sombras internas: as bordas pairam sobre a água por todos os lados (o alto-relevo)
   const gS = cmx.createLinearGradient(0, wy, 0, wy + T*.6);
   gS.addColorStop(0, 'rgba(0,0,0,.55)'); gS.addColorStop(1, 'rgba(0,0,0,0)');
   cmx.fillStyle = gS; cmx.fillRect(wx, wy, ww, T*.6);
+  const gW = cmx.createLinearGradient(wx, 0, wx + T*.45, 0);
+  gW.addColorStop(0, 'rgba(0,0,0,.42)'); gW.addColorStop(1, 'rgba(0,0,0,0)');
+  cmx.fillStyle = gW; cmx.fillRect(wx, wy, T*.45, wh);
+  const gE = cmx.createLinearGradient(wx + ww, 0, wx + ww - T*.45, 0);
+  gE.addColorStop(0, 'rgba(0,0,0,.42)'); gE.addColorStop(1, 'rgba(0,0,0,0)');
+  cmx.fillStyle = gE; cmx.fillRect(wx + ww - T*.45, wy, T*.45, wh);
+  // e a linha de luz onde a água toca a borda sul, rasa
+  cmx.fillStyle = 'rgba(190,240,250,.25)';
+  cmx.fillRect(wx + 2, wy + wh - 2.6, ww - 4, 2.6);
   // a grade de ferro guardando a cisterna, de frente
   [[22,44],[23,44]].forEach(([x,y]) => {
     const px2 = x*T, py2 = y*T;
@@ -4301,27 +4320,38 @@ function pintarCozinhasCache(cmx, T){
     cmx.beginPath(); cmx.ellipse(cx, topo + alt2*.1, lar*.30, T*.5, 0, 0, TAU); cmx.fill();
   });
 
-  /* mesas compridas de preparo na cozinha, com marcas de corte */
-  [[8.3,11.5],[13.3,11.7],[18.3,11.6]].forEach(([mx,my]) => {
-    const x = mx*T, y = my*T, lm = T*2.6, am = T*1.15;
-    cmx.fillStyle = 'rgba(0,0,0,.30)';
-    cmx.fillRect(x + T*.06, y + T*.10, lm, am);            // sombra
-    cmx.fillStyle = '#7a5430'; cmx.fillRect(x, y, lm, am);  // tampo
-    cmx.fillStyle = 'rgba(255,225,175,.14)'; cmx.fillRect(x, y, lm, T*.14);
+  /* mesas compridas de preparo em ALTO-RELEVO: tampo em cima, saia frontal
+     com pernas embaixo e sombra no chão — a mesa tem altura de verdade */
+  [[8.3,11.2],[13.3,11.4],[18.3,11.3]].forEach(([mx,my]) => {
+    const x = mx*T, y = my*T, lm = T*2.6, am = T*.95, saia = T*.44;
+    // sombra no chão, deslocada para baixo
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(x + lm/2, y + am + saia + T*.07, lm*.54, T*.13, 0, 0, TAU); cmx.fill();
+    // saia frontal (a face da mesa) com as pernas
+    cmx.fillStyle = '#5a3d1e'; cmx.fillRect(x, y + am, lm, saia);
+    cmx.fillStyle = 'rgba(0,0,0,.4)'; cmx.fillRect(x, y + am, lm, 3);
+    cmx.fillStyle = '#38260f';
+    cmx.fillRect(x + lm*.05, y + am, lm*.09, saia);
+    cmx.fillRect(x + lm*.86, y + am, lm*.09, saia);
+    cmx.strokeStyle = 'rgba(15,8,4,.5)'; cmx.lineWidth = 1.3;
+    cmx.strokeRect(x, y + am, lm, saia);
+    // tampo com borda de luz
+    cmx.fillStyle = '#7a5430'; cmx.fillRect(x, y, lm, am);
+    cmx.fillStyle = 'rgba(255,225,175,.18)'; cmx.fillRect(x, y, lm, T*.12);
     cmx.strokeStyle = 'rgba(30,18,8,.5)'; cmx.lineWidth = 1.6;
     cmx.strokeRect(x, y, lm, am);
-    for(let k=1; k<4; k++){                                 // tábuas do tampo
-      cmx.beginPath(); cmx.moveTo(x, y + am*k/4); cmx.lineTo(x + lm, y + am*k/4);
+    for(let k=1; k<3; k++){                                 // tábuas do tampo
+      cmx.beginPath(); cmx.moveTo(x, y + am*k/3); cmx.lineTo(x + lm, y + am*k/3);
       cmx.strokeStyle = 'rgba(30,18,8,.28)'; cmx.stroke();
     }
     // talhos e manchas de trabalho
     cmx.strokeStyle = 'rgba(25,12,6,.5)'; cmx.lineWidth = 1.2;
     for(let k=0; k<5; k++){
-      const hx = x + lm*(.15 + rndDe(mx, k)*.7), hy = y + am*(.2 + rndDe(k, my)*.6);
+      const hx = x + lm*(.15 + rndDe(mx, k)*.7), hy = y + am*(.2 + rndDe(k, my)*.55);
       cmx.beginPath(); cmx.moveTo(hx, hy); cmx.lineTo(hx + T*.22, hy + T*.06*(k%2? 1 : -1)); cmx.stroke();
     }
     cmx.fillStyle = 'rgba(122,26,22,.35)';
-    cmx.beginPath(); cmx.ellipse(x + lm*.7, y + am*.4, T*.22, T*.12, .4, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(x + lm*.7, y + am*.4, T*.22, T*.11, .4, 0, TAU); cmx.fill();
   });
 
   /* salão: lajes grandes de pedra (2x2) e desgaste no caminho */
