@@ -162,6 +162,24 @@
     font-family:var(--mono); font-size:12px; letter-spacing:.2em; padding:11px 26px; text-transform:uppercase;}
   #invFechar:active{background:var(--brasa); color:#120d06;}
 
+  #btnMenu{margin-left:auto; pointer-events:auto; width:36px; height:36px;
+    border:1px solid #443659; border-radius:4px; background:#1d1729cc; color:#9d94ad;
+    display:flex; align-items:center; justify-content:center; font-size:17px;}
+  #btnMenu:active{border-color:var(--brasa); color:var(--brasa);}
+  #menuJogo{position:absolute; inset:0; z-index:8; background:rgba(8,5,14,.85);
+    display:flex; align-items:center; justify-content:center; padding:30px;}
+  #menuJogo.oculto{display:none;}
+  #menuCard{background:#150f22; border:1px solid var(--brasa); border-radius:4px;
+    padding:22px 34px 24px; text-align:center; box-shadow:0 0 44px #e8a13c44;
+    animation:invEntra .25s ease-out;}
+  #menuCard h2{font-family:var(--mono); font-weight:400; color:var(--brasa); letter-spacing:.28em;
+    text-transform:uppercase; font-size:12px; margin-bottom:18px;}
+  #menuCard button{display:block; width:220px; margin:0 auto 10px; background:transparent;
+    border:1px solid var(--brasa); color:var(--brasa); font-family:var(--mono); font-size:12px;
+    letter-spacing:.2em; padding:12px 0; text-transform:uppercase;}
+  #menuCard button:active, #menuCard button.on{background:var(--brasa); color:#120d06;}
+  #menuCard #mVoltar{border-color:#443659; color:#9d94ad; margin-bottom:0;}
+
   #btnGolpe{width:70px; height:70px; border-color:#8a4a3a; background:#241410d9; display:none;}
   #btnGolpe.on{display:flex;}
   #btnGolpe .n{color:#e8b48a;}
@@ -175,6 +193,7 @@
   <div id="hud">
     <div id="vida"><div id="vidaFill"></div></div>
     <span id="segredos">SEGREDOS </span>
+    <div id="btnMenu">⚙</div>
   </div>
 
   <div id="missao"><div id="mTitulo"></div></div>
@@ -212,6 +231,15 @@
     <div id="bolsa">
       <div class="rot">Bolsa</div>
       <div class="itens" id="bolsaItens"></div>
+    </div>
+  </div>
+
+  <div id="menuJogo" class="oculto">
+    <div id="menuCard">
+      <h2>Menu</h2>
+      <button id="mSemMusica">Sem música</button>
+      <button id="mSair">Sair do jogo</button>
+      <button id="mVoltar">Voltar</button>
     </div>
   </div>
 
@@ -1854,6 +1882,7 @@ tela.addEventListener('mousedown', () => { if(dialogo) avancarDialogo(); });
 window.addEventListener('keydown', e => {
   teclas[e.key.toLowerCase()] = true;
   if(e.key === ' '){ e.preventDefault(); if(dialogo) avancarDialogo(); else rolar(); }
+  if(e.key === 'Escape') abrirMenu();
   if(e.key.toLowerCase() === 'e'){ if(dialogo) avancarDialogo(); else agir(); }
   if(e.key.toLowerCase() === 'q') usarTrapo();
   if(e.key.toLowerCase() === 'f' && piso.acaoGolpe) piso.acaoGolpe();
@@ -1878,6 +1907,9 @@ function lerEntrada(){
 function atualizar(dt){
   tempo += dt;
   atualizarParticulas(dt);
+  /* os ambientes fundem mesmo com o jogo pausado: é o diálogo (que pausa tudo)
+     que mais precisa do ducking — congelar aqui deixava os ajudantes gritando */
+  atualizarAmbientes(dt);
   if(!jog || etapa === 'menu' || pausado || !vivo) return;
 
   lerEntrada();
@@ -1915,7 +1947,6 @@ function atualizar(dt){
   }
 
   if(piso.atualizar) piso.atualizar(dt);
-  atualizarAmbientes(dt);
   informantes.forEach(p => p.fase += dt);
   definirInteracao();
 
@@ -2323,6 +2354,34 @@ el('invFechar').addEventListener('click', fecharPopupInventario);
 el('btnBolsa').addEventListener('touchstart', e => { e.preventDefault(); abrirInventario(); }, {passive:false});
 el('btnBolsa').addEventListener('mousedown', abrirInventario);
 
+/* ---------- menu do jogo ---------- */
+function pintarMenu(){
+  el('mSemMusica').textContent = semMusica ? 'Sem música ✓' : 'Sem música';
+  el('mSemMusica').classList.toggle('on', semMusica);
+}
+function abrirMenu(){
+  if(etapa === 'menu') return;                       // na tela-título não há o que pausar
+  if(!el('menuJogo').classList.contains('oculto')){ fecharMenu(); return; }
+  pintarMenu();
+  el('menuJogo').classList.remove('oculto');
+  pausado = true;
+}
+function fecharMenu(){
+  el('menuJogo').classList.add('oculto');
+  if(!dialogo && el('popupInv').classList.contains('oculto')) pausado = false;
+}
+el('btnMenu').addEventListener('touchstart', e => { e.preventDefault(); abrirMenu(); }, {passive:false});
+el('btnMenu').addEventListener('mousedown', abrirMenu);
+el('mVoltar').addEventListener('click', fecharMenu);
+el('mSair').addEventListener('click', () => location.reload());
+el('mSemMusica').addEventListener('click', () => {
+  semMusica = !semMusica;
+  try{ localStorage.setItem('hector.semMusica', semMusica ? '1' : '0'); }catch(e){}
+  if(semMusica) pararBgm();
+  else if(bgmDesejada.url) tocarBgm(bgmDesejada.url, bgmDesejada.vol);
+  pintarMenu();
+});
+
 function iniciarPiso(p){
   piso = p;
   etapa = 'inicio'; vivo = true; pausado = false;
@@ -2376,9 +2435,14 @@ el('comecar').addEventListener('click', () => {
 /* ---------- música de fundo (loop por piso) ---------- */
 let bgmAudio = null, bgmSrc = null, bgmFade = null, bgmVolAtual = .35;
 const BGM_VOL = .35, BGM_VOL_FALA = .08;
+/* preferência do menu: só cala a trilha — vozes, ambientes e efeitos ficam */
+let semMusica = false;
+try{ semMusica = localStorage.getItem('hector.semMusica') === '1'; }catch(e){}
+let bgmDesejada = {url:null, vol:null};   // o que tocaria, para religar quando a música voltar
 function tocarBgm(url, vol){
+  bgmDesejada = {url, vol};
   bgmVolAtual = vol != null ? vol : BGM_VOL;
-  if(!url){ pararBgm(); return; }
+  if(!url || semMusica){ pararBgm(); return; }
   if(bgmSrc === url && bgmAudio){
     try{ bgmAudio.volume = dialogo ? BGM_VOL_FALA : bgmVolAtual; bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
     return;
