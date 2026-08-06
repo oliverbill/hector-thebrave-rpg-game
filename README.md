@@ -39,7 +39,8 @@ O arquivo é dividido em duas metades demarcadas. O **motor não conhece nenhum 
 
 - Constantes e utilidades (índices de tiles, verificação de limites, hash)
 - Estado global (piso, mapa, personagem, chefe, informantes, modo de jogo)
-- Sistema de som (beep procedural, síntese de fala offline para os diálogos)
+- Sistema de som (SFX procedurais + clipes gravados; **vozes são sempre gravações reais**, sem síntese)
+- **Camadas de ambiente por proximidade** (`piso.ambientes`): som em loop que sobe conforme o jogador chega e pausa ao se afastar
 - Gerenciamento de mapa e cache de cenário
 - Colisão e movimento (sólido, livre, mover com subpassos e assistência de canto)
 - Efeitos visuais (faíscas, flutuadores de dano, aviso de tela, partículas, destroços)
@@ -51,6 +52,7 @@ O arquivo é dividido em duas metades demarcadas. O **motor não conhece nenhum 
 - Atualização (movimento, colisão, chefe, luz, câmera)
 - Desenho (canvas, HUD, braseiros, luz ambiente, partículas, riscos de dano)
 - Fluxo de jogo (menu, início do piso, luta, fim)
+- **Transição entre pisos**: animação do castelo (corte dos 6 andares, luz subindo) e o piso seguinte começa jogando sozinho
 
 ### CONTEÚDO — Piso 1: O Calabouço
 
@@ -88,9 +90,17 @@ Construído sobre a mesma receita — uma paleta quente, um construtor de mapa, 
 - **Porta de tábuas arrombável**: exige o **machado do Gladiador** empunhado e os 3 servos ouvidos; a machadada parte a porta ao meio em animação procedural (bandas girando nas dobradiças, lascas voando)
 - **Realismo pintado no cache** (gancho `pintarCache`): tábuas corridas, fornos de tijolo em brasa, mesas de preparo com talhos, lajes no salão, prateleiras na despensa, sangue arrastado e **carcaças balançando** na câmara
 - **O Açougueiro**: combo de 2 talhos e **três batidas de faca na mesa** antes da investida — exatamente `comboGolpes:2, batidasEm:[1.2,.8,.4]`, zero linhas alteradas na máquina de estados. Fraquezas: `pausa` (Cozinheiro), `avental` (Copeiro), `mesa` (Faxineira). Vozes reais gravadas em `audio/fase2/vozes/`
-- **Transição de piso**: vencer o Gladiador agora oferece "Subir a escada", que carrega o piso 2 com a bolsa intacta
+- **Estações de trabalho** subdividindo a cozinha: 3 cômodos sólidos com 15 ajudantes andando e trabalhando, mobiliados com utensílios; ao chegar perto, sobe o falatório com facas e panelas
+- **Cenário em alto-relevo** (perspectiva 3/4): faces de tijolo com cantaria, portas que abrem ao passar, janelas com gelosia, a grande cisterna octogonal do salão e a adega virada cave de vinhos
+- **Transição de piso**: vencer o Gladiador oferece "Subir a escada" → animação do castelo → a fase 2 começa sozinha, com a bolsa intacta
 
-Para testar um piso direto: **`castelo.html?piso=2`** — herda as recompensas dos pisos anteriores.
+### Atalhos de teste
+
+| URL | O que faz |
+|---|---|
+| `castelo.html?piso=2` | começa direto no piso, herdando as recompensas dos anteriores |
+| `castelo.html?piso=2&chefe=1` | cai na luta do chefe: segredos ouvidos, caminho liberado |
+| `castelo.html?transicao=1` | cai na vitória do piso, para rever a subida ao seguinte |
 
 ## Testes
 
