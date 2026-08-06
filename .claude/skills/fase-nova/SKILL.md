@@ -88,7 +88,7 @@ Mesmo script, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinheir
 
 - Um recorte por informante, **PNG sem fundo**, corpo inteiro, de pé.
 - Conferir o recorte olhando o PNG (`Read`) antes de instalar: rembg corta braços e pernas quando o fundo é claro ou o membro se confunde com o cenário — se sair pela metade, escolher **outra figura** em vez de insistir.
-- Coadjuvantes (etapa 8) podem sair de uma única cena coletiva: recortar 4–5 figuras dela.
+- **Coadjuvantes**: pesquisar as imagens deles com o MESMO mecanismo (`testes/pinterest.py`, chave `"medieval rpg 2d" + papel do grupo` — ex.: `carpideiras velório`, `lavadeiras medievais`); uma cena coletiva rende 4–5 recortes.
 
 **PARE e peça revisão** com `SendUserFile` antes de seguir.
 
@@ -167,6 +167,7 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 **Coadjuvantes:**
 
 - 3 estações/cômodos **sólidos** subdividindo a área principal — o jogador contorna e vê por cima do balcão, nunca entra.
+- **Sempre povoar MAIS cômodos além das estações**: cada sala relevante ganha seu grupo temático de coadjuvantes (na fase 3: o velório na capela, com o corpo no esquife e choro por proximidade). Grupo sem som é cenário morto — cada um tem sua camada em `piso.ambientes`, e eventos pontuais ganham one-shot próprio (ex.: o grito quando um vulto surge).
 - ~5 coadjuvantes por estação, **menores que o informante** daquele tema, que andam entre a bancada e o fundo, param, trabalham e viram para onde caminham (loop de 8 quadros, como `desenharInformante`).
 - **Som ambiente por proximidade**: declarar em `piso.ambientes` os focos de som — o motor toca em loop, sobe o volume conforme o jogador chega e pausa o clipe ao se afastar:
 
