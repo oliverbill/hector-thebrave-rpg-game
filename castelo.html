@@ -3301,6 +3301,7 @@ function construirCozinhas(){
    [4,32],[11,40],                                          // refeitório
    [33,29],[42,39],[37,34],                                 // despensa
    [33,5],[41,5],[37,15],[30,10],                           // câmara de carnes e porta
+   [10,19.6],[16,19.6],[26,19.6],                           // as três estações de trabalho
    [39.5,42],[40,50],[38,48],                               // escada e corredor de serviço
    [5.5,43],[32.5,42],                                      // descidas da adega
    [7.5,46.5],[16.5,49.5],[25.5,46.5],[30.5,51.5],[10.5,51.5] // adega
@@ -3525,6 +3526,75 @@ function desenharPortasInternas(ox, oy){
 }
 
 /* --- baratas grandes da cisterna: corpo alongado, antenas e seis patas remando --- */
+/* --- as três estações de trabalho da cozinha: cômodos murados que o jogador
+   vê por cima do balcão mas não alcança — cada uma com 5 ajudantes --- */
+const ESTACOES = [
+  {x1:9,  x2:11, tema:'legumes'},   // bancada de legumes
+  {x1:15, x2:17, tema:'paes'},      // a masseira dos pães
+  {x1:25, x2:27, tema:'carnes'}     // o corte das carnes
+];
+let ajudantes = [];
+const imgsAjudantes = [1,2,3,4].map(i => {
+  const im = new Image(); im.src = 'img/fase2/ajudantes/aj' + i + '.png'; return im;
+});
+function criarAjudantes(){
+  ajudantes = [];
+  ESTACOES.forEach(e => {
+    for(let k=0; k<5; k++){
+      ajudantes.push({
+        est:e, img:(k + (e.x1|0)) % imgsAjudantes.length,
+        x:e.x1 + .4 + Math.random()*(e.x2 - e.x1 + .2),
+        y:19.3 + Math.random()*1.3,
+        tx:0, ty:0, temAlvo:false, esperar:Math.random()*2,
+        fase:Math.random()*TAU, flip:Math.random() < .5
+      });
+    }
+  });
+}
+function atualizarAjudantes(dt){
+  ajudantes.forEach(a => {
+    a.fase += dt;
+    if(a.esperar > 0){ a.esperar -= dt; return; }        // trabalhando na bancada
+    if(!a.temAlvo){
+      const e = a.est;
+      a.tx = e.x1 + .35 + Math.random()*(e.x2 - e.x1 + .3);
+      a.ty = Math.random() < .6 ? 19.15 + Math.random()*.3   // vai à bancada
+                                : 19.3 + Math.random()*1.35; // circula pelo cômodo
+      a.temAlvo = true;
+    }
+    const dx = a.tx - a.x, dy = a.ty - a.y, d = Math.hypot(dx, dy);
+    if(d < .1){
+      a.temAlvo = false;
+      a.esperar = 1 + Math.random()*2.5;                 // para e trabalha
+    } else {
+      a.x += dx/d*.55*dt; a.y += dy/d*.55*dt;
+      if(Math.abs(dx) > .04) a.flip = dx < 0;
+    }
+  });
+}
+function desenharAjudantes(ox, oy){
+  ajudantes.forEach(a => {
+    const im = imgsAjudantes[a.img];
+    if(!(im.complete && im.naturalWidth > 0)) return;
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    const alt = tam*1.15;                                // bem menor que o Cozinheiro
+    const lar = im.naturalWidth*(alt/im.naturalHeight);
+    /* o mesmo loop de GIF dos informantes: balança, respira e quica */
+    const q = Math.floor(a.fase*8)/8;
+    const gira  = Math.sin(q*2.2)*.05;
+    const sopro = 1 + Math.sin(q*3.4)*.025;
+    const quica = (a.esperar > 0 ? Math.abs(Math.sin(q*4.5)) : Math.abs(Math.sin(q*2.2)))*tam*.045;
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.12, tam*.24, tam*.09, 0, 0, TAU); ctx.fill();
+    ctx.save();
+    ctx.translate(px, py + tam*.12 - quica);
+    ctx.rotate(gira);
+    ctx.scale((a.flip ? -1 : 1)*(2 - sopro), sopro);
+    ctx.drawImage(im, -lar/2, -alt, lar, alt);
+    ctx.restore();
+  });
+}
+
 /* --- a água da cisterna respira: brilho frio pulsando e ondulações sobre o cache --- */
 function desenharCisterna(ox, oy){
   const cx = ox + 23*tam, cy = oy + 46*tam;
@@ -3641,6 +3711,8 @@ function desenharCaldos(ox, oy){
 
 /* --- a porta da câmara de carnes: tábuas que só o machado abre --- */
 const imgPorta = new Image(); imgPorta.src = 'img/fase2/porta.png';
+const imgJanela = new Image(); imgJanela.src = 'img/fase2/janela.png';
+imgJanela.onload = () => { if(piso && piso.id === 'cozinhas' && mapa) desenharCache(); };
 function desenharPorta2(ox, oy){
   const P = COZ.PORTA;
   const x0 = ox + P.x*tam - tam*.3, y0 = oy + P.y*tam - tam*.15;
@@ -3904,8 +3976,9 @@ function pintarCozinhasCache(cmx, T){
   const ehParede = (x,y) => x>=0 && y>=0 && x<COZ.LARG && y<COZ.ALT && mapa[y*COZ.LARG + x] === PAREDE;
   const ehChao2  = (x,y) => x>=0 && y>=0 && x<COZ.LARG && y<COZ.ALT && anda2(mapa[y*COZ.LARG + x]);
   const naBacia  = (x,y) => Math.hypot(x + .5 - 23.5, y + .5 - 36.5) < 2.45;   // a grande cisterna
+  const naEstacao = (x,y) => y >= 18 && y <= 20 && ESTACOES.some(e => x >= e.x1 && x <= e.x2);
   for(let y=0; y<COZ.ALT; y++) for(let x=0; x<COZ.LARG; x++){
-    if(!ehParede(x,y) || naBacia(x,y)) continue;
+    if(!ehParede(x,y) || naBacia(x,y) || naEstacao(x,y)) continue;
     if(!(ehChao2(x,y+1) || ehChao2(x,y-1) || ehChao2(x+1,y) || ehChao2(x-1,y)
       || ehChao2(x+1,y+1) || ehChao2(x-1,y+1) || ehChao2(x+1,y-1) || ehChao2(x-1,y-1))) continue;
     const px2 = x*T, py2 = y*T, h = rndDe(x, y);
@@ -4407,6 +4480,132 @@ function pintarCozinhasCache(cmx, T){
     cmx.beginPath(); cmx.ellipse(vx*T, vy*T, T*.42, T*.2, rndDe(vx,vy), 0, TAU); cmx.fill();
   });
 
+  /* ---- as três estações de trabalho: dioramas em alto-relevo atrás do balcão ---- */
+  ESTACOES.forEach(e => {
+    const x0 = e.x1*T, x1 = (e.x2 + 1)*T, larg2 = x1 - x0;
+    // piso de madeira do cômodo
+    cmx.fillStyle = '#6e5334';
+    cmx.fillRect(x0, 18.55*T, larg2, 2.45*T);
+    cmx.strokeStyle = 'rgba(38,24,12,.3)'; cmx.lineWidth = 1.4;
+    for(let k=1; k<7; k++){
+      cmx.beginPath(); cmx.moveTo(x0, 18.55*T + k*T*.35); cmx.lineTo(x1, 18.55*T + k*T*.35); cmx.stroke();
+    }
+    // penumbra nos cantos e no fundo (o cômodo é interno)
+    const gE2 = cmx.createLinearGradient(0, 20.2*T, 0, 21*T);
+    gE2.addColorStop(0, 'rgba(0,0,0,0)'); gE2.addColorStop(1, 'rgba(0,0,0,.5)');
+    cmx.fillStyle = gE2; cmx.fillRect(x0, 20.2*T, larg2, T*.8);
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.fillRect(x0, 18.55*T, T*.16, 2.45*T); cmx.fillRect(x1 - T*.16, 18.55*T, T*.16, 2.45*T);
+    // prateleira no fundo com potes
+    cmx.fillStyle = '#503722'; cmx.fillRect(x0 + T*.2, 20.55*T, larg2 - T*.4, T*.16);
+    for(let k=0; k<4; k++){
+      cmx.fillStyle = ['#8a5a30','#6d7a4a','#96683c','#7a4a3a'][k%4];
+      cmx.beginPath();
+      cmx.ellipse(x0 + T*.5 + k*(larg2 - T)/3.2, 20.5*T, T*.1, T*.13, 0, 0, TAU);
+      cmx.fill();
+    }
+    // o balcão que fecha a estação: tampo para a cozinha e face para dentro
+    cmx.fillStyle = '#7a5430'; cmx.fillRect(x0, 17.95*T, larg2, T*.62);
+    cmx.fillStyle = 'rgba(255,225,175,.2)'; cmx.fillRect(x0, 17.95*T, larg2, 2.6);
+    cmx.strokeStyle = 'rgba(30,18,8,.55)'; cmx.lineWidth = 1.6;
+    cmx.strokeRect(x0, 17.95*T, larg2, T*.62);
+    cmx.fillStyle = '#5a3d1e'; cmx.fillRect(x0, 18.57*T, larg2, T*.34);
+    cmx.fillStyle = 'rgba(0,0,0,.4)'; cmx.fillRect(x0, 18.57*T, larg2, 2.2);
+    // a comida do tema, sobre o balcão
+    if(e.tema === 'legumes'){
+      [[.2,'#c9873a'],[.38,'#6d8a3a'],[.58,'#d8a03c'],[.78,'#b06a2a']].forEach(([f,c]) => {
+        cmx.fillStyle = c;
+        cmx.beginPath(); cmx.arc(x0 + larg2*f, 18.22*T, T*.09, 0, TAU); cmx.fill();
+      });
+      cmx.fillStyle = '#4a6a2a';
+      cmx.beginPath(); cmx.ellipse(x0 + larg2*.48, 18.3*T, T*.14, T*.05, .3, 0, TAU); cmx.fill();
+    } else if(e.tema === 'paes'){
+      [[.18],[.36],[.55],[.74]].forEach(([f]) => {
+        cmx.fillStyle = '#c08a3e';
+        cmx.beginPath(); cmx.ellipse(x0 + larg2*f, 18.24*T, T*.13, T*.085, 0, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(255,235,190,.4)';
+        cmx.beginPath(); cmx.ellipse(x0 + larg2*f, 18.2*T, T*.09, T*.04, 0, 0, TAU); cmx.fill();
+        cmx.fillStyle = '#c08a3e';
+      });
+      cmx.fillStyle = 'rgba(245,240,225,.5)';                 // farinha espalhada
+      cmx.beginPath(); cmx.ellipse(x0 + larg2*.88, 18.3*T, T*.14, T*.05, 0, 0, TAU); cmx.fill();
+    } else {
+      [[.22],[.5],[.76]].forEach(([f]) => {
+        cmx.fillStyle = '#7c2a20';
+        cmx.beginPath(); cmx.ellipse(x0 + larg2*f, 18.24*T, T*.15, T*.08, .15, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(230,200,190,.35)';
+        cmx.beginPath(); cmx.ellipse(x0 + larg2*f - T*.03, 18.21*T, T*.06, T*.03, .2, 0, TAU); cmx.fill();
+      });
+      cmx.fillStyle = 'rgba(96,14,14,.4)';
+      cmx.beginPath(); cmx.ellipse(x0 + larg2*.62, 18.34*T, T*.18, T*.045, 0, 0, TAU); cmx.fill();
+    }
+  });
+
+  /* ---- janelas: a arte de cantaria com gelosia e vidro frio, pelo cenário ---- */
+  const pJanelinha = (x, y) => {
+    const cx2 = (x + .5)*T, topo = y*T + T*.06, lar2 = T*.72, alt3 = T*.88;
+    // brilho frio vazando
+    const gJ = cmx.createRadialGradient(cx2, topo + alt3*.5, 0, cx2, topo + alt3*.5, T*.9);
+    gJ.addColorStop(0, 'rgba(90,200,225,.18)'); gJ.addColorStop(1, 'rgba(90,200,225,0)');
+    cmx.fillStyle = gJ; cmx.fillRect(cx2 - T, topo - T*.3, T*2, T*1.6);
+    // cantaria em volta (blocos claros, arco no alto)
+    cmx.fillStyle = '#9a938a';
+    cmx.fillRect(cx2 - lar2/2 - T*.1, topo, T*.1, alt3);
+    cmx.fillRect(cx2 + lar2/2, topo, T*.1, alt3);
+    cmx.fillRect(cx2 - lar2/2 - T*.1, topo + alt3, lar2 + T*.2, T*.08);
+    cmx.beginPath();
+    cmx.moveTo(cx2 - lar2/2 - T*.1, topo);
+    cmx.quadraticCurveTo(cx2, topo - T*.14, cx2 + lar2/2 + T*.1, topo);
+    cmx.lineTo(cx2 + lar2/2, topo + T*.06);
+    cmx.quadraticCurveTo(cx2, topo - T*.06, cx2 - lar2/2, topo + T*.06);
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = 'rgba(20,14,10,.5)'; cmx.lineWidth = 1.2;
+    for(let k=0; k<3; k++){
+      cmx.beginPath(); cmx.moveTo(cx2 - lar2/2 - T*.1, topo + alt3*(k+1)/3.2); cmx.lineTo(cx2 - lar2/2, topo + alt3*(k+1)/3.2); cmx.stroke();
+      cmx.beginPath(); cmx.moveTo(cx2 + lar2/2, topo + alt3*(k+1)/3.2); cmx.lineTo(cx2 + lar2/2 + T*.1, topo + alt3*(k+1)/3.2); cmx.stroke();
+    }
+    // o vidro frio com a gelosia de losangos
+    const gV = cmx.createLinearGradient(0, topo, 0, topo + alt3);
+    gV.addColorStop(0, '#2a7a92'); gV.addColorStop(.6, '#3fa9c4'); gV.addColorStop(1, '#63d3e8');
+    cmx.fillStyle = gV;
+    cmx.fillRect(cx2 - lar2/2, topo + T*.02, lar2, alt3 - T*.02);
+    cmx.strokeStyle = 'rgba(15,25,30,.6)'; cmx.lineWidth = 1.1;
+    for(let k=-3; k<=3; k++){
+      cmx.beginPath();
+      cmx.moveTo(cx2 - lar2/2 + k*lar2/3, topo); cmx.lineTo(cx2 - lar2/2 + (k+2)*lar2/3, topo + alt3);
+      cmx.stroke();
+      cmx.beginPath();
+      cmx.moveTo(cx2 + lar2/2 - k*lar2/3, topo); cmx.lineTo(cx2 + lar2/2 - (k+2)*lar2/3, topo + alt3);
+      cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(240,255,255,.25)';                  // reflexo
+    cmx.beginPath();
+    cmx.moveTo(cx2 - lar2*.3, topo + T*.04); cmx.lineTo(cx2 - lar2*.06, topo + T*.04);
+    cmx.lineTo(cx2 - lar2*.34, topo + alt3*.85); cmx.lineTo(cx2 - lar2*.48, topo + alt3*.7);
+    cmx.closePath(); cmx.fill();
+    // moldura de ferro
+    cmx.strokeStyle = '#26221f'; cmx.lineWidth = 2;
+    cmx.strokeRect(cx2 - lar2/2, topo + T*.02, lar2, alt3 - T*.02);
+  };
+  [[16,29],[27,29],[4,30],[10,30],[34,27],[41,27],[33,3],[41,3],[41,46]].forEach(([x,y]) => pJanelinha(x,y));
+
+  /* a janela GRANDE da cozinha, com a arte real (entre os fornos) */
+  if(imgJanela.complete && imgJanela.naturalWidth > 0){
+    const gJG = cmx.createRadialGradient(15.5*T, 5.4*T, 0, 15.5*T, 5.4*T, T*2.6);
+    gJG.addColorStop(0, 'rgba(90,200,225,.22)'); gJG.addColorStop(1, 'rgba(90,200,225,0)');
+    cmx.fillStyle = gJG;
+    cmx.fillRect(13*T, 3*T, 5*T, 4.4*T);
+    cmx.drawImage(imgJanela, 14.5*T, 3.05*T, 2.0*T, 2.85*T);
+    // o facho de luz fria caindo no chão da cozinha
+    const gF = cmx.createLinearGradient(0, 6*T, 0, 8.6*T);
+    gF.addColorStop(0, 'rgba(150,225,240,.10)'); gF.addColorStop(1, 'rgba(150,225,240,0)');
+    cmx.fillStyle = gF;
+    cmx.beginPath();
+    cmx.moveTo(14.6*T, 6*T); cmx.lineTo(16.4*T, 6*T);
+    cmx.lineTo(17.3*T, 8.6*T); cmx.lineTo(13.7*T, 8.6*T);
+    cmx.closePath(); cmx.fill();
+  }
+
   /* remendo de chão por baixo do tanque: nenhum canto de "muro" aparece */
   for(let y=33; y<=40; y++) for(let x=20; x<=27; x++){
     if(!naBacia(x,y)) continue;
@@ -4687,6 +4886,7 @@ const PISO_COZINHAS = {
     espinhos = []; trapos = []; facao = null; esparadrapos = [];
     porta2 = {aberta:false, quebra:0};
     criarPortasInternas();
+    criarAjudantes();
     vistoAdega = false; vistoCisterna = false;
     caldos = [];
     labaredas = [
@@ -4723,6 +4923,7 @@ const PISO_COZINHAS = {
   atualizar(dt){
     if(porta2.quebra > 0) porta2.quebra = Math.max(0, porta2.quebra - dt/.9);
     atualizarPortasInternas(dt);
+    atualizarAjudantes(dt);
     labaredas.forEach(e => {
       const h = alturaLabareda(e);
       if(h >= 1 && !e.acesa){ e.acesa = true; if(Math.hypot(e.x-jog.x, e.y-jog.y) < 8) sFerro(); }
@@ -4812,6 +5013,7 @@ const PISO_COZINHAS = {
   desenharCenario(ox, oy){
     desenharRosacea(ox, oy);
     desenharCisterna(ox, oy);
+    desenharAjudantes(ox, oy);
     desenharPortasInternas(ox, oy);
     desenharCarcacas(ox, oy);
     desenharLabaredas(ox, oy);
