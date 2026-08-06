@@ -185,7 +185,7 @@ ambientes:[
 Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 
 - **Motor × Conteúdo**: piso é objeto de dados + ganchos. Nada de hardcode de fase no motor.
-- **Transição de piso**: a vitória oferece "Subir a escada" → roda a **animação do castelo** (corte dos 6 andares, a luz sobe do piso vencido para o próximo) → o piso novo **começa jogando sozinho**, sem tela de início; o texto de intro vira aviso na tela. Basta acrescentar o nome do piso em `NOMES_PISOS`.
+- **Transição de piso**: a vitória oferece "Subir a escada" → roda a **animação do castelo** (corte dos 6 andares, a luz sobe do piso vencido para o próximo) → o piso novo **começa jogando sozinho**, sem tela de início; o texto de intro vira aviso na tela. Basta acrescentar o nome do piso em `NOMES_PISOS`. A mesma animação **abre o jogo** (luz nascendo no portão e subindo ao piso 1) — não existe tela inicial com botão; o áudio destrava no primeiro toque/tecla.
 - **Morte sem perder progresso**: `retomar()` reergue antes da arena com segredos, bolsa e caminho. **A música da luta é disparada na entrada da arena, não no momento em que a porta abre** — senão não volta na segunda tentativa (bug da Fase 2).
 - **Golpe nunca automático**; botão GOLPE / `F`.
 - **Diálogo com botão PULAR**, que vale como ouvir por inteiro (segredo + contador + callback).
