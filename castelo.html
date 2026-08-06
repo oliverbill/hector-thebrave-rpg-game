@@ -3903,8 +3903,9 @@ function pintarCozinhasCache(cmx, T){
      o resto é o TOPO do muro, pedra escura e bruta ---- */
   const ehParede = (x,y) => x>=0 && y>=0 && x<COZ.LARG && y<COZ.ALT && mapa[y*COZ.LARG + x] === PAREDE;
   const ehChao2  = (x,y) => x>=0 && y>=0 && x<COZ.LARG && y<COZ.ALT && anda2(mapa[y*COZ.LARG + x]);
+  const naBacia  = (x,y) => Math.hypot(x + .5 - 23.5, y + .5 - 36.5) < 2.45;   // a grande cisterna
   for(let y=0; y<COZ.ALT; y++) for(let x=0; x<COZ.LARG; x++){
-    if(!ehParede(x,y)) continue;
+    if(!ehParede(x,y) || naBacia(x,y)) continue;
     if(!(ehChao2(x,y+1) || ehChao2(x,y-1) || ehChao2(x+1,y) || ehChao2(x-1,y)
       || ehChao2(x+1,y+1) || ehChao2(x-1,y+1) || ehChao2(x+1,y-1) || ehChao2(x-1,y-1))) continue;
     const px2 = x*T, py2 = y*T, h = rndDe(x, y);
@@ -3966,7 +3967,7 @@ function pintarCozinhasCache(cmx, T){
 
   /* sombra que a face da parede projeta no chão logo abaixo — dá o relevo */
   for(let y=0; y<COZ.ALT; y++) for(let x=0; x<COZ.LARG; x++){
-    if(!ehChao2(x,y) || !ehParede(x, y-1)) continue;
+    if(!ehChao2(x,y) || !ehParede(x, y-1) || naBacia(x, y-1)) continue;
     const g2 = cmx.createLinearGradient(0, y*T, 0, y*T + T*.5);
     g2.addColorStop(0, 'rgba(0,0,0,.38)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
     cmx.fillStyle = g2;
@@ -4088,81 +4089,6 @@ function pintarCozinhasCache(cmx, T){
     cmx.strokeRect(px2 + 1, py2, T*.5 - 1, T*.12);
     cmx.strokeRect(px2 + T*.5, py2, T*.5 - 1, T*.12);
   });
-
-  /* ---- A GRANDE CISTERNA do salão: o tanque octogonal monumental da imagem
-     de inspiração, em alto-relevo — parapeito de pedra com face frontal,
-     água funda e a roda ornamental submersa ---- */
-  const octo = (cx2, cy2, R) => {
-    cmx.beginPath();
-    for(let i=0; i<8; i++){
-      const a = i*TAU/8 + TAU/16;
-      const X = cx2 + Math.cos(a)*R, Y = cy2 + Math.sin(a)*R;
-      i ? cmx.lineTo(X, Y) : cmx.moveTo(X, Y);
-    }
-    cmx.closePath();
-  };
-  const bcx = 23.5*T, bcy = 36.5*T, R1 = 2.5*T, R2 = 1.72*T;
-  // sombra no chão, para o sul
-  cmx.fillStyle = 'rgba(0,0,0,.35)';
-  octo(bcx + T*.08, bcy + T*.42, R1*1.02); cmx.fill();
-  // face frontal do parapeito (a altura aparece embaixo)
-  cmx.fillStyle = '#5f554b';
-  octo(bcx, bcy + T*.32, R1); cmx.fill();
-  cmx.fillStyle = 'rgba(0,0,0,.28)';
-  octo(bcx, bcy + T*.32, R1); cmx.fill();
-  cmx.fillStyle = '#655b50';
-  octo(bcx, bcy + T*.24, R1); cmx.fill();
-  // topo do parapeito, iluminado
-  cmx.fillStyle = '#a2978a';
-  octo(bcx, bcy - T*.10, R1); cmx.fill();
-  cmx.strokeStyle = 'rgba(20,14,10,.6)'; cmx.lineWidth = 2.6;
-  octo(bcx, bcy - T*.10, R1); cmx.stroke();
-  cmx.strokeStyle = 'rgba(255,248,235,.35)'; cmx.lineWidth = 1.6;
-  octo(bcx, bcy - T*.12, R1*.985); cmx.stroke();
-  // juntas radiais dos blocos do parapeito
-  cmx.strokeStyle = 'rgba(20,14,10,.5)'; cmx.lineWidth = 1.8;
-  for(let i=0; i<8; i++){
-    const a = i*TAU/8 + TAU/16;
-    cmx.beginPath();
-    cmx.moveTo(bcx + Math.cos(a)*R2, bcy - T*.10 + Math.sin(a)*R2);
-    cmx.lineTo(bcx + Math.cos(a)*R1, bcy - T*.10 + Math.sin(a)*R1);
-    cmx.stroke();
-  }
-  // bisel interno caindo para a água
-  cmx.fillStyle = 'rgba(12,22,28,.55)';
-  octo(bcx, bcy - T*.10, R2*1.1); cmx.fill();
-  // a água
-  const gGC = cmx.createRadialGradient(bcx, bcy - T*.05, 0, bcx, bcy - T*.05, R2);
-  gGC.addColorStop(0, '#3f97ac'); gGC.addColorStop(.65, '#27687a'); gGC.addColorStop(1, '#153a46');
-  cmx.fillStyle = gGC;
-  octo(bcx, bcy - T*.05, R2); cmx.fill();
-  // a roda ornamental, submersa
-  cmx.strokeStyle = 'rgba(215,238,244,.14)'; cmx.lineWidth = 2;
-  [.92, .6, .3].forEach(k => {
-    cmx.beginPath(); cmx.arc(bcx, bcy - T*.05, R2*k, 0, TAU); cmx.stroke();
-  });
-  for(let i=0; i<8; i++){
-    const a = i*TAU/8;
-    cmx.beginPath();
-    cmx.moveTo(bcx + Math.cos(a)*R2*.3, bcy - T*.05 + Math.sin(a)*R2*.3);
-    cmx.lineTo(bcx + Math.cos(a)*R2*.92, bcy - T*.05 + Math.sin(a)*R2*.92);
-    cmx.stroke();
-  }
-  // redemoinho e brilhos de superfície
-  cmx.strokeStyle = 'rgba(175,235,248,.4)'; cmx.lineWidth = 2.2;
-  for(let k=0; k<3; k++){
-    cmx.beginPath();
-    cmx.arc(bcx, bcy - T*.05, R2*(.18 + k*.22), k*1.7, k*1.7 + 3.8);
-    cmx.stroke();
-  }
-  // sombra interna: o parapeito norte paira sobre a água
-  cmx.save();
-  octo(bcx, bcy - T*.05, R2); cmx.clip();
-  const gGS = cmx.createLinearGradient(0, bcy - T*.05 - R2, 0, bcy - T*.05 - R2 + T*.8);
-  gGS.addColorStop(0, 'rgba(0,0,0,.55)'); gGS.addColorStop(1, 'rgba(0,0,0,0)');
-  cmx.fillStyle = gGS;
-  cmx.fillRect(bcx - R2, bcy - T*.05 - R2, R2*2, T*.8);
-  cmx.restore();
 
   /* ---- pilares do salão em vista frontal, como na referência:
      base larga no chão, fuste subindo e capitel no alto ---- */
@@ -4480,6 +4406,92 @@ function pintarCozinhasCache(cmx, T){
     cmx.fillStyle = 'rgba(70,18,46,.35)';
     cmx.beginPath(); cmx.ellipse(vx*T, vy*T, T*.42, T*.2, rndDe(vx,vy), 0, TAU); cmx.fill();
   });
+
+  /* remendo de chão por baixo do tanque: nenhum canto de "muro" aparece */
+  for(let y=33; y<=40; y++) for(let x=20; x<=27; x++){
+    if(!naBacia(x,y)) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+7, y+3);
+    cmx.fillStyle = 'rgb(122,106,84)'; cmx.fillRect(px2, py2, T, T);
+    if(h > .55){
+      cmx.fillStyle = h > .8 ? 'rgba(240,235,225,.06)' : 'rgba(8,6,10,.10)';
+      cmx.fillRect(px2 + 2, py2 + 2, T - 4, T - 4);
+    }
+  }
+  /* ---- A GRANDE CISTERNA do salão: o tanque octogonal monumental da imagem
+     de inspiração, em alto-relevo — parapeito de pedra com face frontal,
+     água funda e a roda ornamental submersa ---- */
+  const octo = (cx2, cy2, R) => {
+    cmx.beginPath();
+    for(let i=0; i<8; i++){
+      const a = i*TAU/8 + TAU/16;
+      const X = cx2 + Math.cos(a)*R, Y = cy2 + Math.sin(a)*R;
+      i ? cmx.lineTo(X, Y) : cmx.moveTo(X, Y);
+    }
+    cmx.closePath();
+  };
+  const bcx = 23.5*T, bcy = 36.5*T, R1 = 2.5*T, R2 = 1.72*T;
+  // sombra no chão, para o sul
+  cmx.fillStyle = 'rgba(0,0,0,.35)';
+  octo(bcx + T*.08, bcy + T*.42, R1*1.02); cmx.fill();
+  // face frontal do parapeito (a altura aparece embaixo)
+  cmx.fillStyle = '#5f554b';
+  octo(bcx, bcy + T*.32, R1); cmx.fill();
+  cmx.fillStyle = 'rgba(0,0,0,.28)';
+  octo(bcx, bcy + T*.32, R1); cmx.fill();
+  cmx.fillStyle = '#655b50';
+  octo(bcx, bcy + T*.24, R1); cmx.fill();
+  // topo do parapeito, iluminado
+  cmx.fillStyle = '#a2978a';
+  octo(bcx, bcy - T*.10, R1); cmx.fill();
+  cmx.strokeStyle = 'rgba(20,14,10,.6)'; cmx.lineWidth = 2.6;
+  octo(bcx, bcy - T*.10, R1); cmx.stroke();
+  cmx.strokeStyle = 'rgba(255,248,235,.35)'; cmx.lineWidth = 1.6;
+  octo(bcx, bcy - T*.12, R1*.985); cmx.stroke();
+  // juntas radiais dos blocos do parapeito
+  cmx.strokeStyle = 'rgba(20,14,10,.5)'; cmx.lineWidth = 1.8;
+  for(let i=0; i<8; i++){
+    const a = i*TAU/8 + TAU/16;
+    cmx.beginPath();
+    cmx.moveTo(bcx + Math.cos(a)*R2, bcy - T*.10 + Math.sin(a)*R2);
+    cmx.lineTo(bcx + Math.cos(a)*R1, bcy - T*.10 + Math.sin(a)*R1);
+    cmx.stroke();
+  }
+  // bisel interno caindo para a água
+  cmx.fillStyle = 'rgba(12,22,28,.55)';
+  octo(bcx, bcy - T*.10, R2*1.1); cmx.fill();
+  // a água
+  const gGC = cmx.createRadialGradient(bcx, bcy - T*.05, 0, bcx, bcy - T*.05, R2);
+  gGC.addColorStop(0, '#3f97ac'); gGC.addColorStop(.65, '#27687a'); gGC.addColorStop(1, '#153a46');
+  cmx.fillStyle = gGC;
+  octo(bcx, bcy - T*.05, R2); cmx.fill();
+  // a roda ornamental, submersa
+  cmx.strokeStyle = 'rgba(215,238,244,.14)'; cmx.lineWidth = 2;
+  [.92, .6, .3].forEach(k => {
+    cmx.beginPath(); cmx.arc(bcx, bcy - T*.05, R2*k, 0, TAU); cmx.stroke();
+  });
+  for(let i=0; i<8; i++){
+    const a = i*TAU/8;
+    cmx.beginPath();
+    cmx.moveTo(bcx + Math.cos(a)*R2*.3, bcy - T*.05 + Math.sin(a)*R2*.3);
+    cmx.lineTo(bcx + Math.cos(a)*R2*.92, bcy - T*.05 + Math.sin(a)*R2*.92);
+    cmx.stroke();
+  }
+  // redemoinho e brilhos de superfície
+  cmx.strokeStyle = 'rgba(175,235,248,.4)'; cmx.lineWidth = 2.2;
+  for(let k=0; k<3; k++){
+    cmx.beginPath();
+    cmx.arc(bcx, bcy - T*.05, R2*(.18 + k*.22), k*1.7, k*1.7 + 3.8);
+    cmx.stroke();
+  }
+  // sombra interna: o parapeito norte paira sobre a água
+  cmx.save();
+  octo(bcx, bcy - T*.05, R2); cmx.clip();
+  const gGS = cmx.createLinearGradient(0, bcy - T*.05 - R2, 0, bcy - T*.05 - R2 + T*.8);
+  gGS.addColorStop(0, 'rgba(0,0,0,.55)'); gGS.addColorStop(1, 'rgba(0,0,0,0)');
+  cmx.fillStyle = gGS;
+  cmx.fillRect(bcx - R2, bcy - T*.05 - R2, R2*2, T*.8);
+  cmx.restore();
+
 }
 
 /* --- carcaças penduradas na câmara, balançando de leve --- */
