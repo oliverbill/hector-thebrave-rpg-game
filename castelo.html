@@ -70,6 +70,11 @@
   #dFala{font-family:var(--serifa); font-size:17px; line-height:1.55; color:#ece5d6; min-height:3.2em;}
   #dNome{font-size:10px; letter-spacing:.24em; text-transform:uppercase; color:var(--brasa); margin-bottom:8px;}
   #dSeguir{font-size:10px; letter-spacing:.18em; color:#6f6683; text-align:right; margin-top:10px;}
+  #dPular{position:absolute; top:-16px; right:14px; transform:translateY(-100%);
+    font:600 10px/1 ui-monospace, Menlo, monospace; letter-spacing:.18em;
+    color:var(--brasa); background:rgba(12,8,18,.85); border:1px solid #3b2f4d;
+    border-radius:6px; padding:8px 12px; cursor:pointer;}
+  #dPular:active{background:#241a34;}
 
   /* ações */
   #acoes{position:absolute; right:16px; bottom:calc(env(safe-area-inset-bottom) + 22px); z-index:3;
@@ -192,6 +197,7 @@
       <div id="dFala"></div>
       <div id="dSeguir">tocar para continuar</div>
     </div>
+    <button id="dPular" type="button">PULAR ⏭</button>
   </div>
 
   <div id="veu">
@@ -1410,6 +1416,13 @@ function mostrarFala(){
   sFala();
   falarVoz(p.falas[dialogo.i], p.voz, p.voz.audios && p.voz.audios[dialogo.i]);
 }
+/* pular a conversa inteira: vale o mesmo que ouvir até o fim (segredo, contador, callback) —
+   para quem já falou com o personagem algum dia e só quer seguir */
+function pularDialogo(){
+  if(!dialogo) return;
+  dialogo.i = dialogo.inf.falas.length - 1;
+  avancarDialogo();
+}
 function avancarDialogo(){
   if(!dialogo) return;
   dialogo.i++;
@@ -1529,7 +1542,7 @@ function atualizarChefe(dt){
       c.vx -= c.vx*7*dt; c.vy -= c.vy*7*dt;
       mover(c, c.vx*dt, c.vy*dt);
       c.pisada += dt;
-      if(c.pisada > (c.proxPasso||0)){ sPassoChefe(); tremor = Math.max(tremor, 2); c.proxPasso = c.pisada + .38; }
+      if(c.pisada > (c.proxPasso||0)){ sPassoChefe(); tremor = Math.max(tremor, f.tremorPasso || 2); c.proxPasso = c.pisada + .38; }
       if(d < f.comboDist){ c.estado = 'combo'; c.golpes = 0; c.t = f.comboIntervalo + .03; }
       else if(c.t <= 0 && d > f.investidaDist){ c.estado = 'preparo'; c.t = f.preparoT; c.bateu = 0; c.mira = Math.atan2(dy,dx); }
       break;
@@ -1566,7 +1579,7 @@ function atualizarChefe(dt){
     case 'investida': {
       mover(c, c.vx*dt, c.vy*dt);
       c.pisada += dt*2.5;
-      if(c.pisada > (c.proxPasso||0)){ sPassoChefe(); c.proxPasso = c.pisada + .34; }
+      if(c.pisada > (c.proxPasso||0)){ sPassoChefe(); tremor = Math.max(tremor, f.tremorPasso || 2); c.proxPasso = c.pisada + .34; }
       if(Math.random() < .6) faisca(c.x, c.y, '#c9a77a', .07);
       if(d < c.raio + jog.raio + .3){ machucar(f.investidaDano); jog.vx += (dx/d)*14; jog.vy += (dy/d)*14; }
       if(c.bateuParede){
@@ -1699,6 +1712,8 @@ tela.addEventListener('touchend', soltar, {passive:true});
 tela.addEventListener('touchcancel', soltar, {passive:true});
 el('dialogo').addEventListener('touchstart', e => { e.preventDefault(); avancarDialogo(); }, {passive:false});
 el('dialogo').addEventListener('mousedown', avancarDialogo);
+el('dPular').addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); pularDialogo(); }, {passive:false});
+el('dPular').addEventListener('mousedown', e => { e.stopPropagation(); pularDialogo(); });
 tela.addEventListener('mousedown', () => { if(dialogo) avancarDialogo(); });
 
 window.addEventListener('keydown', e => {
@@ -1917,9 +1932,9 @@ function desenharInformante(p, ox, oy){
   const foto = p.retrato && imgRetrato(p.retrato);
   let topo = py - r*2.0;
   if(foto && foto.complete && foto.naturalWidth > 0){
-    /* mesma altura em tela do sprite do jogador (largura tam*.9) */
-    const alt = imgJogador.naturalWidth > 0
-      ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2;
+    /* mesma altura em tela do sprite do jogador (largura tam*.9), vezes a escala do personagem */
+    const alt = (imgJogador.naturalWidth > 0
+      ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2) * (p.escala || 1);
     const lar = foto.naturalWidth*(alt/foto.naturalHeight);
     const base = py + r*1.2 - quica;
     ctx.save();
@@ -2637,13 +2652,14 @@ function atualizarRatazanas(dt, paradas){
     if(d < rz.raio + jog.raio + .1 && rz.morde <= 0){
       rz.morde = .8;
       sRato();
-      machucar(6);
+      machucar(rz.dano || 6);
     }
   });
 }
 function desenharRatazanas(ox, oy){
   ratazanas.forEach(rz => {
     if(rz.hp <= 0) return;
+    if(rz.barata){ desenharBarata(rz, ox, oy); return; }
     const px = ox + rz.x*tam, py = oy + rz.y*tam, r = tam*.20;
     ctx.fillStyle = 'rgba(0,0,0,.3)';
     ctx.beginPath(); ctx.ellipse(px, py + r*.7, r*1.05, r*.4, 0, 0, TAU); ctx.fill();
@@ -3359,6 +3375,45 @@ function desenharLabaredas(ox, oy){
   });
 }
 
+/* --- baratas grandes da cisterna: corpo alongado, antenas e seis patas remando --- */
+function desenharBarata(rz, ox, oy){
+  const px = ox + rz.x*tam, py = oy + rz.y*tam, r = tam*.30;
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(px, py + r*.6, r*1.25, r*.45, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.translate(px, py); ctx.rotate(rz.ang);
+  const w = Math.sin(rz.fase*14);
+  // patas: três de cada lado, remando desencontradas
+  ctx.strokeStyle = '#241708'; ctx.lineWidth = Math.max(1, r*.13); ctx.lineCap = 'round';
+  for(let i=0; i<3; i++){
+    const bx2 = (i-1)*r*.6, sw = Math.sin(rz.fase*14 + i*2.1)*.5;
+    [-1,1].forEach(s => {
+      ctx.beginPath();
+      ctx.moveTo(bx2, s*r*.35);
+      ctx.lineTo(bx2 - r*.35 + s*sw*r*.25, s*r*.95);
+      ctx.stroke();
+    });
+  }
+  ctx.lineCap = 'butt';
+  // corpo: élitros escuros com risco central e um brilho oleoso
+  ctx.fillStyle = rz.flash > 0 ? '#c9b6a4' : '#38220f';
+  ctx.beginPath(); ctx.ellipse(0, 0, r*1.25, r*.55, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = Math.max(1, r*.06);
+  ctx.beginPath(); ctx.moveTo(-r*1.05, 0); ctx.lineTo(r*.9, 0); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,215,160,.16)';
+  ctx.beginPath(); ctx.ellipse(-r*.2, -r*.2, r*.7, r*.13, 0, 0, TAU); ctx.fill();
+  // cabeça e antenas varrendo o chão
+  ctx.fillStyle = '#1e1005';
+  ctx.beginPath(); ctx.arc(r*1.12, 0, r*.30, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#1e1005'; ctx.lineWidth = Math.max(1, r*.08);
+  [-1,1].forEach(s => {
+    ctx.beginPath();
+    ctx.moveTo(r*1.3, s*r*.1);
+    ctx.quadraticCurveTo(r*2.0, s*r*.5 + w*r*.15, r*2.4, s*r*.85 + w*r*.25);
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 /* --- pão nosso de cada dia: cura espalhada pela cozinha, despensa e adega --- */
 const imgPao = new Image(); imgPao.src = 'img/fase2/pao.png';
 const imgCaldo = new Image(); imgCaldo.src = 'img/fase2/caldo.png';
@@ -3544,19 +3599,48 @@ function desenharAcougueiro(c, ox, oy){
       vida:.4, cor:'rgba(170,140,105,.4)', tam:.09});
   }
 
-  const base = py + r*.95, alt = r*4.6;      // um touro de gente: ocupa a porta inteira
-  const iw = imgButcher.naturalWidth, ih = imgButcher.naturalHeight;
+  /* pernas grandes e visíveis: coxas blindadas com joelheira e botas, plantadas no chão.
+     O corpo (sprite) sobe para dar lugar a elas — nada de flutuar. */
+  const base = py + r*.95, alt = r*3.8;      // tronco; as pernas somam ~r*.9 abaixo
+  const pernaAlt = r*(.92 - ajoelha*.35);
+  const balanco = (andando || c.estado === 'investida') ? Math.sin(c.pisada*5.5)*.5 : 0;
+  const hipY = base + ly - pernaAlt + ajoelha*r*.36;
+  const perna = (lado, ang) => {
+    ctx.save();
+    ctx.translate(px + lx*.55 + lado*r*.34, hipY);
+    ctx.rotate(ang);
+    // coxa e canela num bloco pesado
+    ctx.fillStyle = c.flash > .5 ? '#8d8698' : '#241f28';
+    ctx.beginPath();
+    ctx.moveTo(-r*.20, 0); ctx.lineTo(r*.20, 0);
+    ctx.lineTo(r*.15, pernaAlt*.96); ctx.lineTo(-r*.15, pernaAlt*.96);
+    ctx.closePath(); ctx.fill();
+    // brilho de metal na lateral
+    ctx.fillStyle = 'rgba(210,200,225,.10)';
+    ctx.fillRect(-r*.20, pernaAlt*.08, r*.09, pernaAlt*.72);
+    // joelheira
+    ctx.fillStyle = '#38323f';
+    ctx.beginPath(); ctx.ellipse(0, pernaAlt*.46, r*.17, r*.12, 0, 0, TAU); ctx.fill();
+    // bota
+    ctx.fillStyle = '#0f0c14';
+    ctx.beginPath(); ctx.ellipse(Math.sin(ang)*r*.06, pernaAlt*.98, r*.27, r*.15, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(220,210,235,.14)';
+    ctx.beginPath(); ctx.ellipse(0, pernaAlt*.90, r*.20, r*.06, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+  };
+  perna(-1, balanco);
+  perna(1, -balanco);
 
+  const iw = imgButcher.naturalWidth, ih = imgButcher.naturalHeight;
   if(imgButcher.complete && iw > 0){
     const lar = alt*iw/ih;
     const resp = exausto ? Math.sin(tempo*7)*.06 : Math.sin(tempo*1.8)*.015;  // arfa como um fole
     // a cada pisada o corpo comprime de leve: o peso chega no chão
     const soco = andando ? Math.abs(Math.cos(c.pisada*5.5))*.03 : 0;
     ctx.save();
-    ctx.translate(px + lx, base + ly);
+    ctx.translate(px + lx, hipY + r*.14);          // o tronco senta sobre os quadris
     if(flip) ctx.scale(-1, 1);
     ctx.rotate(-incl + gingado);
-    ctx.translate(0, ajoelha*r*.36);
     ctx.scale(1 + ajoelha*.07 + soco, (1 - ajoelha*.24 - soco)*(1 + resp));
     if(c.flash > .5) ctx.filter = 'brightness(2.1) saturate(.4)';
     ctx.drawImage(imgButcher, -lar/2, -alt, lar, alt);
@@ -3568,13 +3652,14 @@ function desenharAcougueiro(c, ox, oy){
   }
 
   // o brilho da lâmina erguida no windup: aviso de que o talho vem
+  const topoC = hipY + r*.14 - alt;                  // topo do tronco na tela
   if(wind > .25){
     const ga = c.angulo + Math.PI*.82;
     ctx.strokeStyle = 'rgba(235,235,245,' + (wind*.75) + ')';
     ctx.lineWidth = Math.max(1.5, r*.11*wind);
     ctx.beginPath();
-    ctx.moveTo(px + Math.cos(ga)*r*.5, base - alt*.72);
-    ctx.lineTo(px + Math.cos(ga)*r*1.3, base - alt*.98);
+    ctx.moveTo(px + Math.cos(ga)*r*.5, topoC + alt*.28);
+    ctx.lineTo(px + Math.cos(ga)*r*1.3, topoC + alt*.02);
     ctx.stroke();
   }
 
@@ -3609,7 +3694,7 @@ function desenharAcougueiro(c, ox, oy){
   }
 
   // suor e aviso quando ofegante; estrelas quando zonzo
-  const hy = base - alt*.85 + ajoelha*r*.5;
+  const hy = topoC + alt*.15 + ajoelha*r*.5;
   if(exausto && Math.random() < .25)
     particulas.push({x:c.x + Math.cos(c.angulo)*.5, y:c.y - .6,
       vx:(Math.random()-.5)*.4, vy:-.7 - Math.random()*.4, vida:.7, cor:'rgba(220,214,228,.55)', tam:.09});
@@ -3617,7 +3702,7 @@ function desenharAcougueiro(c, ox, oy){
     ctx.fillStyle = 'rgba(255,240,200,' + (.45 + Math.sin(tempo*8)*.25) + ')';
     ctx.font = '600 ' + Math.round(tam*.3) + 'px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('sem fôlego', px, base - alt - tam*.25);
+    ctx.fillText('sem fôlego', px, topoC - tam*.25);
   }
   if(zonzo){
     for(let i=0;i<3;i++){
@@ -3863,7 +3948,7 @@ const PISO_COZINHAS = {
     tarefaChefe:'t-chefe2'
   },
   informantes:[
-    { nome:'O Cozinheiro', chave:'pausa', cor:'#d8c7a8',
+    { nome:'O Cozinheiro', chave:'pausa', cor:'#d8c7a8', escala:1.5,
       retrato:'img/fase2/cozinheiro.png',
       voz:{pitch:.7, rate:.9, genero:'m',
            audios:['audio/fase2/vozes/cozinheiro-1.mp3','audio/fase2/vozes/cozinheiro-2.mp3','audio/fase2/vozes/cozinheiro-3.mp3']},
@@ -3873,7 +3958,7 @@ const PISO_COZINHAS = {
         'O Açougueiro corta gente como quem pica cebola: dois talhos, sempre dois. Tum, tum.',
         'Depois do segundo talho, o braço dele pesa. É nessa hora que ele vira picadinho também.'
       ], ganho:'Você vai enxergar quando o braço dele pesar.' },
-    { nome:'O Copeiro', chave:'avental', cor:'#a8b89a',
+    { nome:'O Copeiro', chave:'avental', cor:'#a8b89a', escala:1.5,
       retrato:'img/fase2/copeiro.png',
       voz:{pitch:1.1, rate:1.02, genero:'m',
            audios:['audio/fase2/vozes/copeiro-1.mp3','audio/fase2/vozes/copeiro-2.mp3','audio/fase2/vozes/copeiro-3.mp3']},
@@ -3883,7 +3968,7 @@ const PISO_COZINHAS = {
         'Sabe aquele avental de aço que ele usa? eu já vi ele entortar faca de aço.',
         'Mas o avental só cobre a frente. Pelas costas ele é mole feito bolo de estrume.'
       ], ganho:'Golpes pelas costas doem muito mais nele.' },
-    { nome:'A Faxineira', chave:'mesa', cor:'#c9a2b0',
+    { nome:'A Faxineira', chave:'mesa', cor:'#c9a2b0', escala:1.5,
       retrato:'img/fase2/faxineira.png',
       voz:{pitch:1.25, rate:.98, genero:'f',
            audios:['audio/fase2/vozes/faxineira-1.mp3','audio/fase2/vozes/faxineira-2.mp3','audio/fase2/vozes/faxineira-3.mp3']},
@@ -3903,6 +3988,7 @@ const PISO_COZINHAS = {
       exaustoT:1.3,
       investidaDist:3.6, preparoT:1.8, batidasEm:[1.2,.8,.4],
       investidaVel:15, investidaT:1.1, investidaDano:30, zonzoT:2.0,
+      tremorPasso:7,                                   // o chão treme a cada pisada dele
       sons:{entrada:'fase2/vozes/acougueiro-entrada', golpe:'fase2/vozes/acougueiro-golpe', levaGolpe:'fase2/vozes/acougueiro-levagolpe'},
       somBatida:'audio/fase2/sons/cutelo-batida-1.mp3',
       entrada:['O Açougueiro', 'ele afia a faca'],
@@ -4052,9 +4138,20 @@ const PISO_COZINHAS = {
       vistoAdega = true;
       avisar('A adega', 'a Faxineira limpa o fundo — siga a luz dourada');
     }
-    if(!vistoCisterna && Math.hypot(22.5-jog.x, 43-jog.y) < 2){
+    /* a emboscada da cisterna: as baratas ficam escondidas atrás da grade
+       e só saem quando o jogador chega perto */
+    if(!vistoCisterna && Math.hypot(22.5-jog.x, 43-jog.y) < 2.8){
       vistoCisterna = true;
-      avisar('A grade da cisterna', 'trancada por fora — não é por aqui');
+      sRato(); setTimeout(sRato, 140); setTimeout(sRato, 320);
+      tremor = 7;
+      avisar('A cisterna ferve', 'baratas do tamanho de gatos');
+      for(let k=0;k<4;k++){
+        const bx = 22.1 + Math.random()*1.8;
+        for(let j=0;j<6;j++) faisca(bx, 43.6, '#3a2c1e', .13);
+        ratazanas.push({x:bx, y:43.4 - Math.random()*.8, vx:(Math.random()-.5)*2, vy:-2.2,
+          raio:.3, hp:34, dano:9, ang:-Math.PI/2, fase:Math.random()*TAU,
+          morde:0, flash:0, guincho:0, barata:true});
+      }
     }
   },
   falarLiberado(){ return etapa === 'livre'; },
