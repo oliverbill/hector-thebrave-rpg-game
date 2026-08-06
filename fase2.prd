@@ -35,7 +35,7 @@ Vale o bloco inteiro do template, sem exceções nesta fase.
 1. **Transição de piso** — a vitória com próximo piso disponível troca o botão do véu ("Subir a escada") e carrega o piso seguinte preservando a bolsa (RNF-05). Sem animação do castelo ainda — ver §8.
 2. **Vozes e som de batida do chefe saíram do motor para o `cfg`** — o motor tinha `vozChefe('fase1/gladiador-*')` hardcoded em três pontos; agora lê `cfg.sons:{entrada,golpe,levaGolpe}` e `cfg.somBatida`. Era um vazamento MOTOR×CONTEÚDO que a Fase 2 obrigou a corrigir.
 3. **`atualizarRatazanas()` compartilhada** — a lógica saiu do `atualizar` do piso 1 para função de conteúdo reutilizável (as ratazanas da despensa e da adega são as mesmas do calabouço, F2-RF-11).
-4. **`?piso=N` na URL** — pula direto a um piso herdando as recompensas dos anteriores; é o acesso de teste.
+4. **`?piso=N` na URL** — pula direto a um piso herdando as recompensas dos anteriores; é o acesso de teste. Com **`&chefe=1`** vai direto à luta do chefe (gancho `irAoChefe()` por piso: segredos ouvidos, caminho liberado, jogador na soleira da arena).
 5. **Gancho `pintarCache(cmx, T)`** (05/08) — uma linha no motor que deixa o piso pintar detalhe de chão no cache do mapa (por cima dos tiles, por baixo do decor). É o que permite tábuas corridas, fornos de tijolo, mesas, prateleiras e sangue sem custo por quadro.
 
 O Açougueiro em si confirmou a promessa do README: 100% expressável no `cfg` existente (`comboGolpes:2, batidasEm:[1.2,.8,.4]`), zero mudança na máquina de estados.

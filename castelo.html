@@ -2166,6 +2166,7 @@ el('comecar').addEventListener('click', () => {
   }
   iniciarPiso(PISOS[pisoAtual]);
   tocarBgm(PISOS[pisoAtual].bgm);
+  if(atalhoChefe && piso.irAoChefe) piso.irAoChefe();   // ?chefe=1: direto para a luta (teste)
 });
 
 /* ---------- música de fundo (loop por piso) ---------- */
@@ -3140,6 +3141,22 @@ const PISO_CALABOUCO = {
       avisar('As catacumbas', 'a Ladra se esconde no fundo — siga a luz dourada');
     }
     if(jog.y > 43.1) marcarTarefa('t-ponte');
+  },
+  /* atalho de teste (?chefe=1): corrente quebrada, segredos ouvidos, portão aberto */
+  irAoChefe(){
+    etapa = 'livre'; jog.lento = false; jog.dashOff = false;
+    ancora.forca = ancora.alvo;
+    informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
+    const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
+    if(cont) cont.textContent = informantes.length + '/' + informantes.length;
+    marcarTarefa(tid); marcarTarefa('t-corrente'); marcarTarefa('t-ponte');
+    jog.arma = jog.arma || 'facao-catacumbas';
+    if(facao) facao.pego = true;
+    abrirPortao();
+    jog.x = CAL.PORTAO.x + .5; jog.y = CAL.PORTAO.y + 1.6;
+    jog.vx = jog.vy = 0; camX = jog.x; camY = jog.y;
+    atualizarHUD();
+    avisar('Atalho de teste', 'a areia está do outro lado');
   },
   falarLiberado(){ return etapa === 'livre'; },
   interacao(){
@@ -5094,6 +5111,21 @@ const PISO_COZINHAS = {
       }
     }
   },
+  /* atalho de teste (?piso=2&chefe=1): segredos ouvidos, porta aberta,
+     jogador na soleira da câmara — a luta começa no primeiro passo */
+  irAoChefe(){
+    informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
+    const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
+    if(cont) cont.textContent = informantes.length + '/' + informantes.length;
+    marcarTarefa(tid); marcarTarefa('t-fogo'); marcarTarefa('t-adega');
+    porta2.aberta = true; porta2.quebra = 0;
+    for(let y = COZ.PORTA.y; y < COZ.PORTA.y + COZ.PORTA.alt; y++) mapa[idx(COZ.PORTA.x, y)] = CHAO;
+    desenharCache();
+    jog.x = COZ.PORTA.x + .6; jog.y = COZ.PORTA.y + 1.5;
+    jog.vx = jog.vy = 0; camX = jog.x; camY = jog.y;
+    atualizarHUD();
+    avisar('Atalho de teste', 'a câmara de carnes está aberta');
+  },
   falarLiberado(){ return etapa === 'livre'; },
   interacao(){
     if(etapa === 'livre' && !porta2.aberta
@@ -5133,10 +5165,14 @@ const PISOS = [PISO_CALABOUCO, PISO_COZINHAS];
 let pisoAtual = 0;
 
 /* ---------- arranque ---------- */
-/* ?piso=N pula direto a um piso, herdando as recompensas dos anteriores (teste) */
+/* ?piso=N pula direto a um piso, herdando as recompensas dos anteriores;
+   &chefe=1 vai direto à luta do chefe, com os segredos já ouvidos (teste) */
+let atalhoChefe = false;
 (() => {
-  const n = parseInt(new URLSearchParams(location.search).get('piso') || '1', 10);
+  const q = new URLSearchParams(location.search);
+  const n = parseInt(q.get('piso') || '1', 10);
   pisoAtual = clamp((isNaN(n) ? 1 : n) - 1, 0, PISOS.length - 1);
+  atalhoChefe = q.get('chefe') === '1';
   for(let i = 0; i < pisoAtual; i++)
     if(PISOS[i].recompensa) inventario.push(PISOS[i].recompensa);
 })();
