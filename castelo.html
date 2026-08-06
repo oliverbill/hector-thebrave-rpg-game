@@ -13,7 +13,8 @@
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --serifa: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   }
-  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none;}
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
   html,body{height:100%; overflow:hidden; background:#141019; color:var(--osso);
     font-family:var(--mono); overscroll-behavior:none; touch-action:none;}
   #app{position:fixed; inset:0;}
@@ -1785,13 +1786,15 @@ const entrada = {x:0, y:0};
 let toqueId = null, jbx = 0, jby = 0, jvx = 0, jvy = 0, joyAtivo = false;
 const teclas = {};
 tela.addEventListener('touchstart', e => {
+  e.preventDefault();
   if(dialogo){ avancarDialogo(); return; }
   for(const t of e.changedTouches){
     if(toqueId === null && t.clientX < window.innerWidth*.6){
       toqueId = t.identifier; jbx = jvx = t.clientX; jby = jvy = t.clientY; joyAtivo = true;
     }
   }
-}, {passive:true});
+}, {passive:false});
+window.addEventListener('contextmenu', e => e.preventDefault());
 tela.addEventListener('touchmove', e => {
   for(const t of e.changedTouches) if(t.identifier === toqueId){ jvx = t.clientX; jvy = t.clientY; }
 }, {passive:true});
