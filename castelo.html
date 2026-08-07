@@ -1731,7 +1731,8 @@ function criarChefe(){
   chefe = {
     cfg:f, x:f.x, y:f.y, vx:0, vy:0, raio:f.raio, hp:f.hp, hpMax:f.hp,
     estado:'espera', t:f.esperaT, golpes:0, angulo:Math.PI, flash:0,
-    investindo:false, bateuParede:false, pisada:0, escudoBate:0, bateu:0, golpeAnim:0, fase:0
+    investindo:false, bateuParede:false, pisada:0, escudoBate:0, bateu:0, golpeAnim:0, fase:0,
+    mergulhos:0
   };
   el('chefeNome').textContent = f.nome;
   el('chefeBarra').classList.add('on');
@@ -1814,7 +1815,10 @@ function atualizarChefe(dt){
         c.golpes++;
         const i = Math.min(c.golpes, f.comboGolpes) - 1;
         golpeChefe(f.comboDano[i], f.comboAlcance[i]);
-        if(c.golpes >= f.comboGolpes){ c.estado = 'exausto'; c.t = f.exaustoT; }
+        if(c.golpes >= f.comboGolpes){
+          if(f.cavaT) entrarCava(c, f);          // ciclo subterrâneo (só com cfg.cavaT)
+          else { c.estado = 'exausto'; c.t = f.exaustoT; }
+        }
         else c.t = f.comboIntervalo;
       }
       break;
@@ -1852,22 +1856,126 @@ function atualizarChefe(dt){
     case 'zonzo':
       if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
       break;
+
+    /* ---- ciclo subterrâneo (só entra aqui quando o cfg tem cavaT) ---- */
+    case 'cava':                    // mergulho: meio segundo afundando na terra
+      c.vx *= .7; c.vy *= .7;
+      if(Math.random() < .6) terraRevolvida(c.x + (Math.random()-.5)*c.raio*1.4, c.y + (Math.random()-.5)*c.raio*.7);
+      if(c.t <= 0){ c.estado = 'persegue'; c.t = f.persegueT; }
+      break;
+
+    case 'persegue': {              // submerso e invulnerável: só o rastro persegue
+      const [ax, ay] = dirLivre(c, dx/d, dy/d);
+      c.vx += (ax*f.persegueVel - c.vx)*Math.min(1, dt*6);
+      c.vy += (ay*f.persegueVel - c.vy)*Math.min(1, dt*6);
+      mover(c, c.vx*dt, c.vy*dt);
+      if(Math.random() < .8) terraRevolvida(c.x + (Math.random()-.5)*.9, c.y + (Math.random()-.5)*.5);
+      tremor = Math.max(tremor, 1.5);
+      if(c.t <= 0){ c.estado = 'irrompe'; c.t = f.irromperAvisoT; c.vx = c.vy = 0; }
+      break;
+    }
+
+    case 'irrompe':                 // o ponto travou: círculo de aviso, então a emersão
+      if(c.t <= 0){
+        c.mergulhos++;
+        const ang = Math.atan2(dy, dx);
+        const acertou = d < f.irromperRaio;
+        c.angulo = ang; c.golpeAnim = .22;
+        tremor = 22;
+        if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe); else sBaterParede();
+        for(let k=0;k<26;k++)
+          terraRevolvida(c.x + (Math.random()-.5)*f.irromperRaio*1.5, c.y + (Math.random()-.5)*f.irromperRaio);
+        if(acertou){ machucar(f.irromperDano, ang); jog.vx += Math.cos(ang)*13; jog.vy += Math.sin(ang)*13; }
+        if(f.mergulhosAteExausto && c.mergulhos >= f.mergulhosAteExausto){
+          c.mergulhos = 0; c.estado = 'exausto'; c.t = f.exaustoT;      // sem fôlego: janela longa
+        }
+        else if(!acertou){ c.estado = 'atordoado'; c.t = f.atordoadoT; } // errou: janela de dano
+        else { c.estado = 'aproxima'; c.t = f.aproximaT; }
+      }
+      break;
+
+    case 'atordoado':               // o par do 'zonzo' para quem cava
+      c.vx *= .8; c.vy *= .8;
+      if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      break;
   }
   atualizarBarraChefe();
 }
+/* entra na terra: o começo do ciclo cava -> persegue -> irrompe */
+function entrarCava(c, f){
+  c.estado = 'cava'; c.t = f.cavaT;
+  c.vx = c.vy = 0; c.investindo = false;
+  if(f.sons && f.sons.cava) vozChefe(f.sons.cava);
+  tremor = Math.max(tremor, 8);
+  for(let k=0;k<14;k++) terraRevolvida(c.x + (Math.random()-.5)*c.raio*1.6, c.y + (Math.random()-.5)*c.raio*.8);
+}
+/* debaixo da terra ele não é visto, não empurra e não leva golpe */
+function chefeSubmerso(c){
+  return !!(c && c.cfg && c.cfg.cavaT) &&
+         (c.estado === 'cava' || c.estado === 'persegue' || c.estado === 'irrompe');
+}
+/* torrão de terra revolvida saltando do chão */
+const CORES_TERRA = ['#4a3a26','#5c4830','#3a2d1d','#6b5638'];
+function terraRevolvida(x, y){
+  particulas.push({x, y, vx:(Math.random()-.5)*2.2, vy:-.8 - Math.random()*1.8,
+    vida:.4 + Math.random()*.4, cor:CORES_TERRA[irand(CORES_TERRA.length)],
+    tam:.06 + Math.random()*.08});
+}
+/* rastro de terra + aviso de emersão: o motor chama antes do desenhar do conteúdo;
+   devolve true enquanto o chefe está debaixo da terra (o corpo não aparece) */
+function desenharChefeSubterraneo(c, ox, oy){
+  const f = c.cfg;
+  if(!chefeSubmerso(c)) return false;
+  const px = ox + c.x*tam, py = oy + c.y*tam;
+  if(c.estado === 'cava') return false;         // ainda afundando: o conteúdo desenha o mergulho
+  // lombadas de terra revolvida se deslocando
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(px, py + tam*.16, c.raio*tam*1.05, c.raio*tam*.4, 0, 0, TAU); ctx.fill();
+  for(let i=0;i<3;i++){
+    const w = Math.sin(tempo*11 + i*2.1);
+    ctx.fillStyle = i === 1 ? '#5c4830' : '#4a3a26';
+    ctx.beginPath();
+    ctx.ellipse(px + (i-1)*c.raio*tam*.5 + w*tam*.06, py + tam*.05 - Math.abs(w)*tam*.1,
+                c.raio*tam*(.44 - i*.06), c.raio*tam*(.26 - i*.04), w*.2, 0, TAU);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(214,196,160,.14)';
+  ctx.beginPath(); ctx.ellipse(px, py - tam*.06, c.raio*tam*.5, c.raio*tam*.14, 0, 0, TAU); ctx.fill();
+  if(c.estado === 'irrompe'){                   // círculo telegrafado piscando no chão
+    const p = 1 - Math.max(0, c.t)/f.irromperAvisoT;
+    const pisca = Math.abs(Math.sin(tempo*14));
+    const r = f.irromperRaio*tam;
+    ctx.fillStyle = 'rgba(226,74,74,' + (.07 + .12*pisca + .1*p) + ')';
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(226,74,74,' + (.3 + .5*pisca) + ')';
+    ctx.lineWidth = Math.max(2, tam*.09);
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,190,120,' + (.25 + .45*p) + ')';
+    ctx.lineWidth = Math.max(1, tam*.05);
+    ctx.beginPath(); ctx.arc(px, py, r*p, 0, TAU); ctx.stroke();   // o tempo fechando
+  }
+  return true;
+}
 function atualizarBarraChefe(){
   el('chefeFill').style.transform = 'scaleX(' + Math.max(0, chefe.hp/chefe.hpMax) + ')';
-  const fq = piso.chefe.fraquezas;
+  const fq = piso.chefe.fraquezas, f = chefe.cfg;
+  const sabeExausto = fq.porEstado.exausto && intel[fq.porEstado.exausto.chave];
   let txt = '';
-  if(chefe.estado === 'exausto' && intel[fq.porEstado.exausto.chave]) txt = 'sem fôlego';
+  if(chefe.estado === 'exausto' && sabeExausto) txt = 'sem fôlego';
   else if(chefe.estado === 'zonzo') txt = 'zonzo';
-  else if(chefe.estado === 'combo' && intel[fq.porEstado.exausto.chave])
-    txt = 'golpe ' + Math.min(chefe.cfg.comboGolpes, chefe.golpes+1) + ' de ' + chefe.cfg.comboGolpes;
+  else if(chefe.estado === 'atordoado') txt = 'atordoado';
+  else if(chefe.estado === 'cava' || chefe.estado === 'persegue' || chefe.estado === 'irrompe')
+    txt = (sabeExausto && f.mergulhosAteExausto)          // a chave dos mergulhos conta o ciclo
+      ? 'mergulho ' + Math.min(f.mergulhosAteExausto, chefe.mergulhos + 1) + ' de ' + f.mergulhosAteExausto
+      : 'cavando...';
+  else if(chefe.estado === 'combo' && sabeExausto)
+    txt = 'golpe ' + Math.min(f.comboGolpes, chefe.golpes+1) + ' de ' + f.comboGolpes;
   el('chefeEstado').textContent = txt;
 }
 
 /* ---------- combate do jogador ---------- */
 function golpear(alvo){
+  if(chefeSubmerso(alvo)) return;      // debaixo da terra não há o que cortar
   jog.golpe = .2; jog.recarga = .36;
   sGolpe();
   const dx = alvo.x-jog.x, dy = alvo.y-jog.y, d = Math.hypot(dx,dy);
@@ -2037,7 +2145,7 @@ function atualizar(dt){
   if(chefeAtivo){
     const dx = jog.x-chefe.x, dy = jog.y-chefe.y, d = Math.hypot(dx,dy);
     const min = jog.raio + chefe.raio;
-    if(d < min && d > .001){
+    if(d < min && d > .001 && !chefeSubmerso(chefe)){   // submerso, o corpo não empurra
       mover(jog, dx/d*(min-d), dy/d*(min-d));
       jog.vx *= .6; jog.vy *= .6;
     }
@@ -2116,7 +2224,7 @@ function desenhar(){
   });
 
   informantes.forEach(p => desenharInformante(p, ox, oy));
-  if(chefe && chefe.hp > 0) piso.chefe.desenhar(chefe, ox, oy);
+  if(chefe && chefe.hp > 0 && !desenharChefeSubterraneo(chefe, ox, oy)) piso.chefe.desenhar(chefe, ox, oy);
   if(vivo) desenharJogador(ox, oy);
 
   particulas.forEach(p => {
@@ -5552,8 +5660,636 @@ const PISO_COZINHAS = {
   }
 };
 
+/* ========== mecânicas da fase 3 (conteúdo compartilhado) ==========
+   Mãos que agarram, zonas de luz cíclica e vultos — dirigidas por listas do
+   piso, no padrão de atualizarRatazanas: o piso 3 chama criarMaos/criarZonasLuz/
+   criarVultos no aoIniciar, atualizarMaos/atualizarZonasLuz/atualizarVultos no
+   atualizar, desenharZonasLuz/desenharMaos/desenharVultos no desenharCenario e
+   aponta acaoGolpe para golpeFase3. Nada disso roda nos pisos 1-2. */
+let maos = [], zonasLuz = [], vultos = [];
+let agarrao = null, avisoAgarrao = false;
+
+/* --- mãos dos mortos: perseguem devagar e AGARRAM (F3-RF-12) --- */
+function criarMaos(pontos){
+  agarrao = null; avisoAgarrao = false;
+  maos = pontos.map(p => ({x:p.x, y:p.y, vx:0, vy:0, raio:.34,
+    hp:p.hp != null ? p.hp : 25, dreno:p.dreno != null ? p.dreno : 5,
+    vel:p.vel != null ? p.vel : 1.4, fase:Math.random()*TAU, flash:0}));
+}
+function agarrar(m){
+  agarrao = {mao:m, x:jog.x, y:jog.y, apertos:0, tique:0,
+    /* o avental de aço encurta o agarrão (F3-RF-13) */
+    precisa: inventario.some(i => i.id === 'avental-acougueiro') ? 2 : 3,
+    dashOffAntes: jog.dashOff};
+  jog.dashOff = true;                 // nem anda nem rola enquanto preso
+  jog.vx = jog.vy = 0;
+  tremor = 8; sFerro();
+  tocarSfx('audio/fase3/sons/mao-raspando-1.mp3', .9);
+  if(!avisoAgarrao){ avisoAgarrao = true; avisar('Ela te agarrou!', 'esmague GOLPE para se soltar'); }
+}
+function soltarAgarrao(){
+  if(!agarrao) return;
+  jog.dashOff = agarrao.dashOffAntes;
+  agarrao = null;
+}
+function debaterAgarrao(){            // cada aperto de GOLPE debate contra a mão
+  const g = agarrao;
+  if(!g) return;
+  g.apertos++;
+  jog.golpe = .12; sGolpe(); tremor = 6;
+  for(let k=0;k<6;k++) faisca(jog.x, jog.y + .3, '#cfc4a6', .13);
+  flutuar(jog.x, jog.y - .7, g.apertos + '/' + g.precisa, '#f4e2b4');
+  if(g.apertos >= g.precisa){         // soltou: a mão se desfaz em ossos
+    g.mao.hp = 0;
+    sEspadaAcerta();
+    for(let k=0;k<16;k++) faisca(g.mao.x, g.mao.y + .2, '#cfc4a6', .16);
+    for(let k=0;k<8;k++) terraRevolvida(g.mao.x, g.mao.y + .3);
+    soltarAgarrao();
+    jog.invul = Math.max(jog.invul, .6);
+    flutuar(jog.x, jog.y - .5, 'livre!', '#8fc48a');
+  }
+}
+function atualizarMaos(dt){
+  maos.forEach(m => {
+    if(m.hp <= 0) return;
+    m.fase += dt;
+    m.flash = Math.max(0, m.flash - dt*4);
+    if(agarrao && agarrao.mao === m){
+      /* preso: imobiliza no lugar do agarrão e drena vida por segundo */
+      jog.x = agarrao.x; jog.y = agarrao.y; jog.vx = jog.vy = 0;
+      m.x = jog.x; m.y = jog.y + .22;
+      jog.hp -= m.dreno*dt;
+      agarrao.tique += dt;
+      if(agarrao.tique >= 1){
+        agarrao.tique -= 1;
+        flutuar(jog.x, jog.y - .4, -m.dreno, '#ff8a96');
+        jog.flash = 1; sDorJog();
+        if(Math.random() < .5) mancharSangue(jog.x, jog.y + .3);
+      }
+      atualizarHUD();
+      if(jog.hp <= 0){ soltarAgarrao(); morrer(); }
+      return;
+    }
+    const dx = jog.x-m.x, dy = jog.y-m.y, d = Math.max(.01, Math.hypot(dx,dy));
+    if(d < 6.5){                      // persegue devagar, arranhando a pedra
+      m.vx += (dx/d*m.vel - m.vx)*Math.min(1, dt*4);
+      m.vy += (dy/d*m.vel - m.vy)*Math.min(1, dt*4);
+    } else {
+      m.vx -= m.vx*3*dt; m.vy -= m.vy*3*dt;
+    }
+    mover(m, m.vx*dt, m.vy*dt);
+    /* alcançou: agarra (o rolamento em curso ainda escapa) */
+    if(!agarrao && d < m.raio + jog.raio + .05 && jog.dash <= 0 && vivo) agarrar(m);
+  });
+}
+function golpearMao(m, cortante){
+  const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
+  m.hp -= dano; m.flash = 1;
+  if(cortante) sCorte(); else sEspadaAcerta();
+  flutuar(m.x, m.y - .4, dano, cortante ? '#ffd88a' : '#f4e2b4');
+  for(let k=0;k<8;k++) faisca(m.x, m.y, '#cfc4a6', .12);
+  if(m.hp <= 0){
+    if(agarrao && agarrao.mao === m) soltarAgarrao();
+    sEspadaAcerta();
+    for(let k=0;k<14;k++) faisca(m.x, m.y, '#cfc4a6', .15);
+    for(let k=0;k<6;k++) terraRevolvida(m.x, m.y + .2);
+  }
+}
+function desenharMaos(ox, oy){
+  maos.forEach(m => {
+    if(m.hp <= 0) return;
+    const px = ox + m.x*tam, py = oy + m.y*tam, r = tam*.34;
+    const presa = agarrao && agarrao.mao === m;
+    /* a terra do buraco de onde ela saiu */
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.beginPath(); ctx.ellipse(px, py + r*.55, r*1.2, r*.48, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2e2418';
+    ctx.beginPath(); ctx.ellipse(px, py + r*.5, r*.95, r*.36, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#4a3a26';
+    ctx.beginPath(); ctx.ellipse(px - r*.5, py + r*.42, r*.3, r*.14, .4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px + r*.55, py + r*.5, r*.26, r*.12, -.3, 0, TAU); ctx.fill();
+
+    const osso = m.flash > 0 ? '#ffffff' : '#cfc4a6';
+    const bob = presa ? 0 : Math.sin(m.fase*3)*r*.08;
+    ctx.save();
+    ctx.translate(px, py - r*.1 + bob);
+    ctx.rotate(presa ? Math.sin(tempo*16)*.07 : Math.sin(m.fase*1.6)*.14);
+    /* punho saindo do chão */
+    ctx.strokeStyle = osso; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, r*.3);
+    ctx.beginPath(); ctx.moveTo(0, r*.6); ctx.lineTo(0, r*.1); ctx.stroke();
+    /* palma */
+    ctx.fillStyle = osso;
+    ctx.beginPath(); ctx.ellipse(0, 0, r*.42, r*.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(0, r*.1, r*.24, r*.2, 0, 0, TAU); ctx.fill();
+    /* cinco dedos articulados em linhas, abrindo e fechando */
+    for(let i=0;i<5;i++){
+      const a0 = -Math.PI/2 + (i-2)*.42;
+      const curva = presa ? 1.05 + Math.sin(tempo*15 + i)*.12
+                          : .5 + Math.sin(m.fase*4 + i*1.7)*.4;
+      const c1 = r*(i === 0 ? .34 : .5 - Math.abs(i-2)*.055);   // o polegar é curto
+      const c2 = c1*.72;
+      const x0 = Math.cos(a0)*r*.36, y0 = Math.sin(a0)*r*.42;
+      const a1 = a0 + curva*.55, a2 = a1 + curva*.75;
+      const x1 = x0 + Math.cos(a1)*c1, y1 = y0 + Math.sin(a1)*c1;
+      const x2 = x1 + Math.cos(a2)*c2, y2 = y1 + Math.sin(a2)*c2;
+      ctx.strokeStyle = osso;
+      ctx.lineWidth = Math.max(1.5, r*.14);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.lineWidth = Math.max(1, r*.11);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.fillStyle = '#a89a7c';                               // as juntas
+      ctx.beginPath(); ctx.arc(x1, y1, Math.max(1, r*.07), 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+/* --- zonas de luz cíclica: as velas apagam e o escuro desce (F3-RF-03) --- */
+function criarZonasLuz(lista){
+  zonasLuz = lista.map(z => ({claroT:4, escuroT:4, fase:0, ...z, escura:false, veu:0}));
+}
+function atualizarZonasLuz(dt){
+  zonasLuz.forEach(z => {
+    const ciclo = z.claroT + z.escuroT;
+    const c = (tempo + z.fase) % ciclo;
+    const escura = c >= z.claroT;
+    if(escura && !z.escura) tocarSfx('audio/fase3/sons/sopro-vela-1.mp3', .7);
+    z.escura = escura;
+    z.veu += ((escura ? 1 : 0) - z.veu)*Math.min(1, dt*2.2);
+  });
+}
+function zonaDe(v){ return zonasLuz[v.zona]; }
+function desenharZonasLuz(ox, oy){
+  zonasLuz.forEach(z => {
+    if(z.veu <= .015) return;
+    const x = ox + z.x*tam, y = oy + z.y*tam, w = z.larg*tam, h = z.alt*tam;
+    ctx.fillStyle = 'rgba(5,3,12,' + (z.veu*.55) + ')';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(3,2,8,' + (z.veu*.35) + ')';   // miolo ainda mais fundo
+    ctx.fillRect(x + w*.12, y + h*.12, w*.76, h*.76);
+  });
+}
+
+/* --- vultos: sombras que só se erguem no escuro (F3-RF-12/26) --- */
+function criarVultos(lista){
+  vultos = lista.map(v => ({x:v.x, y:v.y, hx:v.x, hy:v.y, zona:v.zona || 0,
+    vx:0, vy:0, raio:.4, hp:v.hp != null ? v.hp : 45, dano:v.dano != null ? v.dano : 9,
+    vel:v.vel != null ? v.vel : 2.1, estado:'submerso', p:0, atraso:0,
+    fase:Math.random()*TAU, flash:0, morde:0}));
+}
+function vultoVulneravel(v){ return v.hp > 0 && (v.estado === 'ativo' || v.estado === 'ergue'); }
+function atualizarVultos(dt){
+  vultos.forEach(v => {
+    if(v.hp <= 0) return;
+    v.fase += dt;
+    v.flash = Math.max(0, v.flash - dt*4);
+    v.morde = Math.max(0, v.morde - dt);
+    const z = zonaDe(v), escuro = z && z.escura;
+    switch(v.estado){
+      case 'submerso':               // afundado e invulnerável, deriva de volta pra casa
+        v.x += (v.hx - v.x)*Math.min(1, dt*.8);
+        v.y += (v.hy - v.y)*Math.min(1, dt*.8);
+        if(escuro){
+          v.atraso -= dt;
+          if(v.atraso <= 0){
+            v.estado = 'ergue'; v.p = 0;
+            if(z.grito) tocarSfx(z.grito, 1);     // o grito do susto (F3-RF-26)
+          }
+        } else v.atraso = Math.random()*.6;       // sobe desencontrado do vizinho
+        break;
+      case 'ergue':
+        v.p = Math.min(1, v.p + dt/.7);
+        if(v.p >= 1) v.estado = 'ativo';
+        break;
+      case 'ativo': {
+        if(!escuro){ v.estado = 'afunda'; break; }
+        const dx = jog.x-v.x, dy = jog.y-v.y, d = Math.max(.01, Math.hypot(dx,dy));
+        if(d < 8){
+          v.vx += (dx/d*v.vel - v.vx)*Math.min(1, dt*3);
+          v.vy += (dy/d*v.vel - v.vy)*Math.min(1, dt*3);
+        } else { v.vx -= v.vx*2*dt; v.vy -= v.vy*2*dt; }
+        mover(v, v.vx*dt, v.vy*dt);
+        if(d < v.raio + jog.raio + .1 && v.morde <= 0){
+          v.morde = .9;
+          tocarSfx('audio/fase3/sons/sussurro-vulto-1.mp3', .8);
+          machucar(v.dano, Math.atan2(dy, dx));
+        }
+        break;
+      }
+      case 'afunda':
+        v.p = Math.max(0, v.p - dt/.6);
+        v.vx = v.vy = 0;
+        if(v.p <= 0){ v.estado = 'submerso'; v.atraso = Math.random()*.6; }
+        break;
+    }
+  });
+}
+function golpearVulto(v, cortante){
+  if(!vultoVulneravel(v)) return;
+  const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
+  v.hp -= dano; v.flash = 1;
+  v.vx += (v.x-jog.x)*3; v.vy += (v.y-jog.y)*3;
+  if(cortante) sCorte(); else sEspadaAcerta();
+  flutuar(v.x, v.y - .6, dano, cortante ? '#ffd88a' : '#f4e2b4');
+  for(let k=0;k<10;k++) faisca(v.x, v.y, '#3a3350', .13);
+  if(v.hp <= 0){
+    tocarSfx('audio/fase3/sons/sussurro-vulto-2.mp3', .9);
+    for(let k=0;k<18;k++) faisca(v.x, v.y, '#5a5470', .16);
+  }
+}
+function desenharVultos(ox, oy){
+  vultos.forEach(v => {
+    if(v.hp <= 0 || v.estado === 'submerso') return;
+    const sobe = v.estado === 'ativo' ? 1 : v.p;
+    const px = ox + v.x*tam, py = oy + v.y*tam, r = tam*.46;
+    const flut = Math.sin(v.fase*2.3)*r*.1;
+    ctx.save();
+    ctx.globalAlpha = .25 + .65*sobe;
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + r*.75, r*.8*sobe, r*.26*sobe, 0, 0, TAU); ctx.fill();
+    ctx.translate(px, py + flut - r*.3*sobe);
+    ctx.scale(1, sobe);
+    /* massa escura ondulante: cúpula com barra de ondas embaixo */
+    ctx.fillStyle = v.flash > 0 ? '#5a5470' : '#161122';
+    ctx.beginPath();
+    ctx.moveTo(-r*.85, r*.6);
+    ctx.quadraticCurveTo(-r*1.05 + Math.sin(v.fase*3)*r*.1, -r*.2, 0, -r*.95);
+    ctx.quadraticCurveTo(r*1.05 + Math.sin(v.fase*3.4)*r*.1, -r*.2, r*.85, r*.6);
+    for(let i=0;i<5;i++){                       // a bainha ondula feito pano rasgado
+      const wx = r*.85 - (i+1)*r*.34;
+      const wy = r*.6 + Math.sin(v.fase*5 + i*1.9)*r*.16;
+      ctx.quadraticCurveTo(wx + r*.17, wy + r*.3, wx, wy);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(90,84,120,.25)';       // um respiro de volume
+    ctx.beginPath(); ctx.ellipse(-r*.2, -r*.35, r*.4, r*.5, .3, 0, TAU); ctx.fill();
+    /* olhos claros */
+    const og = ctx.createRadialGradient(0, -r*.35, 0, 0, -r*.35, r*.55);
+    og.addColorStop(0, 'rgba(207,214,255,.35)'); og.addColorStop(1, 'rgba(207,214,255,0)');
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.arc(0, -r*.35, r*.55, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#cfd6ff';
+    const pisc = Math.sin(v.fase*1.3) > -.92 ? 1 : .15;   // piscada rara
+    [-1,1].forEach(k => {
+      ctx.beginPath();
+      ctx.ellipse(k*r*.22, -r*.38, r*.09, r*.13*pisc, k*.2, 0, TAU);
+      ctx.fill();
+    });
+    ctx.restore();
+  });
+}
+
+/* --- GOLPE da fase 3: primeiro se debate, depois corta mãos e vultos --- */
+function golpeFase3(){
+  if(agarrao){ debaterAgarrao(); return; }    // preso: o aperto vale pelo golpe
+  if(jog.recarga > 0) return;
+  golpeDeArma();                              // chefe e ratazanas do jeito de sempre
+  const cortante = !!ARMAS[jog.arma];
+  maos.forEach(m => {
+    if(m.hp > 0 && Math.hypot(m.x-jog.x, m.y-jog.y) < 1.3) golpearMao(m, cortante);
+  });
+  vultos.forEach(v => {
+    if(Math.hypot(v.x-jog.x, v.y-jog.y) < 1.4) golpearVulto(v, cortante);
+  });
+}
+
+/* ================================================================
+   CONTEÚDO — PISO 3: AS SALAS DE FUNERAL
+   O piso onde o castelo lava, vela e enterra os seus mortos.
+   O Coveiro cava dia e noite no fundo da cova grande. (fase3.prd)
+   ESQUELETO: mapa + piso mínimo. Chefe/inimigos novos vêm da frente
+   do motor (F3-RF-15..19); aqui o cfg é provisório, na forma do
+   Açougueiro, só para a arena e os testes funcionarem.
+   ================================================================ */
+
+const FUN = {                      // geografia do piso (planta: capela e cova ao norte, cripta e colombário ao sul)
+  LARG:46, ALT:58,
+  /* passagem SELADA da cova grande: 3 tiles de PAREDE na linha y=17,
+     x36..38 — abre como a porta da câmara do piso 2 (tiles viram CHAO) */
+  PORTA:{x:36, y:17, larg:3},
+  MOSAICO:{x:9.5, y:10.5, raio:3.4}    // o mosaico circular da capela (geometria; a pintura vem depois)
+};
+let porta3 = null, vistoCripta = false;
+
+function construirFuneral(){
+  const t = new Uint8Array(FUN.LARG*FUN.ALT).fill(PAREDE);
+  const bra = [], dec = [];
+  const ix = (x,y) => y*FUN.LARG + x;
+  const cavar = (x1,y1,x2,y2,tile) => {
+    for(let y=y1;y<=y2;y++) for(let x=x1;x<=x2;x++) t[ix(x,y)] = (tile===undefined?CHAO:tile);
+  };
+
+  /* ---- capela de velório, no noroeste: sala grande com o mosaico circular ---- */
+  cavar(3,5,16,16);
+  for(let y=7; y<=13; y++) for(let x=6; x<=12; x++){
+    if(Math.hypot(x + .5 - FUN.MOSAICO.x, y + .5 - FUN.MOSAICO.y) < FUN.MOSAICO.raio) t[ix(x,y)] = CHAO2;
+  }
+  /* ---- sala de preparação dos corpos, a leste da capela ---- */
+  cavar(19,5,27,13);
+  cavar(17,8,18,9);             // porta capela <-> preparação
+  /* ---- cova grande: a arena do Coveiro, SELADA (FUN.PORTA fica PAREDE) ---- */
+  cavar(30,4,43,16,CHAO2);
+  cavar(36,18,38,19);           // a soleira: corredor curto até o salão
+
+  /* ---- salão central, ligando tudo ---- */
+  cavar(5,20,41,23);
+  cavar(8,17,9,19);             // corredor capela -> salão
+  cavar(22,14,23,19);           // corredor preparação -> salão
+  /* a ESCADA DESMORONADA: parte do salão rumo à arena e morre num buraco (travessia falsa) */
+  cavar(31,18,32,19);
+  cavar(31,17,32,17,FOSSO);     // o buraco onde a escada ruiu
+  /* ---- quarto do Coveiro: pequeno e trancável, a leste do salão ---- */
+  cavar(38,26,43,30);
+  cavar(40,24,41,25);           // porta do quarto
+
+  /* ---- oficina de caixões (norte) + depósito (sul), a oeste ---- */
+  cavar(3,31,11,41);
+  for(let x=3; x<=11; x++) t[ix(x,36)] = PAREDE;   // divisória oficina/depósito
+  cavar(6,36,7,36);             // porta da divisória
+  cavar(6,24,7,30);             // corredor salão -> oficina
+
+  /* ---- CRIPTA ALAGADA, centro-sul: água parada (FOSSO) com passarelas (PONTE) ---- */
+  cavar(15,32,28,42,FOSSO);
+  cavar(13,24,14,33);           // corredor oeste do salão à beira d'água
+  cavar(29,24,30,33);           // corredor leste do salão à beira d'água
+  cavar(15,32,17,33);           // margem noroeste
+  cavar(26,32,28,33);           // margem leste
+  cavar(15,41,18,42);           // margem sul, rumo ao colombário
+  /* travessia 1 (oeste): passarela direta */
+  cavar(16,34,16,40,PONTE);
+  /* travessia 2 (leste): desce e contorna por baixo */
+  cavar(27,34,27,39,PONTE);
+  cavar(17,40,27,40,PONTE);
+  /* becos d'água: passarelas que morrem sobre a água parada */
+  cavar(22,36,22,39,PONTE);     // espigão que sobe do caminho sul e acaba no nada
+  cavar(22,33,25,33,PONTE);     // espigão que sai da margem leste e acaba no nada
+
+  /* ---- colombário em LABIRINTO, no sul: celas 2x2 numa grade 10x3 ---- */
+  const lab = gerarLabirinto(10, 3, 20260806);
+  for(let ly=0; ly<3; ly++) for(let lx=0; lx<10; lx++){
+    const c = lab[ly*10+lx], gx = 4+lx*3, gy = 45+ly*3;
+    cavar(gx, gy, gx+1, gy+1);
+    if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
+    if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
+  }
+  /* as duas entradas do colombário */
+  cavar(5,42,6,44);             // oeste: desce do depósito
+  cavar(16,43,17,44);           // centro: desce da margem sul da cripta
+
+  /* ---- escada de chegada (vinda das cozinhas), canto sudeste ---- */
+  cavar(36,48,43,54,CHAO2);
+  cavar(39,33,40,47);           // corredor leste: sobe da escada
+  cavar(31,32,38,33);           // e dobra rumo ao salão pelo corredor leste
+
+  /* ---- luzes: poucas e espaçadas — o piso é sombrio ---- */
+  [[9.5,5.6],[4,15.6],[15,15.6],                    // capela
+   [23,5.6],[26.5,12.5],                            // preparação
+   [31,4.6],[42,4.6],[37,15.5],                     // cova grande
+   [37,19],                                         // soleira da cova
+   [10,20.5],[22,20.5],[34,20.5],                   // salão
+   [40.5,26.5],                                     // quarto do Coveiro
+   [4,31.6],[10,40.5],                              // oficina e depósito
+   [16,32.5],[27,32.5],[16.5,41.5],                 // margens da cripta
+   [7.5,46.5],[25.5,49.5],[30.5,51.5],              // colombário
+   [39.5,44],[40,48.6]                              // corredor leste e escada
+  ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
+
+  /* ---- decoração ---- */
+  // capela: esquifes (pares de caixote), teias e a água que escorre
+  [[6,8.5],[7,8.5],[6,12.5],[7,12.5],[12,8.5],[13,8.5]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  dec.push({tipo:'teia', x:3.4, y:5.4, flip:false}); dec.push({tipo:'teia', x:15.6, y:5.4, flip:true});
+  dec.push({tipo:'poca', x:4.5, y:10}); dec.push({tipo:'palha', x:12, y:14.5});
+  // preparação: as mesas dos corpos, água e correntes
+  dec.push({tipo:'caixote', x:20.5, y:6.5}); dec.push({tipo:'caixote', x:24.5, y:6.5});
+  dec.push({tipo:'corrente_parede', x:21, y:4.3}); dec.push({tipo:'corrente_parede', x:24, y:4.3});
+  dec.push({tipo:'poca', x:22, y:9.5}); dec.push({tipo:'poca', x:24.5, y:11.8});
+  dec.push({tipo:'osso', x:26.5, y:6.5});
+  // cova grande: correntes, ossos de quem já desceu e um esquife à beira
+  [[33,3.3],[38,3.3],[41,3.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
+  dec.push({tipo:'caixote', x:31.5, y:5.5}); dec.push({tipo:'caixote', x:32.5, y:5.5});
+  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:42.5, y:14.5});
+  dec.push({tipo:'poca', x:35, y:7.5}); dec.push({tipo:'poca', x:40, y:12});
+  // escada desmoronada: o aviso de quem não voltou
+  dec.push({tipo:'rachadura', x:31.5, y:19.2}); dec.push({tipo:'osso', x:32.4, y:18.6});
+  // salão: pedra gasta e goteiras
+  dec.push({tipo:'poca', x:18, y:22}); dec.push({tipo:'poca', x:30, y:21.5});
+  dec.push({tipo:'rachadura', x:25, y:22.6});
+  // quarto do Coveiro: a cama de palha e as coisas dele
+  dec.push({tipo:'palha', x:42.5, y:29.3}); dec.push({tipo:'caixote', x:38.8, y:26.8});
+  dec.push({tipo:'barril', x:43, y:27.2});
+  // oficina de caixões: caixões em obra e serragem
+  [[4.5,33.5],[5.5,33.9],[9,32.5],[10,34.5]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  dec.push({tipo:'palha', x:10.5, y:31.6}); dec.push({tipo:'barril', x:3.8, y:35.2});
+  // depósito: tábuas e pregos
+  [[4,37.6],[5,38],[10.5,37.5]].forEach(([x,y]) => dec.push({tipo:'barril',x,y}));
+  dec.push({tipo:'caixote', x:9.5, y:40.5}); dec.push({tipo:'caixote', x:3.8, y:40.6});
+  dec.push({tipo:'teia', x:3.4, y:37.4, flip:false});
+  // cripta alagada: caixões boiando na água parada
+  [[20,35.5],[25.5,34.5],[24,38.5],[19.5,41.8]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  dec.push({tipo:'poca', x:16, y:33.4}); dec.push({tipo:'poca', x:27, y:33.5});
+  dec.push({tipo:'poca', x:17.5, y:41.5}); dec.push({tipo:'osso', x:15.5, y:42.3});
+  // colombário: os nichos guardam o que sobrou
+  dec.push({tipo:'teia', x:4.4, y:45.4, flip:false}); dec.push({tipo:'teia', x:32.5, y:45.4, flip:true});
+  dec.push({tipo:'caveira', x:13.5, y:48.5}); dec.push({tipo:'caveira', x:27.5, y:51.5});
+  dec.push({tipo:'caveira', x:4.5, y:52.5}); dec.push({tipo:'osso', x:20.5, y:45.5});
+  dec.push({tipo:'osso', x:31.5, y:48.5});
+  // escada de chegada
+  dec.push({tipo:'teia', x:36.4, y:48.4, flip:false}); dec.push({tipo:'rachadura', x:39, y:51});
+  dec.push({tipo:'barril', x:42.5, y:53.5});
+
+  return {larg:FUN.LARG, alt:FUN.ALT, tiles:t, braseiros:bra, decor:dec};
+}
+
+/* --- o piso, montado (esqueleto: F3-RF-01..05 na geometria; o resto vem depois) --- */
+const PISO_FUNERAL = {
+  id:'funeral', nome:'As Salas de Funeral',
+  bgm:'audio/fase2/trilha-fase2.mp3',   // tapa-buraco até a trilha fúnebre do usuário (F3-RF-22)
+  paleta:{
+    fundo:'#0a0c14',
+    chao:[88,92,108],      // pedra azulada e fria
+    chao2:[72,78,96],      // pedra molhada: escada, mosaico e a terra da cova
+    parede:[52,56,72],
+    luzAmbiente:'#6a7086'  // piso sombrio: a luz é recurso disputado
+  },
+  construir: construirFuneral,
+  spawn:{x:40, y:52},
+  trapos:2,
+  intro:{
+    titulo:"As Salas de Funeral<em>piso 3</em>",
+    texto:"A escada da câmara de carnes termina num silêncio de pedra molhada. Aqui o castelo lava, vela e enterra os seus mortos — e alguém cava, dia e noite, no fundo da cova grande.<br><br>Atravesse a <b>cripta alagada</b>, reacenda as velas do caminho, ouça os três velantes — e desça à cova do <b>Coveiro</b> com o <b>Avental de Aço</b> no peito.",
+    botao:"Subir"
+  },
+  missao:{
+    titulo:'Sobreviver às Salas de Funeral',
+    tarefas:[
+      {id:'t-cripta', label:'Atravessar a cripta alagada'},
+      {id:'t-velas', label:'Reacender as velas do caminho'},
+      {id:'t-velantes', label:'Ouvir os velantes', contador:3},
+      {id:'t-chefe3', label:'Derrotar o Coveiro'}
+    ],
+    tarefaInformantes:'t-velantes',
+    tarefaChefe:'t-chefe3'
+  },
+  /* velantes placeholder: nomes e chaves do PRD (F3-RF-06); retrato e voz
+     gravada entram nas etapas 3 e 6 do /fase-nova */
+  informantes:[
+    { nome:'O Carpinteiro de Caixões', chave:'rastro', cor:'#a89b7c', escala:1.5,
+      retrato:null,
+      voz:{pitch:.75, rate:.9, genero:'m'},
+      x:5.5, y:33.5,       // na oficina, entre os caixões em obra
+      falas:[
+        'Chegou inteiro? Fica parado aí que eu tiro a medida. É força do hábito, não leve a mal.',
+        'O Coveiro cava mais cova do que o castelo tem morto. Um dia sobra uma — e é a sua.',
+        'Quando ele some na terra, repare: deixa um rastro de terra revolvida. O chão conta onde ele vai sair.'
+      ], ganho:'Você vai ler o rastro: o ponto onde ele irrompe se anuncia mais cedo.' },
+    { nome:'A Lavadeira dos Mortos', chave:'lanterna', cor:'#9fb0c0', escala:1.5,
+      retrato:null,
+      voz:{pitch:1.2, rate:.95, genero:'f'},
+      x:25.5, y:7.5,       // na sala de preparação, junto às mesas
+      falas:[
+        'Fala baixo. Os que eu lavo não acordam mais — mas os lá de baixo têm o sono leve.',
+        'Eu lavei gente que desceu à cova grande em pé. Nenhum voltou para reclamar da água fria.',
+        'A lanterna dele só ilumina a frente. Pelas costas, ele tá morto.'
+      ], ganho:'Golpes pelas costas doem muito mais nele.' },
+    { nome:'O Sacristão', chave:'mergulhos', cor:'#8d86a8', escala:1.5,
+      retrato:null,
+      voz:{pitch:.6, rate:.85, genero:'m'},
+      x:31.5, y:52.2,      // no fundo do colombário — o difícil de achar
+      falas:[
+        'Você me achou... Nem os sinos me acham aqui no fundo.',
+        'Eu rezo por todos que ele enterra. A lista não para de crescer.',
+        'Preste atenção nos mergulhos: depois de 2 mergulhos, ele tá morto de cansado.'
+      ], ganho:'Conte os mergulhos: no segundo, ele emerge exausto.' }
+  ],
+  /* CHEFE PROVISÓRIO: a forma do Açougueiro com nome e HP do Coveiro (F3-RF-19),
+     só para a arena fechar o ciclo. A máquina cava/persegue/irrompe (F3-RF-15)
+     vem da frente do motor e substitui este cfg. */
+  chefe:{
+    cfg:{
+      nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
+      esperaT:1.2, aproximaT:1.7, velAproxima:2.2,
+      comboDist:2.6, comboIntervalo:.5, comboGolpes:2,
+      comboDano:[26,34], comboAlcance:[2.8,3.1],
+      exaustoT:1.3,
+      investidaDist:3.6, preparoT:1.8, batidasEm:[1.2,.8,.4],
+      investidaVel:15, investidaT:1.1, investidaDano:30, zonzoT:2.0,
+      tremorPasso:7,
+      entrada:['O Coveiro', 'a pá dele nunca descansa']
+    },
+    fraquezas:{
+      costas:{chave:'lanterna', com:2.1, sem:1.2},
+      porEstado:{
+        exausto:{chave:'mergulhos', com:2.2, sem:1.25},
+        zonzo:{chave:'rastro', com:2.2, sem:1.25}
+      }
+    },
+    desenhar: desenharAcougueiro   // placeholder até o sprite do Coveiro
+  },
+  recompensa:{
+    id:'lanterna-mortos',
+    nome:'Lanterna dos Mortos',
+    img:null,
+    desc:'A luz que não apaga — revela o que não quer ser visto. A chave contra o Alquimista.'
+  },
+  textos:{
+    vitoria: () => ({
+      titulo:"O Coveiro cai<em>piso 3 concluído</em>",
+      texto:"A pá enfim descansa, atravessada na terra da cova que ele abriu para você. Atrás dos nichos do colombário, uma escada sobe para o laboratório do Alquimista.<br><br>Você tomou a <b>Lanterna dos Mortos</b>: a luz que não apaga — e que revela o que não quer ser visto.",
+      botao:"De novo",
+      placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>'
+        + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
+      mostrarBolsa:true
+    }),
+    derrota: () => ({
+      titulo:"A terra esfria<em>mas você respira</em>",
+      texto:"Os velantes te tiraram da cova antes da última pazada. Nada se perdeu: os segredos, a bolsa e o caminho continuam seus.<br><br>Use o que aprendeu: siga o rastro quando ele cavar, saia de cima da terra que se ergue — e bata quando ele emergir cansado.",
+      botao:"Levantar", placar:''
+    })
+  },
+
+  /* morte com progresso: reergue na soleira da cova grande (F3-RF-10) */
+  retomar(){
+    if(etapa !== 'livre' && etapa !== 'chefe') return false;
+    etapa = 'livre'; vivo = true; pausado = false; dialogo = null;
+    chefe = null; el('chefeBarra').classList.remove('on');
+    jog.hp = jog.hpMax;
+    jog.pocoes = Math.max(jog.pocoes, 2);
+    jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 2.5;   // a soleira, diante da passagem
+    jog.vx = jog.vy = 0; jog.invul = 1;
+    jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
+    camX = jog.x; camY = jog.y;
+    el('veu').classList.add('oculto');
+    atualizarHUD();
+    avisar('De pé outra vez', 'a cova espera');
+    return true;
+  },
+
+  aoIniciar(){
+    /* limpa o que é dos pisos anteriores, para nada vazar de um piso ao outro */
+    espinhos = []; trapos = []; facao = null; esparadrapos = [];
+    labaredas = []; paes = []; caldos = []; ratazanas = [];
+    ajudantes = []; portasInternas = [];
+    porta3 = {aberta:false, quebra:0};
+    vistoCripta = false;
+    /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
+    const temMachado = inventario.some(i => i.id === 'machado-gladiador');
+    const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
+    jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
+    jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
+    etapa = 'livre';
+    avisar('As salas de funeral', 'o frio sobe do chão');
+  },
+  atualizar(dt){
+    const bg = el('btnGolpe');
+    bg.classList.add('on');
+    bg.classList.toggle('off', jog.recarga > 0);
+    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    /* a travessia da cripta conta quando o jogador pisa na margem sul */
+    if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
+    if(!vistoCripta && jog.x > 12.5 && jog.x < 31 && jog.y > 30.5 && jog.y < 43){
+      vistoCripta = true;
+      avisar('A cripta alagada', 'água parada — pise só nas passarelas');
+    }
+    /* atravessou a passagem aberta: a luta sela, e a música da cova toca */
+    if(etapa === 'livre' && porta3.aberta && jog.y < FUN.PORTA.y + .9
+       && jog.x > FUN.PORTA.x - 1 && jog.x < FUN.PORTA.x + FUN.PORTA.larg + 1){
+      criarChefe();
+      tocarBgm('audio/fase2/portao-acougueiro.mp3', .16);   // tapa-buraco: trilha da cova pendente (F3-RF-22)
+      etapa = 'chefe';
+    }
+  },
+  /* atalho de teste (?piso=3&chefe=1): segredos ouvidos, passagem aberta,
+     jogador na soleira da cova — a luta começa no primeiro passo */
+  irAoChefe(){
+    informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
+    const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
+    if(cont) cont.textContent = informantes.length + '/' + informantes.length;
+    marcarTarefa(tid); marcarTarefa('t-cripta'); marcarTarefa('t-velas');
+    porta3.aberta = true;
+    for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
+    desenharCache();
+    jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 1.6;
+    jog.vx = jog.vy = 0; camX = jog.x; camY = jog.y;
+    atualizarHUD();
+    avisar('Atalho de teste', 'a cova grande está aberta');
+  },
+  falarLiberado(){ return etapa === 'livre'; },
+  acaoGolpe: golpeDeArma,
+  pegarItem(item){
+    if(!ARMAS[item.id]) return;
+    jog.arma = item.id;
+    jog.dano = item.id === 'machado-gladiador' ? 13 : 10;
+    avisar('Na mão', item.nome);
+  },
+  desenharNoJogador(px, py, r, bal){
+    if(jog.arma) desenharArmaNaMao(px, py, r);
+  }
+};
+
 /* ---------- registro dos pisos ---------- */
-const PISOS = [PISO_CALABOUCO, PISO_COZINHAS];
+const PISOS = [PISO_CALABOUCO, PISO_COZINHAS, PISO_FUNERAL];
 let pisoAtual = 0;
 
 /* ---------- arranque ---------- */
