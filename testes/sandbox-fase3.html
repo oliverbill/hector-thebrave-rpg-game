@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Sandbox Fase 3 — mecânicas novas sobre o piso 2</title>
+<!-- Página de teste TEMPORÁRIA: injeta as mecânicas da fase 3 (mãos, zonas de luz,
+     vultos e o ciclo cava/persegue/irrompe do chefe) no piso 2, sem tocar no jogo.
+     Sirva por http (ex.: python3 -m http.server na raiz) — file:// bloqueia o iframe. -->
+<style>
+  body{margin:0;background:#0c0912;color:#d8cfc0;font:14px/1.5 ui-monospace,Menlo,monospace;display:flex;flex-direction:column;height:100vh}
+  header{padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#171021;border-bottom:1px solid #322745}
+  button{background:#2a2138;color:#e8dcc0;border:1px solid #55446e;border-radius:6px;padding:6px 10px;cursor:pointer;font:inherit}
+  button:hover{background:#3a2d4e}
+  iframe{flex:1;border:0;width:100%}
+  small{opacity:.7}
+</style>
+</head>
+<body>
+<header>
+  <strong>Sandbox Fase 3</strong>
+  <button id="bEnt">1 · Injetar mãos + zona escura com vulto</button>
+  <button id="bCov">2 · Dar o ciclo do Coveiro ao Açougueiro (cfg.cavaT…)</button>
+  <button id="bRe1">recarregar ?piso=2</button>
+  <button id="bRe2">recarregar ?piso=2&amp;chefe=1</button>
+  <small>Golpe = F · o agarrão solta com 3 apertos (2 com o avental)</small>
+</header>
+<iframe id="jogo" src="../castelo.html?piso=2"></iframe>
+<script>
+const iframe = document.getElementById('jogo');
+const rodar = cod => iframe.contentWindow.eval(cod);
+
+/* mãos + zona de luz cíclica com um vulto, perto de onde o jogador estiver */
+document.getElementById('bEnt').onclick = () => rodar(`
+  criarMaos([{x: jog.x + 3, y: jog.y}, {x: jog.x - 2.5, y: jog.y + 2}]);
+  criarZonasLuz([{x: Math.floor(jog.x) - 7, y: Math.floor(jog.y) - 5, larg: 9, alt: 9,
+                  claroT: 3, escuroT: 6, fase: 3, grito: 'audio/fase3/sons/grito-vulto-1.mp3'}]);
+  criarVultos([{x: jog.x - 3.5, y: jog.y - 2.5, zona: 0}]);
+  if(!piso._fase3){
+    piso._fase3 = true;
+    const at = piso.atualizar ? piso.atualizar.bind(piso) : null;
+    const dc = piso.desenharCenario ? piso.desenharCenario.bind(piso) : null;
+    piso.atualizar = dt => { if(at) at(dt); atualizarZonasLuz(dt); atualizarMaos(dt); atualizarVultos(dt); };
+    piso.desenharCenario = (ox, oy) => { if(dc) dc(ox, oy); desenharZonasLuz(ox, oy); desenharMaos(ox, oy); desenharVultos(ox, oy); };
+    piso.acaoGolpe = golpeFase3;
+  }
+  avisar('Sandbox', 'mãos, zona de luz e vulto injetados');
+`);
+
+/* o Açougueiro ganha o ciclo subterrâneo do Coveiro — use com ?piso=2&chefe=1 e
+   atravesse a porta: depois do combo ele cava, o rastro persegue e ele irrompe */
+document.getElementById('bCov').onclick = () => rodar(`
+  Object.assign(piso.chefe.cfg, {
+    cavaT: .5, persegueVel: 3.4, persegueT: 2.6,
+    irromperRaio: 2.2, irromperAvisoT: 1, irromperDano: 36,
+    atordoadoT: 2.2, exaustoT: 2.4, mergulhosAteExausto: 2,
+    sons: {...piso.chefe.cfg.sons, cava: 'fase3/sons/terra-cavando-1', irrompe: 'fase3/sons/terra-emersao-1'}
+  });
+  piso.chefe.fraquezas.porEstado.atordoado = {chave: 'mesa', com: 2.2, sem: 1.25};
+  avisar('Sandbox', 'o Açougueiro agora cava — entre na câmara');
+`);
+
+document.getElementById('bRe1').onclick = () => iframe.src = '../castelo.html?piso=2';
+document.getElementById('bRe2').onclick = () => iframe.src = '../castelo.html?piso=2&chefe=1';
+</script>
+</body>
+</html>
