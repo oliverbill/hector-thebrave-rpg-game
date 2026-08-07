@@ -5739,7 +5739,7 @@ function atualizarMaos(dt){
     }
     mover(m, m.vx*dt, m.vy*dt);
     /* alcançou: agarra (o rolamento em curso ainda escapa) */
-    if(!agarrao && d < m.raio + jog.raio + .05 && jog.dash <= 0 && vivo) agarrar(m);
+    if(!agarrao && d < m.raio + jog.raio + .05 && jog.dash <= 0 && jog.invul <= 0 && vivo) agarrar(m);
   });
 }
 function golpearMao(m, cortante){
@@ -6103,6 +6103,115 @@ function construirFuneral(){
 }
 
 /* --- o piso, montado (esqueleto: F3-RF-01..05 na geometria; o resto vem depois) --- */
+/* --- as velas do caminho (t-velas): apagadas até o jogador ACENDER com E --- */
+let velasCaminho = [], aguaBenta = [], cirios = [];
+function criarVelasCaminho(){
+  velasCaminho = [
+    {x:9.5,  y:21.5},   // salão, saída da capela
+    {x:22.5, y:21.5},   // salão, centro
+    {x:16.5, y:33},     // margem noroeste da cripta
+    {x:17,   y:41.5},   // margem sul da cripta
+    {x:6,    y:44}      // descida do colombário
+  ].map(v => ({...v, acesa:false}));
+}
+function desenharVelasCaminho(ox, oy){
+  velasCaminho.forEach(v => {
+    const px = ox + v.x*tam, py = oy + v.y*tam;
+    // castiçal
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.16, tam*.06, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#5a5264';
+    ctx.fillRect(px - tam*.05, py - tam*.1, tam*.1, tam*.22);
+    ctx.fillStyle = v.acesa ? '#e8e2d2' : '#8a8494';
+    ctx.fillRect(px - tam*.04, py - tam*.34, tam*.08, tam*.26);
+    if(v.acesa){
+      const tr = .8 + Math.sin(tempo*9 + v.x)*.2;
+      ctx.fillStyle = '#ffd27a';
+      ctx.beginPath(); ctx.ellipse(px, py - tam*.4, tam*.045, tam*.09*tr, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,230,.85)';
+      ctx.beginPath(); ctx.ellipse(px, py - tam*.42, tam*.02, tam*.045, 0, 0, TAU); ctx.fill();
+    } else {
+      // fio de fumaça da vela morta
+      ctx.strokeStyle = 'rgba(180,180,200,.25)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, py - tam*.36);
+      ctx.quadraticCurveTo(px + tam*.06, py - tam*.5, px - tam*.03, py - tam*.62);
+      ctx.stroke();
+    }
+  });
+}
+function acenderVela(v){
+  v.acesa = true;
+  braseiros.push({x:v.x, y:v.y - .3, fase:Math.random()*TAU});   // a luz passa a existir
+  sTrapo(); tremor = 2;
+  for(let k=0;k<10;k++) faisca(v.x, v.y - .4, '#ffd27a', .1);
+  const n = velasCaminho.filter(w => w.acesa).length;
+  const cont = el('t-velas-cont');
+  if(cont) cont.textContent = n + '/' + velasCaminho.length;
+  flutuar(v.x, v.y - .8, n + '/' + velasCaminho.length, '#ffd27a');
+  if(n === velasCaminho.length){ marcarTarefa('t-velas'); avisar('O caminho está aceso', 'a cova espera por você'); }
+}
+/* --- água benta: a cura espalhada da fase (15%) --- */
+function criarAguaBenta(){
+  aguaBenta = [
+    {x:10, y:11},      // capela
+    {x:23, y:8.5},     // preparação
+    {x:7.5, y:39.5},   // depósito
+    {x:20.5, y:46.5},  // colombário oeste
+    {x:29.5, y:49.5},  // colombário leste
+    {x:40.5, y:28}     // quarto do Coveiro
+  ].map(a => ({...a, pego:false}));
+}
+function desenharAguaBenta(ox, oy){
+  aguaBenta.forEach(a => {
+    if(a.pego) return;
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    const fl = Math.sin(tempo*2.4 + a.x*3)*tam*.05;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.5));
+    g.addColorStop(0, 'rgba(120,190,235,.30)'); g.addColorStop(1, 'rgba(120,190,235,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.13, tam*.14, tam*.06, 0, 0, TAU); ctx.fill();
+    // o frasco
+    ctx.save(); ctx.translate(px, py - tam*.05 + fl);
+    ctx.fillStyle = '#cfe6f4';
+    ctx.fillRect(-tam*.07, -tam*.16, tam*.14, tam*.24);
+    ctx.fillStyle = '#5a9cc9';
+    ctx.fillRect(-tam*.055, -tam*.06, tam*.11, tam*.13);
+    ctx.fillStyle = '#8a6a3a';
+    ctx.fillRect(-tam*.035, -tam*.23, tam*.07, tam*.08);
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.fillRect(-tam*.05, -tam*.14, tam*.03, tam*.16);
+    ctx.restore();
+  });
+}
+/* --- círios da cova: a cura da arena (25%), repostos a cada tentativa --- */
+function criarCirios(){
+  cirios = [
+    {x:31.5, y:5.4, pego:false},
+    {x:42.5, y:5.4, pego:false}
+  ];
+}
+function desenharCirios(ox, oy){
+  cirios.forEach(c2 => {
+    if(c2.pego) return;
+    const px = ox + c2.x*tam, py = oy + c2.y*tam;
+    const pulso = .5 + Math.sin(tempo*3.1 + c2.x)*.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
+    g.addColorStop(0, 'rgba(143,196,138,' + (.28 + pulso*.16) + ')');
+    g.addColorStop(1, 'rgba(143,196,138,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*(.6 + pulso*.12), 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.16, tam*.16, tam*.07, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#efe9d8';
+    ctx.fillRect(px - tam*.08, py - tam*.36, tam*.16, tam*.5);
+    ctx.fillStyle = '#ffd27a';
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.44, tam*.05, tam*.1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,235,.9)';
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.46, tam*.022, tam*.05, 0, 0, TAU); ctx.fill();
+  });
+}
+
 const PISO_FUNERAL = {
   id:'funeral', nome:'As Salas de Funeral',
   bgm:'audio/fase2/trilha-fase2.mp3',   // tapa-buraco até a trilha fúnebre do usuário (F3-RF-22)
@@ -6125,7 +6234,7 @@ const PISO_FUNERAL = {
     titulo:'Sobreviver às Salas de Funeral',
     tarefas:[
       {id:'t-cripta', label:'Atravessar a cripta alagada'},
-      {id:'t-velas', label:'Reacender as velas do caminho'},
+      {id:'t-velas', label:'Reacender as velas do caminho', contador:5},
       {id:'t-velantes', label:'Ouvir os velantes', contador:3},
       {id:'t-chefe3', label:'Derrotar o Coveiro'}
     ],
@@ -6163,29 +6272,34 @@ const PISO_FUNERAL = {
         'Preste atenção nos mergulhos: depois de 2 mergulhos, ele tá morto de cansado.'
       ], ganho:'Conte os mergulhos: no segundo, ele emerge exausto.' }
   ],
-  /* CHEFE PROVISÓRIO: a forma do Açougueiro com nome e HP do Coveiro (F3-RF-19),
-     só para a arena fechar o ciclo. A máquina cava/persegue/irrompe (F3-RF-15)
-     vem da frente do motor e substitui este cfg. */
+  /* O COVEIRO de verdade (F3-RF-15..19): pazada curta e o ciclo subterrâneo
+     cava -> rastro persegue -> irrompe em área -> atordoado se errar;
+     exausto após 2 mergulhos. Números oficiais do questionário. */
   chefe:{
     cfg:{
       nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
-      esperaT:1.2, aproximaT:1.7, velAproxima:2.2,
-      comboDist:2.6, comboIntervalo:.5, comboGolpes:2,
-      comboDano:[26,34], comboAlcance:[2.8,3.1],
-      exaustoT:1.3,
-      investidaDist:3.6, preparoT:1.8, batidasEm:[1.2,.8,.4],
-      investidaVel:15, investidaT:1.1, investidaDano:30, zonzoT:2.0,
+      esperaT:1.1, aproximaT:1.6, velAproxima:2.4,
+      comboDist:2.4, comboIntervalo:.55, comboGolpes:1,
+      comboDano:[34], comboAlcance:[2.6],            // a pazada (o Avental derruba p/ 14 no aoIniciar)
+      cavaT:.55, persegueVel:3.4, persegueT:2.6,
+      irromperRaio:2.2, irromperAvisoT:1.0, irromperDano:36,
+      atordoadoT:2.2, mergulhosAteExausto:2, exaustoT:2.4,
       tremorPasso:7,
-      entrada:['O Coveiro', 'a pá dele nunca descansa']
+      sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2'},
+      entrada:['O Coveiro', 'a pá dele nunca descansa'],
+      abertura:{
+        falas:['Eu cavo, você deita! Aqui embaixo ninguém reclama!'],
+        voz:{pitch:.5, rate:.8, genero:'m'}   // clipe real entra na etapa 6 (coveiro-entrada.mp3)
+      }
     },
     fraquezas:{
       costas:{chave:'lanterna', com:2.1, sem:1.2},
       porEstado:{
         exausto:{chave:'mergulhos', com:2.2, sem:1.25},
-        zonzo:{chave:'rastro', com:2.2, sem:1.25}
+        atordoado:{chave:'rastro', com:2.2, sem:1.25}
       }
     },
-    desenhar: desenharAcougueiro   // placeholder até o sprite do Coveiro
+    desenhar: desenharAcougueiro   // placeholder até o sprite do Coveiro (etapa 4 em revisão)
   },
   recompensa:{
     id:'lanterna-mortos',
@@ -6233,11 +6347,35 @@ const PISO_FUNERAL = {
     ajudantes = []; portasInternas = [];
     porta3 = {aberta:false, quebra:0};
     vistoCripta = false;
+    criarVelasCaminho();
+    criarAguaBenta();
+    cirios = [];
+    /* as ameaças da fase (mecânicas da frente do motor) */
+    criarMaos([
+      {x:17.5, y:32.5}, {x:27.5, y:33},      // margens da cripta
+      {x:16.5, y:40.5},                       // margem sul
+      {x:8.5,  y:47.5}, {x:24.5, y:51.5},     // colombário
+      {x:33.5, y:22.5}                        // guarda o caminho da cova, longe da soleira
+    ]);
+    criarZonasLuz([
+      {x:4,  y:45, larg:14, alt:9, claroT:5, escuroT:4, fase:0,   grito:'audio/fase3/sons/grito-vulto-1.mp3'},
+      {x:18, y:45, larg:16, alt:9, claroT:6, escuroT:4, fase:3,   grito:'audio/fase3/sons/grito-vulto-2.mp3'},
+      {x:3,  y:37, larg:9,  alt:5, claroT:7, escuroT:3.5, fase:6, grito:'audio/fase3/sons/grito-vulto-1.mp3'}
+    ]);
+    criarVultos([
+      {x:8,  y:49, zona:0}, {x:13, y:51, zona:0},
+      {x:22, y:48, zona:1}, {x:30, y:51, zona:1},
+      {x:6,  y:39, zona:2}
+    ]);
     /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
     const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
     jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
     jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
+    /* o Avental de Aço amortece a pazada: 34 -> 14 (F3-RF-13) */
+    const temAvental = inventario.some(i => i.id === 'avental-acougueiro');
+    PISO_FUNERAL.chefe.cfg.comboDano = [temAvental ? 14 : 34];
+    if(temAvental) avisar('O Avental de Aço no peito', 'a pá dele vai doer bem menos');
     etapa = 'livre';
     avisar('As salas de funeral', 'o frio sobe do chão');
   },
@@ -6252,13 +6390,87 @@ const PISO_FUNERAL = {
       vistoCripta = true;
       avisar('A cripta alagada', 'água parada — pise só nas passarelas');
     }
+    atualizarMaos(dt);
+    atualizarZonasLuz(dt);
+    atualizarVultos(dt);
+    /* água benta: cura 15% e vira ração */
+    aguaBenta.forEach(a => {
+      if(a.pego || Math.hypot(a.x-jog.x, a.y-jog.y) > .6) return;
+      a.pego = true; jog.pocoes++;
+      const cura = Math.round(jog.hpMax*.15);
+      if(jog.hp < jog.hpMax){
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        flutuar(a.x, a.y-.6, '+' + cura, '#8fc48a');
+      }
+      sTrapo();
+      flutuar(a.x, a.y-.3, '+1 água benta', '#8fc48a');
+      for(let k=0;k<10;k++) faisca(a.x, a.y, '#9fd0ea', .09);
+      atualizarHUD();
+    });
+    /* círios: só valem na luta, repostos a cada tentativa */
+    if(etapa === 'chefe'){
+      cirios.forEach(c2 => {
+        if(c2.pego || jog.hp >= jog.hpMax) return;
+        if(Math.hypot(c2.x-jog.x, c2.y-jog.y) > .65) return;
+        c2.pego = true;
+        const cura = Math.round(jog.hpMax*.25);
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        sTrapo();
+        flutuar(c2.x, c2.y-.5, '+' + cura, '#8fc48a');
+        for(let k=0;k<16;k++) faisca(c2.x, c2.y, '#8fc48a', .11);
+        atualizarHUD();
+      });
+    }
     /* atravessou a passagem aberta: a luta sela, e a música da cova toca */
     if(etapa === 'livre' && porta3.aberta && jog.y < FUN.PORTA.y + .9
        && jog.x > FUN.PORTA.x - 1 && jog.x < FUN.PORTA.x + FUN.PORTA.larg + 1){
       criarChefe();
+      criarCirios();
       tocarBgm('audio/fase2/portao-acougueiro.mp3', .16);   // tapa-buraco: trilha da cova pendente (F3-RF-22)
       etapa = 'chefe';
     }
+  },
+  /* a interação do piso: acender velas e abrir a cova (trava dupla F3-RF-09) */
+  interacao(){
+    if(etapa !== 'livre') return null;
+    for(const v of velasCaminho){
+      if(!v.acesa && Math.hypot(v.x-jog.x, v.y-jog.y) < 1.4)
+        return {tipo:'vela', rotulo:'ACENDER', icone:'✦', alvoVela:v};
+    }
+    if(!porta3.aberta
+       && Math.hypot(FUN.PORTA.x + 1.5 - jog.x, FUN.PORTA.y + 1 - jog.y) < 2.6)
+      return {tipo:'cova', rotulo:'ABRIR', icone:'⇧'};
+    return null;
+  },
+  agir(i){
+    if(i.tipo === 'vela'){ acenderVela(i.alvoVela); return; }
+    if(i.tipo !== 'cova') return;
+    const sabidos = informantes.filter(p => p.feito).length;
+    const acesas = velasCaminho.filter(v => v.acesa).length;
+    if(sabidos < informantes.length){
+      sPortaoTravado(); tremor = 4;
+      const falta = informantes.length - sabidos;
+      avisar('A cova não abre', falta === 1 ? 'falta ouvir 1 velante' : 'faltam ouvir ' + falta + ' velantes');
+      return;
+    }
+    if(acesas < velasCaminho.length){
+      sPortaoTravado(); tremor = 4;
+      avisar('A cova não abre', 'reacenda as velas do caminho (' + acesas + '/' + velasCaminho.length + ')');
+      return;
+    }
+    porta3.aberta = true;
+    for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
+    desenharCache();
+    sPortao(); tremor = 10;
+    avisar('A terra se abre', 'a cova grande espera');
+  },
+  desenharCenario(ox, oy){
+    desenharVelasCaminho(ox, oy);
+    desenharAguaBenta(ox, oy);
+    if(etapa === 'chefe') desenharCirios(ox, oy);
+    desenharZonasLuz(ox, oy);
+    desenharMaos(ox, oy);
+    desenharVultos(ox, oy);
   },
   /* atalho de teste (?piso=3&chefe=1): segredos ouvidos, passagem aberta,
      jogador na soleira da cova — a luta começa no primeiro passo */
@@ -6267,6 +6479,8 @@ const PISO_FUNERAL = {
     const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
     if(cont) cont.textContent = informantes.length + '/' + informantes.length;
     marcarTarefa(tid); marcarTarefa('t-cripta'); marcarTarefa('t-velas');
+    velasCaminho.forEach(v => { v.acesa = true; });
+    const vc = el('t-velas-cont'); if(vc) vc.textContent = velasCaminho.length + '/' + velasCaminho.length;
     porta3.aberta = true;
     for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
     desenharCache();
@@ -6276,13 +6490,28 @@ const PISO_FUNERAL = {
     avisar('Atalho de teste', 'a cova grande está aberta');
   },
   falarLiberado(){ return etapa === 'livre'; },
-  acaoGolpe: golpeDeArma,
+  acaoGolpe: golpeFase3,
   pegarItem(item){
     if(!ARMAS[item.id]) return;
     jog.arma = item.id;
     jog.dano = item.id === 'machado-gladiador' ? 13 : 10;
     avisar('Na mão', item.nome);
   },
+  /* camadas de ambiente por proximidade (F3-RF-24) */
+  ambientes:[
+    { url:'audio/fase3/sons/gota-eco-1.mp3', ganho:.3, raio:6, desvanece:6,
+      pontos:[[21,37]] },                                        // a cripta goteja
+    { url:'audio/fase3/sons/choro-velorio-1.mp3', ganho:.38, raio:5, desvanece:5,
+      pontos:[[9.5,10.5]] },                                     // o velório da capela
+    { url:'audio/fase3/sons/rezas-murmurio-1.mp3', ganho:.3, raio:5, desvanece:5,
+      pontos:[[6,8],[12.5,13]] },                                // os rezadores
+    { url:'audio/fase3/sons/serrote-1.mp3', ganho:.3, raio:4.5, desvanece:4,
+      pontos:[[6,33]] },                                         // a oficina serra
+    { url:'audio/fase3/sons/martelo-madeira-1.mp3', ganho:.26, raio:4, desvanece:4,
+      pontos:[[7.5,39]] },                                       // o depósito martela
+    { url:'audio/fase3/sons/sussurro-vulto-1.mp3', ganho:.2, raio:6, desvanece:5,
+      pontos:[[12,49],[26,49]] }                                 // o colombário sussurra
+  ],
   desenharNoJogador(px, py, r, bal){
     if(jog.arma) desenharArmaNaMao(px, py, r);
   }
