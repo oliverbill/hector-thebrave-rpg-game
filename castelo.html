@@ -5796,10 +5796,30 @@ function desenharMaos(ox, oy){
     ctx.translate(px, py - r*.1 + bob);
     ctx.rotate(presa ? Math.sin(tempo*16)*.07 : Math.sin(m.fase*1.6)*.14);
     if(imgMaoMorta.complete && imgMaoMorta.naturalWidth > 0){
-      /* o sprite aprovado: a mão rasgando a terra */
-      const altM = tam*1.02, larM = imgMaoMorta.naturalWidth*(altM/imgMaoMorta.naturalHeight);
+      /* o sprite aprovado, partido no nó dos dedos: a palma fica firme e as
+         tiras dos dedos dobram e se abrem — quanto mais perto o jogador,
+         mais depressa elas agarram o ar */
+      const iw = imgMaoMorta.naturalWidth, ih = imgMaoMorta.naturalHeight;
+      const altM = tam*1.02, larM = iw*(altM/ih);
+      const x0 = -larM/2, y0 = -altM + r*.62, NO = .46;   // NO: onde os dedos saem da palma
       if(m.flash > 0) ctx.filter = 'brightness(2.4)';
-      ctx.drawImage(imgMaoMorta, -larM/2, -altM + r*.62, larM, altM);
+      ctx.drawImage(imgMaoMorta, 0, ih*NO, iw, ih*(1-NO),
+                    x0, y0 + altM*NO, larM, altM*(1-NO));
+      const dCaca = Math.hypot(jog.x - m.x, jog.y - m.y);
+      const inten = presa ? 1 : Math.max(.16, Math.min(1, (6.5 - dCaca)/4));
+      const vel = presa ? 17 : 5 + inten*9;
+      const N = 7;
+      for(let k=0; k<N; k++){
+        const sx = iw*(k/N), sw = iw/N + 1;
+        const dx0 = x0 + larM*(k/N), dw = larM/N + 1;
+        const f = Math.sin(tempo*vel + k*.9);
+        ctx.save();
+        ctx.translate(dx0 + dw/2, y0 + altM*NO);
+        ctx.rotate(f*.14*inten);                          // o dedo abre e fecha
+        ctx.scale(1, 1 - (.5 + .5*f)*.2*inten);           // e encolhe ao dobrar
+        ctx.drawImage(imgMaoMorta, sx, 0, sw, ih*NO, -dw/2, -altM*NO, dw, altM*NO);
+        ctx.restore();
+      }
       ctx.filter = 'none';
       ctx.restore();
       return;
