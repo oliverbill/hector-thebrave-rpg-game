@@ -3043,18 +3043,23 @@ function desenharArmaNaMao(px, py, r){
     ctx.rotate(ang + cfgA.rot);
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);   // pivô na empunhadura, junto à mão
   } else {
-    /* em repouso: a arma fica ERGUIDA, cabeça para cima e lâmina para fora,
-       segura à frente do corpo com as duas mãos (F: pedido do dono) */
+    /* em repouso: a arma fica ERGUIDA e À FRENTE do corpo, cabeça para cima e
+       lâmina para fora; as mãos não saem do cabo — empunhadura constante */
     const virado = Math.cos(jog.angulo) < 0;
-    ctx.translate(px + (mx - px)*.45, my - r*.06);         // puxa para o eixo do corpo
+    const lado = virado ? -1 : 1;
+    ctx.translate(px + lado*r*.62, my - r*.1);             // à frente, não colado no corpo
     if(virado) ctx.scale(-1, 1);                           // a lâmina acompanha o olhar
     ctx.rotate(-.09);                                      // leve inclinação, nada de tombar
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
-    /* a segunda mão fecha no cabo, acima da empunhadura */
-    ctx.fillStyle = '#c98f5e';
-    ctx.beginPath(); ctx.ellipse(0, -alt*(cfgA.pivo*.5), r*.13, r*.10, .25, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(60,30,15,.65)'; ctx.lineWidth = 1;
-    ctx.stroke();
+    /* as duas mãos fechadas no cabo, uma sobre a outra */
+    const punho = (yy) => {
+      ctx.fillStyle = '#c98f5e';
+      ctx.beginPath(); ctx.ellipse(0, yy, r*.13, r*.10, .25, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(60,30,15,.65)'; ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+    punho(-alt*.015);                                      // a mão de baixo, na empunhadura
+    punho(-alt*.17);                                       // a mão de cima
   }
   ctx.restore();
 }
