@@ -8512,8 +8512,8 @@ function pintarFunImagens(cmx, T){
 
   /* vitrais nas faces de parede: os da capela são os grandes, o resto do piso
      ganha os menores — parede sem janela faz o castelo virar porão (etapa 8) */
-  const vitral = (x, y, larg, brilho) => {
-    const im = funImg('janela');
+  const vitral = (x, y, larg, brilho, centro) => {
+    const im = funImg(centro ? 'vitral-centro' : 'vitral-lado');
     if(!im.complete || !im.naturalWidth) return;
     const w = larg*T, h = im.naturalHeight*(w/im.naturalWidth);
     const px = x*T, py = (y + 1)*T;                    // assentado na base da face
@@ -8531,8 +8531,9 @@ function pintarFunImagens(cmx, T){
     cmx.lineTo(px + w*.62, py + T*1.15); cmx.lineTo(px - w*.62, py + T*1.15);
     cmx.closePath(); cmx.fill();
   };
-  // capela: só os três vitrais grandes da parede norte (pedido do dono)
-  vitral(6, 4, 1.5, 1);  vitral(9.5, 4, 1.7, 1.15);  vitral(13, 4, 1.5, 1);
+  /* capela: só os três da parede norte (pedido do dono), e são o trio da
+     foto — a lanceta alta no meio, as menores nos flancos */
+  vitral(6, 4, 1.5, 1);  vitral(9.5, 4, 1.7, 1.15, true);  vitral(13, 4, 1.5, 1);
   // preparação, salão, oficina e o quarto: janelas menores, sem repetir vizinha
   vitral(21, 4, 1.2, .8);  vitral(25.5, 4, 1.2, .8);
   vitral(11, 19, 1.1, .6); vitral(19, 19, 1.1, .6); vitral(28, 19, 1.1, .6);

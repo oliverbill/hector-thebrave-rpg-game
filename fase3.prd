@@ -218,7 +218,7 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 
 **Arte recortada e ainda não instalada**
 
-- **Porta e janela** (`img/fase3/porta.png`, `img/fase3/janela.png`): recortadas na leva aprovada, **nenhuma das duas aparece no cenário**. O piso 2 já tem porta que abre ao passar e janela com gelosia; o piso 3 ainda não espalhou as suas.
+- **Porta** (`img/fase3/porta.png`): recortada na leva aprovada, **não aparece no cenário**. O piso 2 já tem porta que abre ao passar; o piso 3 ainda não espalhou a sua. (A janela saiu deste débito: as paredes agora levam os **vitrais** recortados da foto do dono — `vitral-centro.png` e `vitral-lado.png`.)
 - **Ajudantes de carpintaria** (`img/fase3/ajudante-carpinteiro.png`): recortado e **não instalado**. F3-RF-28 continua em aberto — hoje o serrote e o martelo tocam num cômodo sem ninguém trabalhando.
 - **Rezadores 2, 3 e 4 faltam como PNG.** `COADJ_FUN` pede seis figuras (`rezador-1`, `rezador-2`, `rezador-3`, `rezador-4`), mas `img/fase3/` só tem `rezador-1.png` recortado — as outras estão em `.jpg` com fundo, e `rezador-4` não existe. Na prática **só uma das seis figuras aparece na capela**.
 - **A Lanterna dos Mortos não tem arte**: `recompensa.img = null`, o popup da bolsa entra sem ícone.
@@ -240,7 +240,8 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 | Tipo | Item | Formato | Status |
 |---|---|---|---|
 | Cenário | 12 itens recortados (caixões, carroça, bancada, cocho, barris, feno, potes, mesa, banco, lamparina), castiçal, círio | Pinterest → revisão → PNG | **pronto e no cenário** |
-| Cenário | porta e janela | PNG sem fundo | **recortadas, não instaladas** (§8) |
+| Cenário | porta | PNG sem fundo | **recortada, não instalada** (§8) |
+| Cenário | vitrais da capela (centro e lado) | foto do dono → recorte com fundo transparente | **pronto e no cenário** (`vitrais.jpg` é a foto de origem) |
 | Retrato NPC | Carpinteiro, Lavadeira, Sacristão | PNG sem fundo | **pronto** (`velante-*.png`, escala 1.5) |
 | Coadjuvantes | rezadores da capela | PNG sem fundo | **parcial**: só `rezador-1.png`; faltam 2, 3 e 4 (§8) |
 | Coadjuvantes | ajudantes de carpintaria | PNG sem fundo | **recortado, não instalado** (§8) |
