@@ -2032,7 +2032,9 @@ function atualizarDesespero(c, f, dt){
         c.estado = 'cospe'; c.t = .35;
         const a = Math.random()*TAU;      // e o arremesso: para longe, sem escolher onde
         jog.vx = Math.cos(a)*de.arremesso; jog.vy = Math.sin(a)*de.arremesso;
-        jog.invul = 0; machucar(de.danoArremesso, a);
+        /* comoPazada: cobra exatamente o que uma pazada custaria — nem mais */
+        const dano = de.comoPazada ? f.comboDano[0] : de.danoArremesso;
+        jog.invul = 0; machucar(dano, a);
         jog.dash = 0; jog.dashCd = 1;
         tremor = 18;
         if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe);
@@ -8785,10 +8787,11 @@ const PISO_FUNERAL = {
       /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
       soVulneravelEm:['atordoado','exausto'],
       reageDeImediato:true,                          // chegou perto, leva pazada
-      /* a apelação: quase morto, ele abraça o jogador e enterra os dois */
+      /* a apelação: quase morto, ele abraça o jogador e enterra os dois.
+         O susto é o preço; a conta é de uma pazada só, na hora do arremesso */
       desespero:{
         abaixoDe:.18, alcance:6.5, enterradoT:5,
-        danoPorSegundo:7, danoArremesso:18, arremesso:26,
+        danoPorSegundo:0, danoArremesso:0, comoPazada:true, arremesso:26,
         aviso:['Ele te agarra', 'se você desce, desce comigo!']
       },
       cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
