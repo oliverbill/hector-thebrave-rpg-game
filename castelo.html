@@ -8115,30 +8115,33 @@ const PISO_FUNERAL = {
   informantes:[
     { nome:'O Carpinteiro de Caixões', chave:'rastro', cor:'#a89b7c', escala:1.5,
       retrato:'img/fase3/velante-carpinteiro.png',
-      voz:{pitch:.75, rate:.9, genero:'m'},
+      voz:{pitch:.75, rate:.9, genero:'m',
+           audios:['audio/fase3/vozes/carpinteiro-1.mp3','audio/fase3/vozes/carpinteiro-2.mp3','audio/fase3/vozes/carpinteiro-3.mp3']},
       x:5.5, y:33.5,       // na oficina, entre os caixões em obra
       falas:[
-        'Chegou inteiro? Fica parado aí que eu tiro a medida. É força do hábito, não leve a mal.',
-        'O Coveiro cava mais cova do que o castelo tem morto. Um dia sobra uma — e é a sua.',
-        'Quando ele some na terra, repare: deixa um rastro de terra revolvida. O chão conta onde ele vai sair.'
+        'Parado aí! Um e oitenta, ombro largo. Pinho serve. Eu nunca errei uma medida.',
+        'Todo mundo que desce aquela escada acaba passando pela minha bancada. É só questão de tempo.',
+        'Presta atenção na cova: quando ele some, deixa um rastro de terra. Onde a terra mexe, é ele.'
       ], ganho:'Você vai ler o rastro: o ponto onde ele irrompe se anuncia mais cedo.' },
     { nome:'A Lavadeira dos Mortos', chave:'lanterna', cor:'#9fb0c0', escala:1.5,
       retrato:'img/fase3/velante-lavadeira.png',
-      voz:{pitch:1.2, rate:.95, genero:'f'},
+      voz:{pitch:1.2, rate:.95, genero:'f',
+           audios:['audio/fase3/vozes/lavadeira-1.mp3','audio/fase3/vozes/lavadeira-2.mp3','audio/fase3/vozes/lavadeira-3.mp3']},
       x:25.5, y:7.5,       // na sala de preparação, junto às mesas
       falas:[
-        'Fala baixo. Os que eu lavo não acordam mais — mas os lá de baixo têm o sono leve.',
-        'Eu lavei gente que desceu à cova grande em pé. Nenhum voltou para reclamar da água fria.',
-        'A lanterna dele só ilumina a frente. Pelas costas, ele tá morto.'
+        'Chega mais, meu filho. Lavo os mortos há trinta anos... são melhor companhia que muito vivo.',
+        'Essa água fria eu nem sinto mais. O que cansa é fechar os olhinhos de quem chega novo.',
+        'Cuidado com o Coveiro, meu anjo: a lanterna só ilumina a frente. Pelas costas, ele tá morto.'
       ], ganho:'Golpes pelas costas doem muito mais nele.' },
     { nome:'O Sacristão', chave:'mergulhos', cor:'#8d86a8', escala:1.5,
       retrato:'img/fase3/velante-sacristao.png',
-      voz:{pitch:.6, rate:.85, genero:'m'},
+      voz:{pitch:.6, rate:.85, genero:'m',
+           audios:['audio/fase3/vozes/sacristao-1.mp3','audio/fase3/vozes/sacristao-2.mp3','audio/fase3/vozes/sacristao-3.mp3']},
       x:31.5, y:52.2,      // no fundo do colombário — o difícil de achar
       falas:[
-        'Você me achou... Nem os sinos me acham aqui no fundo.',
-        'Eu rezo por todos que ele enterra. A lista não para de crescer.',
-        'Preste atenção nos mergulhos: depois de 2 mergulhos, ele tá morto de cansado.'
+        'Shh... fala baixo. Aqui cada nome tem seu nicho... e alguns ainda respondem quando eu rezo.',
+        'Eu acendo as velas, elas apagam. Acendo de novo. Alguém sopra... e não é o vento.',
+        'Deus me perdoe... mas depois de dois mergulhos, ele tá morto de cansado. Aí é a hora.'
       ], ganho:'Conte os mergulhos: no segundo, ele emerge exausto.' }
   ],
   /* O COVEIRO de verdade (F3-RF-15..19): pazada curta e o ciclo subterrâneo
