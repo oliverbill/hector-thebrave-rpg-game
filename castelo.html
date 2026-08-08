@@ -6874,7 +6874,7 @@ function pintarFunCapelaPrep(cmx, T){
       }
     }
   };
-  mesaMort(21.4, 8.4, true);
+  mesaMort(21.4, 8.4, false);   // o corpo em preparo é pintado no passe 5, com a cabeça recortada
   mesaMort(24.9, 10.6, false);
 
   /* ---- prateleiras na parede norte: o enxoval do ofício ---- */
@@ -7849,6 +7849,65 @@ function pintarFunImagens(cmx, T){
   pImg('item-mesa', 39.6, 28.3, 1.8);              // quarto do Coveiro
   pImg('item-banco', 41.7, 29.7, 1.1);
   pImg('item-lamparina', 42.8, 26.7, .7);
+
+  /* o corpo em preparo na mesa da Lavadeira: pintado deitado, nu com o pano
+     de pudor, sujo de terra — a cabeça vem do recorte aprovado pelo dono */
+  const cad = funImg('cadaver-cabeca');
+  {
+    const cx = 21.4*T, cy = 8.34*T;
+    const meio = T*.09;
+    const pele = (x1, w2, h2, dy) => {
+      cmx.fillStyle = '#b9b2a6';
+      cmx.beginPath(); cmx.ellipse(cx + x1, cy + (dy||0), w2, h2, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,255,250,.14)';                 // a luz fria por cima
+      cmx.beginPath(); cmx.ellipse(cx + x1, cy - h2*.3 + (dy||0), w2*.85, h2*.45, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(60,58,76,.25)';                    // a sombra que escorre para a canaleta
+      cmx.beginPath(); cmx.ellipse(cx + x1, cy + h2*.55 + (dy||0), w2*.9, h2*.35, 0, 0, TAU); cmx.fill();
+    };
+    /* deitado com a cabeça a oeste: tronco, braços colados, pernas afinando */
+    pele(-T*.18, T*.34, T*.21);                                // o peito
+    pele(T*.12, T*.30, T*.185);                                // o ventre
+    pele(T*.62, T*.34, T*.13);                                 // as coxas
+    pele(T*.92, T*.24, T*.10);                                 // as canelas
+    cmx.fillStyle = '#a8a196';                                 // os pés
+    cmx.beginPath(); cmx.ellipse(cx + T*1.06, cy - T*.055, T*.06, T*.045, .3, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(cx + T*1.06, cy + T*.055, T*.06, T*.045, -.3, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#aca69b';                                 // os braços ao longo do corpo
+    cmx.beginPath(); cmx.ellipse(cx - T*.02, cy - T*.20, T*.42, T*.05, 0, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(cx - T*.02, cy + T*.20, T*.42, T*.05, 0, 0, TAU); cmx.fill();
+    /* o pano de pudor sobre o quadril */
+    cmx.fillStyle = '#ded8c8';
+    cmx.fillRect(cx + T*.32, cy - T*.20, T*.24, T*.40);
+    cmx.strokeStyle = 'rgba(120,114,100,.6)'; cmx.lineWidth = 1.2;
+    for(let k=0; k<3; k++){
+      const dx = cx + T*.36 + k*T*.07;
+      cmx.beginPath(); cmx.moveTo(dx, cy - T*.18); cmx.quadraticCurveTo(dx + T*.03, cy, dx - T*.01, cy + T*.18); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(255,255,250,.2)';
+    cmx.fillRect(cx + T*.32, cy - T*.20, T*.24, 2);
+    /* terra e livores: o morto chegou sujo do campo */
+    for(let k=0; k<7; k++){
+      const h = hash(k*3.1, k*7.7);
+      cmx.fillStyle = k % 3 === 2 ? 'rgba(98,80,114,.30)' : 'rgba(88,68,48,.38)';
+      cmx.beginPath();
+      cmx.ellipse(cx - T*.35 + h*T*1.35, cy + (hash(k*9.3, k*1.7) - .5)*T*.32,
+        T*(.03 + h*.05), T*(.02 + h*.03), h*3, 0, TAU);
+      cmx.fill();
+    }
+    /* a água suja escorrendo do corpo para o furo da canaleta */
+    cmx.strokeStyle = 'rgba(70,86,96,.4)'; cmx.lineWidth = 2;
+    cmx.beginPath(); cmx.moveTo(cx + T*.8, cy + T*.28);
+    cmx.quadraticCurveTo(cx + T*.95, cy + T*.34, cx + T*1.06, cy + T*.32); cmx.stroke();
+    /* a cabeça recortada, deitada a oeste, de barriga para cima */
+    if(cad.complete && cad.naturalWidth){
+      const ch = T*.5, cw = cad.naturalWidth*(ch/cad.naturalHeight);
+      cmx.save();
+      cmx.translate(cx - T*.62, cy + meio - T*.06);
+      cmx.rotate(-Math.PI/2);                                  // deitado, coroa para oeste
+      cmx.drawImage(cad, -cw/2, -ch/2, cw, ch);
+      cmx.restore();
+    }
+  }
 }
 
 function pintarFuneralCache(cmx, T){
