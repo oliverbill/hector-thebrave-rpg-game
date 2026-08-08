@@ -6022,7 +6022,30 @@ const FUN = {                      // geografia do piso (planta: capela e cova a
   PORTA:{x:36, y:17, larg:3},
   MOSAICO:{x:9.5, y:10.5, raio:3.4}    // o mosaico circular da capela (geometria; a pintura vem depois)
 };
-let porta3 = null, vistoCripta = false;
+let porta3 = null;
+/* cada cômodo se apresenta na primeira vez que o jogador entra nele */
+const COMODOS_FUN = [
+  {x1:3,  y1:5,  x2:16, y2:16, nome:'A capela do velório',   sub:'rezam por alguém que ainda não foi enterrado'},
+  {x1:19, y1:5,  x2:27, y2:13, nome:'A sala de preparação',  sub:'é aqui que os mortos são lavados'},
+  {x1:5,  y1:20, x2:41, y2:23, nome:'O salão dos enterros',  sub:'os caixões passam por aqui, arrastados'},
+  {x1:3,  y1:31, x2:11, y2:35, nome:'A oficina de caixões',  sub:'o Carpinteiro tira a medida de todo mundo'},
+  {x1:3,  y1:37, x2:11, y2:41, nome:'O depósito',            sub:'tábuas, pregos e o que sobra dos caixões'},
+  {x1:12.5, y1:30.5, x2:31, y2:43, nome:'A cripta alagada',  sub:'água parada — pise só nas passarelas'},
+  {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de nichos; o Sacristão está no fundo'},
+  {x1:38, y1:26, x2:43, y2:30, nome:'O quarto do Coveiro',   sub:'ele dorme ao lado da pá'},
+  {x1:30, y1:4,  x2:43, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'}
+];
+const vistos = new Set();
+function anunciarComodo(){
+  for(const c of COMODOS_FUN){
+    if(vistos.has(c.nome)) continue;
+    if(jog.x >= c.x1 && jog.x <= c.x2 && jog.y >= c.y1 && jog.y <= c.y2){
+      vistos.add(c.nome);
+      avisar(c.nome, c.sub);
+      return;
+    }
+  }
+}
 
 function construirFuneral(){
   const t = new Uint8Array(FUN.LARG*FUN.ALT).fill(PAREDE);
@@ -6440,7 +6463,7 @@ function desenharAguaCripta(ox, oy){
   /* o que a água carrega: caixões e caixotes boiando, cada um no seu bailado
      lento — sobe, desce, gira e deriva um palmo para cada lado */
   BOIAM.forEach((o, i) => {
-    const f = tempo*.35 + i*1.7;
+    const f = tempo*.7 + i*1.7;                          // o bailado, no dobro da velocidade
     const dx = Math.sin(f*.7)*.16, dy = Math.cos(f*.53 + 1.2)*.12;
     const px = ox + (o.x + dx)*tam, py = oy + (o.y + dy)*tam;
     if(foraDaVista(px, py, tam*2)) return;
@@ -8151,7 +8174,7 @@ const PISO_FUNERAL = {
     labaredas = []; paes = []; caldos = []; ratazanas = [];
     ajudantes = []; portasInternas = [];
     porta3 = {aberta:false, quebra:0};
-    vistoCripta = false;
+    vistos.clear();
     criarVelasCaminho();
     criarAguaBenta();
     cirios = [];
@@ -8191,10 +8214,7 @@ const PISO_FUNERAL = {
     el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
     /* a travessia da cripta conta quando o jogador pisa na margem sul */
     if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
-    if(!vistoCripta && jog.x > 12.5 && jog.x < 31 && jog.y > 30.5 && jog.y < 43){
-      vistoCripta = true;
-      avisar('A cripta alagada', 'água parada — pise só nas passarelas');
-    }
+    anunciarComodo();
     atualizarMaos(dt);
     atualizarZonasLuz(dt);
     atualizarVultos(dt);

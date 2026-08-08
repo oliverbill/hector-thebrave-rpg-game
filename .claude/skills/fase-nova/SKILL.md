@@ -195,6 +195,7 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 - A face projeta **sombra em degradê** no chão logo abaixo.
 - Móveis, balcões, parapeitos e pilares: superfície iluminada em cima + **face lateral sombreada** embaixo + sombra no chão.
 - Aparar arestas: remendo de chão sob estruturas sólidas, e o passe de paredes **ignora** os tiles delas, senão sobram cantos escuros nas bordas.
+- **O nome do cômodo na tela, na primeira entrada**: cada região do §3.1 anuncia o próprio nome com `avisar(nome, subtítulo)` quando o jogador pisa nela **pela primeira vez** (uma vez só na partida — guardar num conjunto de vistos, como o `vistoCripta` da fase 3). O subtítulo diz o que aquele cômodo cobra do jogador ("água parada — pise só nas passarelas"). Sem isso o piso vira um borrão de corredores: o jogador não sabe que chegou à capela, à oficina ou ao colombário.
 - **Janelas pelo cenário, sempre**: espalhar janelas (com a arte aprovada) pelas faces de parede das salas — a fase 2 tem gelosias por toda parte e uma grande na cozinha; fase sem janela parece porão por acidente.
 - **Portas internas com efeito de abertura, sempre**: cada passagem entre cômodos ganha porta (com a arte aprovada) que **abre quando o jogador passa**, como na fase 2. A porta abre **inteira, girando na dobradiça — NUNCA partida ao meio** com o jogador passando entre duas bandas (foi retrabalho na fase 2: a porta dupla teve de virar folha única).
 
