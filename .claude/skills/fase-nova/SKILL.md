@@ -72,6 +72,8 @@ Ele monta a chave `<tema> rpg 2D medieval`, rola o feed para carregar mais pins,
 
 Buscar **um termo por família de objeto** do §3.1 do PRD (mobília, utensílios, obstáculo, porta, janela, itens de cura) e trazer 3–5 opções de cada.
 
+**Porta e janela são obrigatórias na leva**: baixar a arte da **porta interna** e da **janela** da fase e mandá-las para revisão **junto com as demais imagens** — o cenário vai precisar das duas (ver etapa 8) e descobrir isso depois da revisão significa outra rodada de espera.
+
 **Curadoria de estilo — descartar antes de mandar para revisão** (olhar cada download com `Read`):
 
 - **Ficam**: arte pintada 2D de jogo / concept art com traço definido e cores chapadas-pintadas — o estilo que o cenário incorpora bem (ex. da fase 3: `coveiro-b-1.jpg`, `caixao-3.jpg`, `carpinteiro-aj-2.jpg`).
@@ -184,6 +186,8 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 - A face projeta **sombra em degradê** no chão logo abaixo.
 - Móveis, balcões, parapeitos e pilares: superfície iluminada em cima + **face lateral sombreada** embaixo + sombra no chão.
 - Aparar arestas: remendo de chão sob estruturas sólidas, e o passe de paredes **ignora** os tiles delas, senão sobram cantos escuros nas bordas.
+- **Janelas pelo cenário, sempre**: espalhar janelas (com a arte aprovada) pelas faces de parede das salas — a fase 2 tem gelosias por toda parte e uma grande na cozinha; fase sem janela parece porão por acidente.
+- **Portas internas com efeito de abertura, sempre**: cada passagem entre cômodos ganha porta (com a arte aprovada) que **abre quando o jogador passa**, como na fase 2. A porta abre **inteira, girando na dobradiça — NUNCA partida ao meio** com o jogador passando entre duas bandas (foi retrabalho na fase 2: a porta dupla teve de virar folha única).
 
 **Coadjuvantes:**
 
