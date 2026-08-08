@@ -6748,6 +6748,421 @@ function pintarFunCapelaPrep(cmx, T){
 
 /* -- passe 3: oficina de caixões + depósito + colombário -- */
 function pintarFunOficinaColombario(cmx, T){
+  const W = FUN.LARG, H = FUN.ALT;
+  const rnd = (x,y) => hash(x*5.31 + 17.3, y*7.77 + 5.1);
+  const anda3 = v => v === CHAO || v === CHAO2 || v === PONTE;
+  const chaoEm = (x,y) => x>=0 && y>=0 && x<W && y<H && anda3(mapa[y*W+x]);
+  const paredeEm = (x,y) => x>=0 && y>=0 && x<W && y<H && mapa[y*W+x] === PAREDE;
+  const sombraCh = (cx, cy, rx, ry, a) => {            // sombra elíptica no chão
+    cmx.fillStyle = 'rgba(0,0,0,' + a + ')';
+    cmx.beginPath(); cmx.ellipse(cx*T, cy*T, rx*T, ry*T, 0, 0, TAU); cmx.fill();
+  };
+
+  /* ================= OFICINA DE CAIXÕES (x3..11, y31..35) =================
+     A leitura do cômodo: bancada junto à parede, caixões em três estados de
+     obra (fundo em ripas, meio montado sobre cavaletes, pronto de pé) e
+     serragem clara espalhada — a marca de trabalho recente. */
+
+  /* serragem no chão, por baixo dos móveis */
+  [[4.3,32.7],[5.9,33.2],[7.5,32.5],[6.4,34.9],[9.1,33.5],[10.3,35.1],[4.7,34.2],[8.2,33.9]]
+  .forEach(([sx,sy]) => {
+    const h = rnd(sx*3.1, sy*2.7);
+    cmx.fillStyle = 'rgba(198,184,150,' + (.14 + h*.1) + ')';
+    cmx.beginPath();
+    cmx.ellipse(sx*T, sy*T, T*(.28 + h*.3), T*(.13 + h*.12), h*3.1, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(216,200,162,.5)';
+    for(let k=0; k<6; k++){
+      const g1 = rnd(sx*7 + k, sy*9 - k), g2 = rnd(sy*5 + k, sx*4 + k);
+      cmx.fillRect(sx*T + (g1 - .5)*T*.8, sy*T + (g2 - .5)*T*.34, 1.5, 1.5);
+    }
+  });
+
+  /* bancada de carpinteiro encostada na parede norte (a oeste da porta) */
+  {
+    const x0 = 3.15*T, x1 = 5.9*T, yT0 = 30.95*T, tampoH = T*.58, faceH = T*.44;
+    sombraCh(4.53, 32.05, 1.42, .12, .3);
+    // face frontal sombreada, em tábuas
+    cmx.fillStyle = '#3f3629'; cmx.fillRect(x0, yT0 + tampoH, x1 - x0, faceH);
+    cmx.fillStyle = 'rgba(0,0,0,.3)'; cmx.fillRect(x0, yT0 + tampoH, x1 - x0, T*.06);
+    cmx.strokeStyle = 'rgba(14,10,6,.6)'; cmx.lineWidth = 1.4;
+    for(let k=1; k<4; k++){
+      const jx = x0 + k*(x1 - x0)/4;
+      cmx.beginPath(); cmx.moveTo(jx, yT0 + tampoH); cmx.lineTo(jx, yT0 + tampoH + faceH); cmx.stroke();
+    }
+    cmx.fillStyle = '#332b20';                          // pés
+    cmx.fillRect(x0 + T*.08, yT0 + tampoH + faceH - T*.06, T*.16, T*.1);
+    cmx.fillRect(x1 - T*.24, yT0 + tampoH + faceH - T*.06, T*.16, T*.1);
+    // tampo de madeira clara, iluminado
+    cmx.fillStyle = '#7d6f52'; cmx.fillRect(x0, yT0, x1 - x0, tampoH);
+    cmx.fillStyle = 'rgba(235,240,250,.14)'; cmx.fillRect(x0, yT0, x1 - x0, 2.2);
+    // veios da madeira
+    cmx.strokeStyle = 'rgba(58,46,30,.4)'; cmx.lineWidth = 1.1;
+    for(let k=0; k<3; k++){
+      const vy = yT0 + tampoH*(.28 + k*.24);
+      cmx.beginPath(); cmx.moveTo(x0 + 2, vy);
+      cmx.quadraticCurveTo((x0 + x1)/2, vy + (k%2 ? 2.4 : -2.4), x1 - 2, vy);
+      cmx.stroke();
+    }
+    [[.22,.4],[.62,.62],[.85,.3]].forEach(([fx,fy]) => { // nós
+      cmx.strokeStyle = 'rgba(58,46,30,.5)';
+      cmx.beginPath(); cmx.ellipse(x0 + (x1-x0)*fx, yT0 + tampoH*fy, T*.05, T*.028, .4, 0, TAU); cmx.stroke();
+    });
+    // marcas de serra: feixes de riscos paralelos no tampo
+    [[.3,.34],[.52,.7],[.76,.45]].forEach(([fx,fy]) => {
+      cmx.strokeStyle = 'rgba(40,30,18,.45)'; cmx.lineWidth = 1;
+      for(let k=0; k<4; k++){
+        const mx = x0 + (x1-x0)*fx + k*2.6;
+        cmx.beginPath(); cmx.moveTo(mx, yT0 + tampoH*fy - T*.07);
+        cmx.lineTo(mx - T*.05, yT0 + tampoH*fy + T*.07); cmx.stroke();
+      }
+    });
+    // a morsa de ferro na ponta oeste
+    cmx.fillStyle = '#39404c'; cmx.fillRect(x0 + T*.12, yT0 - T*.1, T*.3, T*.16);
+    cmx.fillStyle = '#262b34'; cmx.fillRect(x0 + T*.2, yT0 - T*.2, T*.14, T*.12);
+    cmx.fillStyle = 'rgba(214,222,238,.2)'; cmx.fillRect(x0 + T*.12, yT0 - T*.1, T*.3, 1.4);
+    // uma ripa clara atravessada sobre o tampo, recém-serrada
+    cmx.save();
+    cmx.translate(x0 + (x1-x0)*.6, yT0 + tampoH*.42); cmx.rotate(-.12);
+    cmx.fillStyle = '#8a7a58'; cmx.fillRect(-T*.8, -T*.07, T*1.6, T*.14);
+    cmx.fillStyle = 'rgba(0,0,0,.22)'; cmx.fillRect(-T*.8, T*.03, T*1.6, T*.04);
+    cmx.restore();
+  }
+
+  /* ferramentas penduradas na face da parede norte, a leste da porta */
+  const pPino = (px, py) => {
+    cmx.fillStyle = '#20242e'; cmx.beginPath(); cmx.arc(px, py, T*.03, 0, TAU); cmx.fill();
+  };
+  { // serrote
+    const px = 8.25*T, py = 30.18*T;
+    pPino(px, py);
+    cmx.fillStyle = '#1f1b14'; cmx.fillRect(px - T*.05, py + T*.02, T*.1, T*.15);
+    cmx.fillStyle = '#59606e';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.09, py + T*.17); cmx.lineTo(px + T*.09, py + T*.17);
+    cmx.lineTo(px + T*.03, py + T*.68); cmx.lineTo(px - T*.05, py + T*.68);
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = 'rgba(10,8,6,.6)'; cmx.lineWidth = 1;   // os dentes
+    cmx.beginPath();
+    for(let k=0; k<6; k++){
+      cmx.moveTo(px + T*.09 - k*T*.012, py + T*(.21 + k*.08));
+      cmx.lineTo(px + T*.115 - k*T*.012, py + T*(.25 + k*.08));
+    }
+    cmx.stroke();
+  }
+  { // martelo
+    const px = 8.9*T, py = 30.18*T;
+    pPino(px, py);
+    cmx.fillStyle = '#2a241a'; cmx.fillRect(px - T*.035, py + T*.06, T*.07, T*.5);
+    cmx.fillStyle = '#454c58'; cmx.fillRect(px - T*.16, py + T*.1, T*.32, T*.13);
+    cmx.fillStyle = 'rgba(210,220,235,.2)'; cmx.fillRect(px - T*.16, py + T*.1, T*.32, T*.035);
+  }
+  { // formão
+    const px = 9.45*T, py = 30.2*T;
+    pPino(px, py);
+    cmx.fillStyle = '#2a241a'; cmx.fillRect(px - T*.045, py + T*.05, T*.09, T*.22);
+    cmx.fillStyle = '#59606e';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.035, py + T*.27); cmx.lineTo(px + T*.035, py + T*.27);
+    cmx.lineTo(px + T*.02, py + T*.55); cmx.lineTo(px - T*.02, py + T*.55);
+    cmx.closePath(); cmx.fill();
+  }
+  { // compasso de carpinteiro
+    const px = 9.85*T, py = 30.18*T;
+    pPino(px, py);
+    cmx.strokeStyle = '#454c58'; cmx.lineWidth = Math.max(1.6, T*.05);
+    cmx.beginPath(); cmx.moveTo(px, py + T*.08); cmx.lineTo(px - T*.13, py + T*.6); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px, py + T*.08); cmx.lineTo(px + T*.13, py + T*.6); cmx.stroke();
+    cmx.fillStyle = '#20242e'; cmx.beginPath(); cmx.arc(px, py + T*.1, T*.045, 0, TAU); cmx.fill();
+  }
+
+  /* caixão PRONTO, de pé, encostado na parede (canto nordeste) */
+  {
+    sombraCh(10.5, 32.32, .42, .11, .35);
+    cmx.save(); cmx.translate(10.45*T, 32.28*T); cmx.rotate(-.05);
+    const casco = [[-.17,-2.06],[.17,-2.06],[.4,-1.44],[.25,0],[-.25,0],[-.4,-1.44]];
+    const gC = cmx.createLinearGradient(-T*.4, 0, T*.4, 0);
+    gC.addColorStop(0, '#5e5240'); gC.addColorStop(.55, '#4e4234'); gC.addColorStop(1, '#352c21');
+    cmx.fillStyle = gC;
+    cmx.beginPath();
+    casco.forEach(([fx,fy],i) => i ? cmx.lineTo(fx*T, fy*T) : cmx.moveTo(fx*T, fy*T));
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = '#191510'; cmx.lineWidth = 1.6; cmx.stroke();
+    // o friso da tampa
+    cmx.strokeStyle = 'rgba(20,14,8,.55)'; cmx.lineWidth = 1.2;
+    cmx.beginPath();
+    [[-.11,-1.94],[.11,-1.94],[.3,-1.44],[.18,-.1],[-.18,-.1],[-.3,-1.44]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, fy*T) : cmx.moveTo(fx*T, fy*T));
+    cmx.closePath(); cmx.stroke();
+    // a cruz entalhada, num brilho frio
+    cmx.fillStyle = 'rgba(214,222,238,.14)';
+    cmx.fillRect(-T*.025, -T*1.7, T*.05, T*.9);
+    cmx.fillRect(-T*.14, -T*1.5, T*.28, T*.05);
+    cmx.restore();
+  }
+
+  /* caixão MEIO MONTADO, deitado sobre dois cavaletes */
+  const pCavalete = (tx, ty) => {
+    const px = tx*T, py = ty*T;
+    sombraCh(tx, ty + .04, .28, .07, .3);
+    cmx.strokeStyle = '#3a3226'; cmx.lineWidth = Math.max(2, T*.08); cmx.lineCap = 'round';
+    cmx.beginPath(); cmx.moveTo(px - T*.2, py); cmx.lineTo(px, py - T*.5); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px + T*.2, py); cmx.lineTo(px, py - T*.5); cmx.stroke();
+    cmx.lineCap = 'butt';
+    cmx.strokeStyle = 'rgba(10,8,6,.5)'; cmx.lineWidth = Math.max(1.2, T*.04);
+    cmx.beginPath(); cmx.moveTo(px - T*.11, py - T*.22); cmx.lineTo(px + T*.11, py - T*.22); cmx.stroke();
+    cmx.fillStyle = '#4e4234'; cmx.fillRect(px - T*.15, py - T*.56, T*.3, T*.09);
+  };
+  pCavalete(7.6, 35.0); pCavalete(9.0, 35.0);
+  {
+    const cy = 34.35;
+    sombraCh(8.3, 35.08, .95, .1, .25);
+    // casco por fora (afunilado no pé, ombro largo)
+    cmx.fillStyle = '#5a4a3a';
+    cmx.beginPath();
+    [[7.2,-.18],[8.55,-.3],[9.35,-.2],[9.35,.2],[8.55,.3],[7.2,.18]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, (cy+fy)*T) : cmx.moveTo(fx*T, (cy+fy)*T));
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = '#171310'; cmx.lineWidth = 1.6; cmx.stroke();
+    // o vão aberto, ainda sem tampa
+    cmx.fillStyle = '#211b14';
+    cmx.beginPath();
+    [[7.32,-.1],[8.55,-.2],[9.23,-.12],[9.23,.12],[8.55,.2],[7.32,.1]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, (cy+fy)*T) : cmx.moveTo(fx*T, (cy+fy)*T));
+    cmx.closePath(); cmx.fill();
+    // costelas da estrutura à vista
+    cmx.strokeStyle = 'rgba(138,122,88,.5)'; cmx.lineWidth = 1.2;
+    [7.65,8.1,8.55,8.95].forEach(rx => {
+      cmx.beginPath(); cmx.moveTo(rx*T, (cy - .16)*T); cmx.lineTo(rx*T, (cy + .16)*T); cmx.stroke();
+    });
+    // luz fria na borda norte
+    cmx.strokeStyle = 'rgba(228,233,246,.16)'; cmx.lineWidth = 1.4;
+    cmx.beginPath();
+    cmx.moveTo(7.22*T, (cy - .17)*T); cmx.lineTo(8.55*T, (cy - .29)*T); cmx.lineTo(9.33*T, (cy - .19)*T);
+    cmx.stroke();
+  }
+
+  /* só o FUNDO EM RIPAS, deitado no chão — o começo de um caixão */
+  {
+    cmx.save(); cmx.translate(4.7*T, 34.9*T); cmx.rotate(.16);
+    cmx.fillStyle = '#26211a';
+    cmx.beginPath();
+    [[-.2,-.72],[.2,-.72],[.3,-.4],[.19,.7],[-.19,.7],[-.3,-.4]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, fy*T) : cmx.moveTo(fx*T, fy*T));
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = '#141110'; cmx.lineWidth = 1.4; cmx.stroke();
+    // as ripas atravessadas, com os vãos escuros entre elas
+    [[-.58,.4],[-.3,.56],[-.02,.5],[.26,.44],[.54,.36]].forEach(([ry,lar]) => {
+      cmx.fillStyle = '#5a4a3a';
+      cmx.fillRect(-lar*T/2, (ry - .09)*T, lar*T, T*.18);
+      cmx.fillStyle = 'rgba(228,233,246,.1)';
+      cmx.fillRect(-lar*T/2, (ry - .09)*T, lar*T, 1.2);
+    });
+    cmx.restore();
+  }
+
+  /* ==================== DEPÓSITO (x3..11, y37..41) ====================
+     Material esperando a vez: pilhas de tábuas, caixas de pregos, cordas. */
+
+  const pPilha = (x0, x1, yBase, nCam) => {
+    const faceH = nCam*.15, topoH = .26, yF = (yBase - faceH)*T;
+    sombraCh((x0 + x1)/2, yBase + .05, (x1 - x0)*.52, .11, .32);
+    for(let k=0; k<nCam; k++){          // a face: tábuas empilhadas
+      const ty = yF + k*.15*T;
+      cmx.fillStyle = k%2 ? '#463b2c' : '#4e4234';
+      cmx.fillRect(x0*T, ty, (x1 - x0)*T, .15*T);
+      cmx.fillStyle = 'rgba(233,238,248,.07)'; cmx.fillRect(x0*T, ty, (x1 - x0)*T, 1.4);
+      cmx.fillStyle = 'rgba(0,0,0,.3)'; cmx.fillRect(x0*T, ty + .15*T - 1.4, (x1 - x0)*T, 1.4);
+      cmx.fillStyle = '#8a7a58';        // o topo serrado das tábuas, na cabeceira
+      cmx.fillRect(x1*T - T*.07, ty + 1, T*.07, .15*T - 2);
+    }
+    // superfície de cima, iluminada, tábuas ao comprido
+    cmx.fillStyle = '#6c5d43'; cmx.fillRect(x0*T, yF - topoH*T, (x1 - x0)*T, topoH*T);
+    cmx.fillStyle = 'rgba(235,240,250,.12)'; cmx.fillRect(x0*T, yF - topoH*T, (x1 - x0)*T, 2);
+    cmx.strokeStyle = 'rgba(40,30,18,.5)'; cmx.lineWidth = 1.1;
+    for(let k=1; k<3; k++){
+      cmx.beginPath(); cmx.moveTo(x0*T, yF - topoH*T + k*topoH*T/3);
+      cmx.lineTo(x1*T, yF - topoH*T + k*topoH*T/3); cmx.stroke();
+    }
+    // uma tábua solta, torta, por cima da pilha
+    const hx = rnd(x0, yBase);
+    cmx.save();
+    cmx.translate((x0 + (x1 - x0)*(.3 + hx*.4))*T, (yBase - faceH - topoH - .02)*T);
+    cmx.rotate((hx - .5)*.16);
+    cmx.fillStyle = '#7a6a4c'; cmx.fillRect(-(x1 - x0)*.4*T, -T*.06, (x1 - x0)*.8*T, T*.12);
+    cmx.fillStyle = 'rgba(0,0,0,.25)'; cmx.fillRect(-(x1 - x0)*.4*T, T*.02, (x1 - x0)*.8*T, T*.04);
+    cmx.restore();
+  };
+  pPilha(6.3, 9.6, 38.6, 4);
+  pPilha(4.6, 7.0, 40.8, 3);
+
+  /* caixas de pregos abertas */
+  const pCaixaPregos = (tx, ty) => {
+    const px = tx*T, py = ty*T, l = T*.46, a = T*.34;
+    sombraCh(tx, ty + .1, .28, .07, .3);
+    cmx.fillStyle = '#4e4234'; cmx.fillRect(px - l/2, py - a/2, l, a);
+    cmx.fillStyle = '#1d1812'; cmx.fillRect(px - l/2 + 2.2, py - a/2 + 2.2, l - 4.4, a - 4.4);
+    cmx.strokeStyle = 'rgba(233,238,248,.14)'; cmx.lineWidth = 1.2;
+    cmx.strokeRect(px - l/2, py - a/2, l, a);
+    cmx.strokeStyle = '#8b93a4'; cmx.lineWidth = 1.1;   // os pregos, espalhados
+    for(let k=0; k<7; k++){
+      const g1 = rnd(tx*9 + k, ty*7), g2 = rnd(ty*8 + k, tx*6);
+      const nx = px - l/2 + 3 + g1*(l - 6), ny = py - a/2 + 3 + g2*(a - 6);
+      cmx.beginPath(); cmx.moveTo(nx, ny); cmx.lineTo(nx + T*.07, ny + (g1 - .5)*T*.05); cmx.stroke();
+    }
+  };
+  pCaixaPregos(10.2, 39.1); pCaixaPregos(9.55, 39.6);
+
+  /* rolos de corda pendurados na face da divisória */
+  [[4.4,36.52],[9.2,36.48]].forEach(([tx,ty]) => {
+    const px = tx*T, py = ty*T;
+    cmx.fillStyle = '#20242e'; cmx.beginPath(); cmx.arc(px, py - T*.28, T*.035, 0, TAU); cmx.fill();
+    cmx.strokeStyle = '#2b241a'; cmx.lineWidth = 1.4;
+    cmx.beginPath(); cmx.moveTo(px, py - T*.28); cmx.lineTo(px, py - T*.16); cmx.stroke();
+    cmx.strokeStyle = '#66573c'; cmx.lineWidth = Math.max(2.4, T*.1);
+    cmx.beginPath(); cmx.arc(px, py, T*.16, 0, TAU); cmx.stroke();
+    cmx.strokeStyle = 'rgba(20,14,8,.5)'; cmx.lineWidth = 1;
+    for(let k=0; k<5; k++){
+      cmx.beginPath(); cmx.arc(px, py, T*(.1 + k*.032), -.6, .9); cmx.stroke();
+    }
+    cmx.strokeStyle = '#66573c'; cmx.lineWidth = Math.max(1.4, T*.045);
+    cmx.beginPath(); cmx.moveTo(px + T*.1, py + T*.1);   // a ponta solta
+    cmx.quadraticCurveTo(px + T*.16, py + T*.3, px + T*.08, py + T*.42); cmx.stroke();
+  });
+
+  /* poeira e fiapos de teia nos cantos do depósito */
+  [[3.3,37.35,1],[10.7,37.35,-1],[3.3,40.75,1],[10.75,40.8,-1]].forEach(([tx,ty,dir]) => {
+    const px = tx*T, py = ty*T;
+    cmx.strokeStyle = 'rgba(205,210,226,.13)'; cmx.lineWidth = 1;
+    for(let k=0; k<3; k++){
+      cmx.beginPath();
+      cmx.moveTo(px - dir*T*.3, py - T*.28 + k*T*.05);
+      cmx.quadraticCurveTo(px + dir*T*.05, py - T*.1 + k*T*.08, px + dir*T*.28, py + T*.16 + k*T*.05);
+      cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(160,166,186,.07)';
+    cmx.beginPath(); cmx.ellipse(px, py + T*.1, T*.3, T*.12, 0, 0, TAU); cmx.fill();
+  });
+
+  /* ========== COLOMBÁRIO-LABIRINTO: os nichos funerários (y>=44) ==========
+     Em cada face de parede visível dentro do colombário, duas arcadas
+     escavadas com prateleira de pedra; dentro, urna, crânio, ossos ou o
+     vazio — variando por hash, sem repetir vizinhos. */
+  for(let y=44; y<=53; y++) for(let x=3; x<=33; x++){
+    if(!paredeEm(x,y) || !chaoEm(x,y+1)) continue;
+    const px = x*T, py = y*T;
+    const offLinha = (hash(2.13, y*1.71)*4)|0;          // baralha os conteúdos por linha
+    for(let k=0; k<2; k++){
+      const nx = px + T*(.27 + k*.46);
+      const topo = py + T*.16, altN = T*.5, r = T*.16, omb = topo + r;
+      const tracarArco = () => {
+        cmx.beginPath();
+        cmx.moveTo(nx - r, topo + altN);
+        cmx.lineTo(nx - r, omb);
+        cmx.arc(nx, omb, r, Math.PI, 0);
+        cmx.lineTo(nx + r, topo + altN);
+        cmx.closePath();
+      };
+      // prateleira de pedra sob o arco
+      cmx.fillStyle = '#797e93';
+      cmx.fillRect(nx - r - T*.05, topo + altN, r*2 + T*.1, T*.085);
+      cmx.fillStyle = 'rgba(236,240,250,.25)';
+      cmx.fillRect(nx - r - T*.05, topo + altN, r*2 + T*.1, 1.4);
+      cmx.fillStyle = 'rgba(0,0,0,.4)';
+      cmx.fillRect(nx - r - T*.05, topo + altN + T*.085, r*2 + T*.1, T*.05);
+      // o vão escavado
+      cmx.fillStyle = '#141721';
+      tracarArco(); cmx.fill();
+      // conteúdo, guardado dentro do arco
+      const v = (x*2 + k + offLinha) % 4;
+      cmx.save(); tracarArco(); cmx.clip();
+      const chaoN = topo + altN;
+      // a sombra funda que desce do alto do vão (antes do conteúdo, para não apagá-lo)
+      const gN = cmx.createLinearGradient(0, topo, 0, topo + altN*.7);
+      gN.addColorStop(0, 'rgba(0,0,0,.55)'); gN.addColorStop(1, 'rgba(0,0,0,0)');
+      cmx.fillStyle = gN; cmx.fillRect(nx - r, topo, r*2, altN*.7);
+      if(v === 0){          // a urna
+        cmx.fillStyle = '#a29ab2';
+        cmx.beginPath();
+        cmx.moveTo(nx - T*.055, chaoN - T*.29);
+        cmx.quadraticCurveTo(nx - T*.13, chaoN - T*.16, nx - T*.08, chaoN);
+        cmx.lineTo(nx + T*.08, chaoN);
+        cmx.quadraticCurveTo(nx + T*.13, chaoN - T*.16, nx + T*.055, chaoN - T*.29);
+        cmx.closePath(); cmx.fill();
+        cmx.fillStyle = '#847c98'; cmx.fillRect(nx - T*.065, chaoN - T*.33, T*.13, T*.045);
+        cmx.fillStyle = 'rgba(238,242,252,.45)'; cmx.fillRect(nx - T*.065, chaoN - T*.33, T*.13, 1.2);
+        cmx.fillStyle = 'rgba(238,242,252,.28)'; cmx.fillRect(nx - T*.07, chaoN - T*.24, T*.035, T*.2);
+        cmx.strokeStyle = 'rgba(30,28,44,.5)'; cmx.lineWidth = .9;   // o friso do bojo
+        cmx.beginPath(); cmx.moveTo(nx - T*.1, chaoN - T*.14); cmx.lineTo(nx + T*.1, chaoN - T*.14); cmx.stroke();
+      } else if(v === 1){   // o crânio
+        cmx.fillStyle = '#b3ac9c';
+        cmx.beginPath(); cmx.arc(nx, chaoN - T*.14, T*.085, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - T*.055, chaoN - T*.1, T*.11, T*.08);
+        cmx.fillStyle = '#141721';
+        cmx.beginPath(); cmx.arc(nx - T*.035, chaoN - T*.15, T*.024, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(nx + T*.035, chaoN - T*.15, T*.024, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - T*.008, chaoN - T*.1, T*.016, T*.03);
+        cmx.strokeStyle = 'rgba(20,16,12,.5)'; cmx.lineWidth = .9;
+        cmx.beginPath(); cmx.moveTo(nx - T*.05, chaoN - T*.04); cmx.lineTo(nx + T*.05, chaoN - T*.04); cmx.stroke();
+      } else if(v === 2){   // os ossos cruzados
+        cmx.strokeStyle = '#a49d8c'; cmx.lineWidth = Math.max(1.6, T*.045); cmx.lineCap = 'round';
+        cmx.beginPath(); cmx.moveTo(nx - T*.1, chaoN - T*.05); cmx.lineTo(nx + T*.1, chaoN - T*.11); cmx.stroke();
+        cmx.beginPath(); cmx.moveTo(nx - T*.09, chaoN - T*.13); cmx.lineTo(nx + T*.09, chaoN - T*.05); cmx.stroke();
+        cmx.lineCap = 'butt';
+        cmx.fillStyle = '#a49d8c';
+        cmx.beginPath(); cmx.arc(nx - T*.1, chaoN - T*.05, T*.026, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(nx + T*.1, chaoN - T*.11, T*.026, 0, TAU); cmx.fill();
+      }                     // v === 3: vazio — resta a sombra
+      cmx.restore();
+      // aduela do arco e pedra angular
+      cmx.strokeStyle = 'rgba(160,166,190,.4)'; cmx.lineWidth = 1.5;
+      cmx.beginPath(); cmx.arc(nx, omb, r + .8, Math.PI, 0); cmx.stroke();
+      cmx.fillStyle = 'rgba(170,176,198,.35)';
+      cmx.fillRect(nx - T*.035, topo - T*.035, T*.07, T*.075);
+    }
+  }
+
+  /* placas de pedra caídas (nomes gastos, ilegíveis) e flores secas */
+  for(let y=45; y<=53; y++) for(let x=3; x<=33; x++){
+    if(!chaoEm(x,y)) continue;
+    const h = rnd(x*1.7, y*2.3);
+    const px = (x + .18 + rnd(x,y)*.62)*T, py = (y + .3 + rnd(y,x)*.5)*T;
+    if(h > .9){             // a placa que caiu de algum nicho
+      cmx.save(); cmx.translate(px, py); cmx.rotate((rnd(x*3, y)*2 - 1)*.5);
+      cmx.fillStyle = 'rgba(0,0,0,.28)';
+      cmx.beginPath(); cmx.ellipse(T*.02, T*.06, T*.3, T*.14, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = '#767d93'; cmx.fillRect(-T*.26, -T*.17, T*.52, T*.34);
+      cmx.fillStyle = 'rgba(238,242,252,.2)'; cmx.fillRect(-T*.26, -T*.17, T*.52, 1.6);
+      cmx.strokeStyle = 'rgba(16,18,26,.6)'; cmx.lineWidth = 1.2;
+      cmx.strokeRect(-T*.26, -T*.17, T*.52, T*.34);
+      cmx.strokeStyle = 'rgba(24,27,38,.55)'; cmx.lineWidth = 1;   // o nome que o tempo comeu
+      for(let k=0; k<3; k++){
+        const c1 = rnd(x*5 + k, y*4), c2 = rnd(y*6 + k, x*3);
+        cmx.beginPath();
+        cmx.moveTo(-T*.18, -T*.08 + k*T*.09);
+        cmx.lineTo(-T*.18 + T*(.14 + c1*.2), -T*.08 + k*T*.09 + (c2 - .5)*2);
+        cmx.stroke();
+      }
+      cmx.fillStyle = 'rgba(16,18,26,.4)';                          // canto lascado
+      cmx.beginPath(); cmx.moveTo(T*.26, -T*.17); cmx.lineTo(T*.17, -T*.17);
+      cmx.lineTo(T*.26, -T*.08); cmx.closePath(); cmx.fill();
+      cmx.restore();
+    } else if(h < .09){     // flores secas caídas
+      cmx.save(); cmx.translate(px, py); cmx.rotate(rnd(y*7, x*2)*TAU);
+      for(let k=0; k<3; k++){
+        const a = (k - 1)*.55 + rnd(x + k, y)*.3;
+        cmx.strokeStyle = '#5f5138'; cmx.lineWidth = 1.1;
+        cmx.beginPath(); cmx.moveTo(0, 0);
+        cmx.quadraticCurveTo(Math.cos(a)*T*.1, Math.sin(a)*T*.1 - T*.06,
+                             Math.cos(a)*T*.2, Math.sin(a)*T*.2 - T*.04);
+        cmx.stroke();
+        cmx.fillStyle = k%2 ? '#7c4a3e' : '#8a6a46';
+        cmx.beginPath(); cmx.arc(Math.cos(a)*T*.2, Math.sin(a)*T*.2 - T*.04, T*.035, 0, TAU); cmx.fill();
+      }
+      cmx.fillStyle = 'rgba(124,88,70,.6)';                         // pétalas soltas
+      cmx.fillRect(T*.1, T*.06, 2, 2); cmx.fillRect(-T*.14, T*.02, 2, 2);
+      cmx.restore();
+    }
+  }
 }
 
 /* -- passe 4: cripta alagada + salão + cova grande + quarto do Coveiro -- */
