@@ -5693,9 +5693,10 @@ let agarrao = null, avisoAgarrao = false;
 /* --- mãos dos mortos: perseguem devagar e AGARRAM (F3-RF-12) --- */
 function criarMaos(pontos){
   agarrao = null; avisoAgarrao = false;
-  maos = pontos.map(p => ({x:p.x, y:p.y, vx:0, vy:0, raio:.34,
+  maos = pontos.map(p => ({x:p.x, y:p.y, hx:p.x, hy:p.y, vx:0, vy:0, raio:.34,
     hp:p.hp != null ? p.hp : 25, dreno:p.dreno != null ? p.dreno : 5,
-    vel:p.vel != null ? p.vel : 1.4, fase:Math.random()*TAU, flash:0}));
+    vel:p.vel != null ? p.vel : 1.4, fase:Math.random()*TAU, flash:0,
+    passo:Math.random()*15, olhar:-1}));
 }
 function agarrar(m){
   agarrao = {mao:m, x:jog.x, y:jog.y, apertos:0, tique:0,
@@ -5759,6 +5760,10 @@ function atualizarMaos(dt){
       m.vx -= m.vx*3*dt; m.vy -= m.vy*3*dt;
     }
     mover(m, m.vx*dt, m.vy*dt);
+    /* o quadro do engatinhar corre com o caminho percorrido: ela ANDA */
+    const vel2 = Math.hypot(m.vx, m.vy);
+    m.passo += (vel2 > .12 ? vel2*7 : 1.6)*dt;
+    if(Math.abs(m.vx) > .05) m.olhar = m.vx > 0 ? 1 : -1;
     /* alcançou: agarra (o rolamento em curso ainda escapa) */
     if(!agarrao && d < m.raio + jog.raio + .05 && jog.dash <= 0 && jog.invul <= 0 && vivo) agarrar(m);
   });
@@ -5781,49 +5786,41 @@ function desenharMaos(ox, oy){
     if(m.hp <= 0) return;
     const px = ox + m.x*tam, py = oy + m.y*tam, r = tam*.34;
     const presa = agarrao && agarrao.mao === m;
-    /* a terra do buraco de onde ela saiu */
-    ctx.fillStyle = 'rgba(0,0,0,.4)';
-    ctx.beginPath(); ctx.ellipse(px, py + r*.55, r*1.2, r*.48, 0, 0, TAU); ctx.fill();
+
+    /* o buraco de onde ela saiu fica para trás, na terra revolvida */
+    const bx = ox + m.hx*tam, by = oy + m.hy*tam;
+    ctx.fillStyle = 'rgba(0,0,0,.42)';
+    ctx.beginPath(); ctx.ellipse(bx, by + r*.5, r*1.05, r*.42, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#2e2418';
-    ctx.beginPath(); ctx.ellipse(px, py + r*.5, r*.95, r*.36, 0, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx, by + r*.45, r*.8, r*.3, 0, 0, TAU); ctx.fill();
     ctx.fillStyle = '#4a3a26';
-    ctx.beginPath(); ctx.ellipse(px - r*.5, py + r*.42, r*.3, r*.14, .4, 0, TAU); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(px + r*.55, py + r*.5, r*.26, r*.12, -.3, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx - r*.45, by + r*.38, r*.26, r*.12, .4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + r*.5, by + r*.46, r*.22, r*.1, -.3, 0, TAU); ctx.fill();
+
+    if(imgMaoAnda.complete && imgMaoAnda.naturalWidth > 0){
+      /* a mão engatinhando: quadros do vídeo, corridos conforme ela anda */
+      const q = presa ? (Math.floor(tempo*14) % MAO_Q) : (Math.floor(m.passo) % MAO_Q);
+      const alt = tam*.92, lar = MAO_QL*(alt/MAO_QA);
+      const pulo = Math.abs(Math.sin(m.passo*.42))*r*.1;      // o corpo sobe a cada passada
+      ctx.fillStyle = 'rgba(0,0,0,.35)';                       // a sombra dela no chão
+      ctx.beginPath(); ctx.ellipse(px, py + r*.42, lar*.3, r*.2, 0, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(px, py - pulo);
+      if(m.olhar > 0) ctx.scale(-1, 1);                        // a arte anda para a esquerda
+      ctx.rotate(Math.sin(m.passo*.3)*.04);
+      if(m.flash > 0) ctx.filter = 'brightness(2.4)';
+      ctx.drawImage(imgMaoAnda, q*MAO_QL, 0, MAO_QL, MAO_QA,
+                    -lar*.52, -alt*.72, lar, alt);
+      ctx.filter = 'none';
+      ctx.restore();
+      return;
+    }
 
     const osso = m.flash > 0 ? '#ffffff' : '#cfc4a6';
     const bob = presa ? 0 : Math.sin(m.fase*3)*r*.08;
     ctx.save();
     ctx.translate(px, py - r*.1 + bob);
     ctx.rotate(presa ? Math.sin(tempo*16)*.07 : Math.sin(m.fase*1.6)*.14);
-    if(imgMaoMorta.complete && imgMaoMorta.naturalWidth > 0){
-      /* o sprite aprovado, partido no nó dos dedos: a palma fica firme e as
-         tiras dos dedos dobram e se abrem — quanto mais perto o jogador,
-         mais depressa elas agarram o ar */
-      const iw = imgMaoMorta.naturalWidth, ih = imgMaoMorta.naturalHeight;
-      const altM = tam*1.02, larM = iw*(altM/ih);
-      const x0 = -larM/2, y0 = -altM + r*.62, NO = .46;   // NO: onde os dedos saem da palma
-      if(m.flash > 0) ctx.filter = 'brightness(2.4)';
-      ctx.drawImage(imgMaoMorta, 0, ih*NO, iw, ih*(1-NO),
-                    x0, y0 + altM*NO, larM, altM*(1-NO));
-      const dCaca = Math.hypot(jog.x - m.x, jog.y - m.y);
-      const inten = presa ? 1 : Math.max(.16, Math.min(1, (6.5 - dCaca)/4));
-      const vel = presa ? 17 : 5 + inten*9;
-      const N = 7;
-      for(let k=0; k<N; k++){
-        const sx = iw*(k/N), sw = iw/N + 1;
-        const dx0 = x0 + larM*(k/N), dw = larM/N + 1;
-        const f = Math.sin(tempo*vel + k*.9);
-        ctx.save();
-        ctx.translate(dx0 + dw/2, y0 + altM*NO);
-        ctx.rotate(f*.14*inten);                          // o dedo abre e fecha
-        ctx.scale(1, 1 - (.5 + .5*f)*.2*inten);           // e encolhe ao dobrar
-        ctx.drawImage(imgMaoMorta, sx, 0, sw, ih*NO, -dw/2, -altM*NO, dw, altM*NO);
-        ctx.restore();
-      }
-      ctx.filter = 'none';
-      ctx.restore();
-      return;
-    }
     /* punho saindo do chão */
     ctx.strokeStyle = osso; ctx.lineCap = 'round';
     ctx.lineWidth = Math.max(2, r*.3);
@@ -6326,6 +6323,9 @@ function desenharCirios(ox, oy){
 const imgCoveiro = new Image(); imgCoveiro.src = 'img/fase3/coveiro.png';
 const imgVulto = new Image(); imgVulto.src = 'img/fase3/vulto.png';
 const imgMaoMorta = new Image(); imgMaoMorta.src = 'img/fase3/mao.png';
+/* a mão que engatinha: 15 quadros lado a lado, recortados do vídeo do dono */
+const imgMaoAnda = new Image(); imgMaoAnda.src = 'img/fase3/mao-anda.png';
+const MAO_Q = 15, MAO_QL = 213, MAO_QA = 199;
 const imgCastical = new Image(); imgCastical.src = 'img/fase3/item-castical-2.png';
 const imgCirio = new Image(); imgCirio.src = 'img/fase3/item-vela-prato.png';
 /* itens de cenário: carregam sob demanda e repintam o cache quando chegam */
