@@ -7455,11 +7455,19 @@ function pintarFunCriptaSalao(cmx, T){
     cmx.fillStyle = 'rgba(198,186,158,.22)';             // a quina norte do buraco pega luz
     cmx.fillRect(-w/2 - 2, -hh/2 - 2.6, w + 4, 2);
     const gC = cmx.createLinearGradient(0, -hh/2, 0, hh/2);
-    gC.addColorStop(0, '#050607'); gC.addColorStop(1, '#181512');
+    gC.addColorStop(0, '#0d0e10'); gC.addColorStop(.55, '#1c1712'); gC.addColorStop(1, '#2a2219');
     cmx.fillStyle = gC; cmx.fillRect(-w/2, -hh/2, w, hh);
+    /* paredes internas de terra: as laterais aparam o preto chapado */
+    cmx.fillStyle = 'rgba(110,94,72,.28)';
+    cmx.fillRect(-w/2, -hh/2, 3.2, hh); cmx.fillRect(w/2 - 3.2, -hh/2, 3.2, hh);
+    cmx.fillStyle = 'rgba(96,82,62,.2)';                 // veios de raiz e pedra na terra
+    for(let k=0; k<4; k++){
+      const hk = hash(x*7 + k, y*3 + k);
+      cmx.fillRect(-w/2 + 4 + hk*(w - 14), -hh/2 + 3 + hash(x + k, y*9 + k)*(hh - 8), 2 + hk*4, 1.6);
+    }
     cmx.fillStyle = 'rgba(138,124,102,.5)';              // a parede interna que pega luz
     cmx.fillRect(-w/2, hh/2 - 4.4, w, 4.4);
-    cmx.fillStyle = 'rgba(0,0,0,.5)'; cmx.fillRect(-w/2, -hh/2, w, 3);
+    cmx.fillStyle = 'rgba(0,0,0,.35)'; cmx.fillRect(-w/2, -hh/2, w, 3);
     cmx.restore();
     const mx = px + lado*(w/2 + T*.5), my = py + T*.05;  // o monte de terra
     cmx.fillStyle = 'rgba(0,0,0,.35)';
