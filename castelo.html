@@ -385,6 +385,7 @@ const hash = (x,y) => { const n = Math.sin(x*127.1 + y*311.7)*43758.5453; return
 /* ---------- estado do motor ---------- */
 let piso = null, mapa = null, braseiros = [], decor = [];
 let inventario = []; /* itens ganhos de chefes, persistem entre pisos */
+let vestido = null;  /* id do item que o jogador está usando no corpo (o avental) */
 const imgsItens = {};
 let jog = null, chefe = null, informantes = [];
 let etapa = 'menu', vivo = false, pausado = false;
@@ -395,6 +396,8 @@ let particulas = [], riscos = [], destrocos = [];
 const tela = el('tela'), ctx = tela.getContext('2d');
 const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('2d');
 const imgJogador = new Image(); imgJogador.src = 'img/jogador.png';
+/* o avental de aço recortado do fundo preto, para vestir por cima do tronco */
+const imgAvental = new Image(); imgAvental.src = 'img/fase2/avental-vestido.png';
 let fatiasJog = null;               // avatar fatiado: tronco + pernas animadas
 function montarFatiasJog(){
   const iw = imgJogador.naturalWidth, ih = imgJogador.naturalHeight;
@@ -2046,17 +2049,17 @@ function atualizarDesespero(c, f, dt){
           }
         }
         const a = melhor ? melhor[2] : Math.random()*TAU;
-        if(melhor){
-          for(let k=0;k<20;k++) terraRevolvida(jog.x + (Math.random()-.5)*1.4, jog.y);  // some daqui
-          jog.x = melhor[0]; jog.y = melhor[1];
-          for(let k=0;k<26;k++) terraRevolvida(jog.x + (Math.random()-.5)*2, jog.y + (Math.random()-.5)*.8);
-          camX = jog.x; camY = jog.y;                // a câmera vai junto, senão o jogador se perde
-        }
-        jog.vx = Math.cos(a)*de.arremesso*.35;       // e ainda rola um pouco ao cair
-        jog.vy = Math.sin(a)*de.arremesso*.35;
-        /* comoPazada: cobra exatamente o que uma pazada custaria — nem mais */
+        /* o jogador é ARREMESSADO à vista: voa em arco daqui até lá, girando,
+           e só bate no chão no fim (nada de sumir e reaparecer) */
         const dano = de.comoPazada ? Math.round(f.comboDano[0]*(de.pazadas || 1)) : de.danoArremesso;
-        jog.invul = 0; machucar(dano, a);
+        for(let k=0;k<20;k++) terraRevolvida(jog.x + (Math.random()-.5)*1.4, jog.y);
+        if(melhor){
+          jog.voo = {x0:jog.x, y0:jog.y, x1:melhor[0], y1:melhor[1], t:0, dur:.72, ang:a, dano};
+        } else {
+          jog.vx = Math.cos(a)*de.arremesso*.35;
+          jog.vy = Math.sin(a)*de.arremesso*.35;
+          jog.invul = 0; machucar(dano, a);
+        }
         jog.dash = 0; jog.dashCd = 1;
         tremor = 18;
         if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe);
@@ -2208,6 +2211,28 @@ function golpear(alvo){
   tremor = 4;
   if(alvo.hp <= 0) venceu();
 }
+/* o arremesso em voo: leva o jogador de um ponto ao outro em arco. Enquanto
+   voa, ele não obedece ao controle — só cai. */
+function atualizarVoo(dt){
+  const v = jog.voo;
+  if(!v) return false;
+  v.t += dt;
+  const p = Math.min(1, v.t/v.dur);
+  jog.x = v.x0 + (v.x1 - v.x0)*p;
+  jog.y = v.y0 + (v.y1 - v.y0)*p;
+  jog.vx = jog.vy = 0;
+  v.alt = Math.sin(p*Math.PI);                  // a parábola: sobe e desce
+  if(Math.random() < .5) terraRevolvida(jog.x + (Math.random()-.5)*.6, jog.y + .2);
+  if(p >= 1){
+    jog.voo = null;
+    tremor = 12;
+    for(let k=0;k<24;k++) terraRevolvida(jog.x + (Math.random()-.5)*2, jog.y + (Math.random()-.5)*.7);
+    jog.invul = 0; machucar(v.dano, v.ang);      // a conta é paga no impacto
+    jog.invul = Math.max(jog.invul, .8);         // e um respiro para se levantar
+    sDorJog();
+  }
+  return true;
+}
 function machucar(dano, ang){
   if(jog.invul > 0 || !vivo) return;
   if(!(dano > 0)) return;              // dano undefined/NaN tornava o jogador imortal
@@ -2325,6 +2350,11 @@ function atualizar(dt){
      que mais precisa do ducking — congelar aqui deixava os ajudantes gritando */
   atualizarAmbientes(dt);
   if(!jog || etapa === 'menu' || pausado || !vivo) return;
+  if(atualizarVoo(dt)){
+    camX += (jog.x - camX)*Math.min(1, dt*7);      // a câmera acompanha o voo
+    camY += (jog.y - camY)*Math.min(1, dt*7);
+    return;
+  }
 
   lerEntrada();
   const acel = jog.dash > 0 ? 0 : (jog.lento ? 46 : 76);
@@ -2571,7 +2601,23 @@ function desenharInformante(p, ox, oy){
     ctx.fillText('!', px, topo + bob);
   }
 }
+/* arremessado pelo Coveiro: a sombra fica no chão e o corpo sobe girando */
 function desenharJogador(ox, oy){
+  const v = jog.voo;
+  if(!v){ desenharCorpoJogador(ox, oy); return; }
+  const px = ox + jog.x*tam, py = oy + jog.y*tam, r = tam*.30, alt = v.alt || 0;
+  ctx.fillStyle = 'rgba(0,0,0,' + (.4 - alt*.22) + ')';
+  ctx.beginPath();
+  ctx.ellipse(px, py + r*1.1, r*(1 - alt*.35), r*(.34 - alt*.12), 0, 0, TAU);
+  ctx.fill();
+  ctx.save();
+  ctx.translate(px, py - alt*tam*1.9);
+  ctx.rotate((v.t/v.dur)*Math.PI*2.4*(Math.cos(v.ang) < 0 ? -1 : 1));
+  ctx.translate(-px, -py);
+  desenharCorpoJogador(ox, oy);
+  ctx.restore();
+}
+function desenharCorpoJogador(ox, oy){
   const px = ox + jog.x*tam, py = oy + jog.y*tam, r = tam*.30;
   const piscando = jog.invul > 0 && Math.floor(jog.invul*22)%2 === 0;
   ctx.globalAlpha = piscando ? .45 : 1;
@@ -2633,6 +2679,12 @@ function desenharJogador(ox, oy){
     ctx.rotate(incl);
     ctx.scale(1, 1 + respira);
     ctx.drawImage(f.tronco, -sW/2, -(f.corte + 2)*esc, sW, (f.corte + 2)*esc);
+    /* o que ele veste por cima do tronco. Medidas em pixels da foto do avatar
+       (64x159): ombro em y 52, quadril em 99 — o avental cai do peito à coxa */
+    if(vestido === 'avental-acougueiro' && imgAvental.complete && imgAvental.naturalWidth > 0){
+      const aw = 31*esc, ah = 60*esc;
+      ctx.drawImage(imgAvental, 3*esc - aw/2, (52 - 101 + 2)*esc, aw, ah);
+    }
     ctx.restore();
     ctx.filter = 'none';
     ctx.restore();
@@ -2678,6 +2730,9 @@ function adicionarAoInventario(item){
     const im = new Image(); im.src = item.img; imgsItens[item.id] = im;
   }
   inventario.push({...item, novo:true});
+  /* o que se veste já entra no corpo: quem ganhou o avental não precisa
+     descobrir a bolsa para ficar protegido */
+  if(item.veste) vestido = item.id;
   return true;
 }
 function renderizarBolsa(mostrar){
@@ -2742,21 +2797,36 @@ function renderizarListaInv(){
   lista.innerHTML = inventario.map(it =>
     '<div class="invTh' + (invSelecionado.id === it.id ? ' sel' : '') + '" data-id="' + it.id + '">'
     + (it.img ? '<img src="' + it.img + '" alt="">' : '')
-    + (jog.arma === it.id ? '<span class="tag">NA MÃO</span>' : '')
+    + (jog.arma === it.id ? '<span class="tag">NA MÃO</span>'
+       : vestido === it.id ? '<span class="tag">NO PEITO</span>' : '')
     + '</div>').join('');
   lista.querySelectorAll('.invTh').forEach(d => d.addEventListener('click', () => {
     invSelecionado = inventario.find(i => i.id === d.dataset.id);
     renderizarListaInv();
   }));
+  /* o botão só aparece quando há mesmo o que fazer: arma que não está na mão
+     ou peça de vestir que não está no corpo. Antes ele aparecia para tudo e
+     o clique no avental não fazia nada, porque `pegarItem` só empunha arma */
   const a = el('invAcao');
-  const empunhavel = piso.pegarItem && jog.arma !== invSelecionado.id;
-  a.style.display = empunhavel ? '' : 'none';
-  a.textContent = 'Pegar';
+  const it = invSelecionado;
+  const vestivel = !!it.veste && vestido !== it.id;
+  const empunhavel = !!(piso.pegarItem && ARMAS[it.id] && jog.arma !== it.id);
+  a.style.display = (vestivel || empunhavel) ? '' : 'none';
+  a.textContent = vestivel ? 'Vestir' : 'Pegar';
 }
+/* escolher da bolsa fecha a bolsa: o jogador volta ao jogo já usando a peça */
 el('invAcao').addEventListener('click', () => {
-  if(invModoLista && invSelecionado && piso.pegarItem){
-    piso.pegarItem(invSelecionado);
-    renderizarListaInv();
+  if(!invModoLista || !invSelecionado) return;
+  const it = invSelecionado;
+  if(it.veste && vestido !== it.id){
+    vestido = it.id;
+    fecharPopupInventario();
+    avisar('No peito', it.nome);
+    return;
+  }
+  if(piso.pegarItem && ARMAS[it.id] && jog.arma !== it.id){
+    piso.pegarItem(it);
+    fecharPopupInventario();
   }
 });
 function fecharPopupInventario(){
@@ -5771,6 +5841,7 @@ const PISO_COZINHAS = {
     id:'avental-acougueiro',
     nome:'Avental de Aço do Açougueiro',
     img:'img/fase2/avental.png',
+    veste:true,                 // não é arma: da bolsa vai para o peito
     desc:'Couro e aço que já pararam mil facadas — serve para o próximo chefe.'
   },
   textos:{
@@ -9042,7 +9113,7 @@ let atalhoChefe = false, atalhoTransicao = false;
   atalhoChefe = q.get('chefe') === '1';
   atalhoTransicao = q.get('transicao') === '1';
   for(let i = 0; i < pisoAtual; i++)
-    if(PISOS[i].recompensa) inventario.push(PISOS[i].recompensa);
+    if(PISOS[i].recompensa) adicionarAoInventario(PISOS[i].recompensa);   // já vestido, se for de vestir
 })();
 piso = PISOS[pisoAtual];
 redimensionar();
