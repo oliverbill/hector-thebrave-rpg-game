@@ -27,6 +27,8 @@ Abra `castelo.html` em qualquer navegador (ou adicione à tela inicial do iPhone
 - **Ação contextual** (FORÇAR / FALAR / ABRIR / ARROMBAR / ACENDER) — botão âmbar ou E
 - **Golpe de facão** (depois de achá-lo nas catacumbas) — botão ⚔ ou F; o facão fica na mão do jogador e abre um popup de Inventário ao ser pego
 - **Bolsa/Inventário** — botão ☰ ou I
+- **Pausar** — botão ❚❚ no canto superior direito, ou P/Esc: congela o mundo e cala música, ambientes e voz; volta no ponto exato
+- **Fechar o jogo** — botão ✕ ao lado, sempre visível: pergunta antes e despede-se (o navegador só fecha sozinho a aba que ele mesmo abriu)
 - **Esparadrapo** (cura 25% da vida) — dois na areia, um em cada canto de cima, só durante a luta com o Gladiador; repostos a cada tentativa
 - **Soltar-se do agarrão** (piso 3) — esmagar GOLPE até a mão se desfazer; a instrução aparece na tela na primeira vez
 
@@ -111,8 +113,9 @@ O piso onde o castelo lava, vela e enterra os seus mortos. Mesma receita, paleta
 - **Cenário em alto-relevo, em cinco passes de pintura**: paredes 3/4 em pedra fria, cripta e salão, capela e preparação, oficina e colombário, e por último os itens recortados assentados pelo pé. Os PNGs carregam sob demanda e o cache se repinta sozinho quando um chega tarde
 - **A cripta é desenhada viva por cima do cache**: caixões e caixotes **boiando** com rastro na lâmina, **goteiras** pingando em anéis e o reflexo das velas acesas escorrendo para dentro d'água
 - **Um corpo em preparo** na mesa da Lavadeira — deitado, sujo de terra, a água escorrendo para a canaleta
+- **Vitrais de foto**: os vidros da capela são recortados de uma foto de igreja de verdade (`img/fase3/vitrais.jpg`) — a lanceta alta no meio da parede norte, as menores nos flancos e pelo resto do piso, cada uma derramando sua luz colorida no chão
 
-**Pendente no piso 3** (detalhado em `fase3.prd` §8): as **vozes** dos velantes e do Coveiro (textos fechados em `F3-FALAS.md`, gravação não começou — hoje sai voz sintetizada), a **trilha da fase** (toca a da fase 2 como tapa-buraco), a **porta e a janela** recortadas mas ainda não espalhadas pelo cenário, e os **ajudantes de carpintaria** recortados e ainda não instalados na oficina.
+**Pendente no piso 3** (detalhado em `fase3.prd` §8): as **vozes** dos velantes e do Coveiro (textos fechados em `F3-FALAS.md`, gravação não começou — hoje sai voz sintetizada), a **trilha da fase** (toca a da fase 2 como tapa-buraco), a **porta** recortada mas ainda não espalhada pelo cenário, e os **ajudantes de carpintaria** recortados e ainda não instalados na oficina.
 
 ### Atalhos de teste
 

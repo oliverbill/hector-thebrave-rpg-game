@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<meta http-equiv="Cache-Control" content="no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -32,6 +34,40 @@
   #segredos{color:#9d94ad;}
   #segredos i{font-style:normal; color:#3f3550;}
   #segredos i.on{color:var(--brasa);}
+
+  /* botões de sistema: pausar e fechar (canto superior direito) */
+  /* acima até da animação do castelo (z 60): dá para fechar a qualquer momento */
+  #sistema{position:fixed; right:12px; top:calc(env(safe-area-inset-top) + 6px); z-index:61;
+    display:flex; gap:8px;}
+  #sistema button{width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+    background:#150f22e0; border:1px solid #4a3d63; border-radius:6px; color:#b3a8c6;
+    font-family:var(--mono); font-size:12px; line-height:1; padding:0; cursor:pointer;}
+  #sistema button:active{background:#2f2547; color:var(--osso);}
+  #btnPausa.oculto{display:none;}
+  #btnFechar{color:#d98a8a; border-color:#6b3040;}
+  #btnFechar:active{background:#6b3040; color:var(--osso);}
+
+  /* pausa / confirmação de saída */
+  #pausaVeu{position:fixed; inset:0; z-index:62; background:#07050ce8;
+    display:flex; align-items:center; justify-content:center; padding:30px; text-align:center;}
+  #pausaVeu.oculto{display:none;}
+  #pausaCard{background:#150f22f2; border:1px solid #3b2f4d; border-top:2px solid var(--brasa);
+    padding:26px 28px 24px; max-width:24em;}
+  #pausaCard h2{font-family:var(--serifa); font-weight:400; font-size:clamp(22px,6vw,28px); color:var(--osso);}
+  #pausaCard p{font-size:12px; color:#8b8299; line-height:1.9; margin-top:10px;}
+  #pausaBotoes{display:flex; flex-direction:column; gap:10px; margin-top:22px;}
+  #pausaBotoes button{font-family:var(--mono); font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+    padding:13px 18px; background:transparent; border:1px solid var(--brasa); color:var(--brasa); cursor:pointer;}
+  #pausaBotoes button:active{background:var(--brasa); color:#120d06;}
+  #pausaBotoes #pausaSair{border-color:#6b3040; color:#d98a8a;}
+  #pausaBotoes #pausaSair:active{background:#6b3040; color:var(--osso);}
+  #pausaAtalho{font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:#6f6683; margin-top:16px;}
+
+  /* tela de despedida (o ✕ confirmado) */
+  #adeus{position:fixed; inset:0; z-index:70; background:#07050c; padding:30px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;}
+  #adeus h1{font-family:var(--serifa); font-weight:400; font-size:clamp(24px,7vw,38px); color:var(--osso);}
+  #adeus p{font-size:12px; color:#8b8299; line-height:1.9; max-width:24em;}
 
   /* painel da missão */
   #missao{position:absolute; right:12px; top:calc(env(safe-area-inset-top) + 42px); z-index:2; pointer-events:none;
@@ -255,6 +291,25 @@
         <button id="invFechar">Fechar</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- fora de #app: #app é `position:fixed` e forma contexto de empilhamento próprio;
+     a animação do castelo entra no <body> por cima dele. Estes dois ficam acima de tudo. -->
+<div id="sistema">
+  <button id="btnPausa" class="oculto" type="button" title="Pausar (P / Esc)" aria-label="Pausar">❚❚</button>
+  <button id="btnFechar" type="button" title="Fechar o jogo" aria-label="Fechar o jogo">✕</button>
+</div>
+
+<div id="pausaVeu" class="oculto">
+  <div id="pausaCard">
+    <h2 id="pausaTitulo">Pausado</h2>
+    <p id="pausaTexto"></p>
+    <div id="pausaBotoes">
+      <button id="pausaSeguir" type="button">Continuar</button>
+      <button id="pausaSair" type="button">Fechar o jogo</button>
+    </div>
+    <div id="pausaAtalho">P OU ESC</div>
   </div>
 </div>
 
@@ -902,7 +957,10 @@ function tocarSfx(url, vol, reserva){
   try{
     if(!sfxCache[url]){ sfxCache[url] = new Audio(url); sfxCache[url].preload = 'auto'; }
     const a = sfxCache[url].cloneNode();
-    a.volume = vol != null ? vol : 1;
+    /* enquanto alguém fala, o resto do mundo se abaixa: um grito de vulto em
+       volume cheio por cima da legenda cobria a voz do personagem */
+    const duck = dialogo ? .18 : 1;
+    a.volume = Math.min(1, (vol != null ? vol : 1) * duck);
     const p = a.play();
     if(p && p.catch) p.catch(() => { if(reserva) reserva(); });
   }catch(e){ if(reserva) reserva(); }
@@ -1793,7 +1851,12 @@ function atualizarChefe(dt){
 
   switch(c.estado){
     case 'espera':
-      if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      /* quem chega ao alcance não espera a vez: o golpe sai na hora
+         (cfg.reageDeImediato) — parado, ele deixava bater à vontade */
+      if(f.reageDeImediato && d < f.comboDist){
+        c.estado = 'combo'; c.golpes = 0; c.t = .12;
+      }
+      else if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
       break;
 
     case 'aproxima': {
@@ -1825,7 +1888,11 @@ function atualizarChefe(dt){
 
     case 'exausto':
       c.vx *= .8; c.vy *= .8;
-      if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      /* levantou sem fôlego e o jogador ainda está colado? pá primeiro */
+      if(c.t <= 0){
+        if(f.reageDeImediato && d < f.comboDist){ c.estado = 'combo'; c.golpes = 0; c.t = .12; }
+        else { c.estado = 'aproxima'; c.t = f.aproximaT; }
+      }
       break;
 
     case 'preparo':
@@ -1972,6 +2039,8 @@ function atualizarBarraChefe(){
   const fq = piso.chefe.fraquezas, f = chefe.cfg;
   const sabeExausto = fq.porEstado.exausto && intel[fq.porEstado.exausto.chave];
   let txt = '';
+  const sv = f.soVulneravelEm;
+  const guardado = sv && sv.indexOf(chefe.estado) < 0;
   if(chefe.estado === 'exausto' && sabeExausto) txt = 'sem fôlego';
   else if(chefe.estado === 'zonzo') txt = 'zonzo';
   else if(chefe.estado === 'atordoado') txt = 'atordoado';
@@ -1981,6 +2050,9 @@ function atualizarBarraChefe(){
       : 'cavando...';
   else if(chefe.estado === 'combo' && sabeExausto)
     txt = 'golpe ' + Math.min(f.comboGolpes, chefe.golpes+1) + ' de ' + f.comboGolpes;
+  /* fora dos estados vulneráveis a lâmina não entra: o HUD avisa, senão o
+     jogador acha que o golpe está bugado */
+  if(guardado && !txt) txt = 'guarda fechada';
   el('chefeEstado').textContent = txt;
 }
 
@@ -1989,6 +2061,15 @@ function golpear(alvo){
   if(chefeSubmerso(alvo)) return;      // debaixo da terra não há o que cortar
   jog.golpe = .2; jog.recarga = .36;
   sGolpe();
+  /* chefe que só abre a guarda em certos estados (cfg.soVulneravelEm): fora
+     deles a lâmina bate na pá e volta — o golpe existe, o dano não */
+  const sv = alvo.cfg && alvo.cfg.soVulneravelEm;
+  if(sv && sv.indexOf(alvo.estado) < 0){
+    sClash(); tremor = 3;
+    faisca(alvo.x + (jog.x < alvo.x ? -1 : 1)*alvo.raio*.8, alvo.y - .2, '#cfd6e8', .12);
+    flutuar(alvo.x, alvo.y - .5, 'guardado', '#9aa4bd');
+    return;
+  }
   const dx = alvo.x-jog.x, dy = alvo.y-jog.y, d = Math.hypot(dx,dy);
   jog.angulo = Math.atan2(dy,dx);
   let dano = jog.dano + irand(5);
@@ -2017,6 +2098,7 @@ function golpear(alvo){
 }
 function machucar(dano, ang){
   if(jog.invul > 0 || !vivo) return;
+  if(!(dano > 0)) return;              // dano undefined/NaN tornava o jogador imortal
   jog.hp -= dano; jog.invul = .45; jog.flash = 1; tremor = 11;
   sDorJog();
   jorrarSangue(jog.x, jog.y, ang != null ? ang : -Math.PI/2 + (Math.random()-.5)*.8, 10);
@@ -2097,6 +2179,8 @@ el('dPular').addEventListener('mousedown', e => { e.stopPropagation(); pularDial
 tela.addEventListener('mousedown', () => { if(dialogo) avancarDialogo(); });
 
 window.addEventListener('keydown', e => {
+  if(e.key.toLowerCase() === 'p' || e.key === 'Escape'){ e.preventDefault(); alternarPausa(); return; }
+  if(pausaMenu) return;                 // pausado: o teclado não chega ao jogo
   teclas[e.key.toLowerCase()] = true;
   if(e.key === ' '){ e.preventDefault(); if(dialogo) avancarDialogo(); else rolar(); }
   if(e.key === 'Escape') abrirMenu();
@@ -2122,6 +2206,7 @@ function lerEntrada(){
 
 /* ---------- atualização ---------- */
 function atualizar(dt){
+  if(pausaMenu) return;                 // pausa do jogador: nem as fagulhas andam
   tempo += dt;
   atualizarParticulas(dt);
   /* os ambientes fundem mesmo com o jogo pausado: é o diálogo (que pausa tudo)
@@ -2602,6 +2687,7 @@ el('mSemMusica').addEventListener('click', () => {
 function iniciarPiso(p){
   piso = p;
   etapa = 'inicio'; vivo = true; pausado = false;
+  pausaMenu = false; pausadoAntes = false; el('pausaVeu').classList.add('oculto');
   particulas = []; riscos = []; destrocos = [];
   chefe = null; dialogo = null; interacao = null;
   el('dialogo').classList.remove('on'); calarVoz();   // nada do piso anterior fica na tela
@@ -2696,10 +2782,87 @@ const golpeManual = () => { if(piso.acaoGolpe) piso.acaoGolpe(); };
 el('btnGolpe').addEventListener('touchstart', e => { e.preventDefault(); golpeManual(); }, {passive:false});
 el('btnGolpe').addEventListener('mousedown', golpeManual);
 
+/* ---------- pausa e saída ----------
+   A pausa é do jogador: congela o mundo, cala música, ambientes e voz, e
+   devolve tudo no ponto em que estava. O ✕ pergunta antes de fechar. */
+let pausaMenu = false, pausaModo = 'pausa', pausadoAntes = false, falaEmPausa = null, pausaVisivel = null;
+
+function podePausar(){ return !!jog && etapa !== 'menu' && el('veu').classList.contains('oculto'); }
+function silenciarAmbientes(){
+  ambientes.forEach(a => { if(a.audio){ try{ a.audio.pause(); }catch(e){} } });
+}
+function pintarPausa(){
+  const sair = pausaModo === 'sair';
+  el('pausaTitulo').textContent = sair ? 'Fechar o jogo?' : 'Pausado';
+  el('pausaTexto').textContent = sair
+    ? 'Nada fica salvo: ao abrir de novo, Hector recomeça o piso.'
+    : 'O castelo espera. Nada se move até você voltar.';
+  el('pausaSeguir').textContent = sair ? (podePausar() ? 'Continuar jogando' : 'Voltar') : 'Continuar';
+  el('pausaSair').textContent = sair ? 'Fechar mesmo' : 'Fechar o jogo';
+  el('pausaAtalho').style.display = sair ? 'none' : '';
+}
+function abrirPausa(modo){
+  pausaModo = modo || 'pausa';
+  pintarPausa();
+  if(pausaMenu) return;                 // já aberto: só trocou de modo
+  pausaMenu = true;
+  pausadoAntes = pausado;               // diálogo/inventário abertos voltam como estavam
+  pausado = true;
+  for(const k in teclas) teclas[k] = false;
+  entrada.x = entrada.y = 0;
+  if(bgmAudio){ try{ bgmAudio.pause(); }catch(e){} }
+  silenciarAmbientes();
+  if(audioFala && !audioFala.paused){ falaEmPausa = audioFala; try{ audioFala.pause(); }catch(e){} }
+  try{ if(window.speechSynthesis) speechSynthesis.pause(); }catch(e){}
+  el('pausaVeu').classList.remove('oculto');
+}
+function retomarJogo(){
+  if(!pausaMenu) return;
+  pausaMenu = false;
+  pausado = pausadoAntes;
+  el('pausaVeu').classList.add('oculto');
+  if(bgmAudio){ try{ bgmAudio.play().catch(() => {}); }catch(e){} }
+  if(falaEmPausa){
+    if(falaEmPausa === audioFala){ try{ audioFala.play().catch(() => {}); }catch(e){} }
+    falaEmPausa = null;
+  }
+  try{ if(window.speechSynthesis) speechSynthesis.resume(); }catch(e){}
+}
+function alternarPausa(){
+  if(pausaMenu){ retomarJogo(); return; }
+  if(podePausar()) abrirPausa('pausa');
+}
+function sairDoJogo(){
+  pararBgm(); pararAmbientes(); calarVoz();
+  try{ if(window.speechSynthesis) speechSynthesis.cancel(); }catch(e){}
+  pausado = true; pausaMenu = true;                  // o mundo para de vez
+  el('pausaVeu').classList.add('oculto');
+  if(!el('adeus')){
+    const d = document.createElement('div');
+    d.id = 'adeus';
+    d.innerHTML = '<h1>O portão se fecha</h1>'
+      + '<p>Até a próxima, bravo Hector. Já pode fechar esta aba.</p>';
+    document.body.appendChild(d);
+  }
+  try{ window.close(); }catch(e){}                   // só funciona em janela aberta por script
+}
+const botaoSistema = (id, fn) => {
+  const b = el(id);
+  b.addEventListener('touchstart', e => { e.preventDefault(); e.stopPropagation(); fn(); }, {passive:false});
+  b.addEventListener('mousedown', e => { e.stopPropagation(); fn(); });
+};
+botaoSistema('btnPausa', () => alternarPausa());
+botaoSistema('btnFechar', () => abrirPausa('sair'));
+botaoSistema('pausaSeguir', () => retomarJogo());
+botaoSistema('pausaSair', () => { if(pausaModo === 'sair') sairDoJogo(); else abrirPausa('sair'); });
+
 let ultimo = performance.now(), falhou = false;
 function quadro(t){
   const dt = Math.min(.05, (t-ultimo)/1000); ultimo = t;
-  try{ atualizar(dt); desenhar(); }
+  try{
+    const p = podePausar();                          // o ❚❚ só existe com piso em jogo
+    if(p !== pausaVisivel){ pausaVisivel = p; el('btnPausa').classList.toggle('oculto', !p); }
+    atualizar(dt); desenhar(); }
   catch(err){ if(!falhou){ falhou = true; window.__erro('NO QUADRO: ' + err.message + '\n' + (err.stack||'')); } }
   requestAnimationFrame(quadro);
 }
@@ -6602,13 +6765,29 @@ function desenharAguaCripta(ox, oy){
 }
 
 /* --- coadjuvantes: o velório na capela, com os rezadores recortados --- */
+/* o velório cheio: cada figura com sua roupa (matiz), seu tamanho e seu
+   jeito — sentada nos bancos ou de pé junto ao esquife (pedido do dono).
+   `tom` gira a cor da veste; `sentado` encolhe as pernas contra o banco. */
 const COADJ_FUN = [
-  {img:'rezador-4', x:8.2,  y:9.5,  esc:1.12},              // de pé, diante do esquife
-  {img:'rezador-4', x:11.1, y:9.9,  esc:1.06, flip:true},
-  {img:'rezador-2', x:6.2,  y:9.3,  esc:.9},                // ajoelhados nos bancos
-  {img:'rezador-1', x:5.1,  y:12.7, esc:.85},
-  {img:'rezador-3', x:13.3, y:12.4, esc:.9,  flip:true},
-  {img:'rezador-2', x:14.3, y:9.5,  esc:.85, flip:true}
+  // de pé, velando o corpo
+  {img:'rezador-4', x:8.2,  y:9.4,  esc:1.14, tom:0},
+  {img:'rezador-4', x:11.2, y:9.8,  esc:1.02, tom:-38, flip:true},
+  {img:'rezador-2', x:9.6,  y:8.1,  esc:.95,  tom:26},
+  {img:'rezador-3', x:7.0,  y:11.4, esc:1.06, tom:52},
+  {img:'rezador-1', x:12.4, y:11.7, esc:.9,   tom:-18, flip:true},
+  // sentados no flanco oeste (bancos em x 3.85 e 5.35, filas y 6.8 / 9.2 / 11.9)
+  {img:'rezador-2', x:4.15, y:6.95, esc:.82, tom:14,  sentado:true},
+  {img:'rezador-1', x:5.62, y:7.05, esc:.78, tom:-52, sentado:true},
+  {img:'rezador-3', x:4.15, y:9.35, esc:.86, tom:70,  sentado:true},
+  {img:'rezador-4', x:5.62, y:12.05, esc:.8, tom:-8,  sentado:true},
+  // sentados no flanco leste (bancos em x 14.05 e 15.5), virados para o esquife
+  {img:'rezador-1', x:14.35, y:6.95, esc:.84, tom:38,  sentado:true, flip:true},
+  {img:'rezador-3', x:15.8,  y:9.35, esc:.79, tom:-30, sentado:true, flip:true},
+  {img:'rezador-2', x:14.35, y:12.05, esc:.88, tom:88, sentado:true, flip:true},
+  {img:'rezador-4', x:15.8,  y:6.95, esc:.76, tom:110, sentado:true, flip:true},
+  // pelos cantos, de pé, esperando a vez
+  {img:'rezador-3', x:3.9,  y:15.2, esc:.92, tom:-64},
+  {img:'rezador-1', x:15.4, y:15.1, esc:.97, tom:20, flip:true}
 ];
 function desenharCoadjuvantesFun(ox, oy){
   COADJ_FUN.forEach((c2, i) => {
@@ -6617,17 +6796,20 @@ function desenharCoadjuvantesFun(ox, oy){
     const px = ox + c2.x*tam, py = oy + c2.y*tam;
     if(foraDaVista(px, py, tam*2.5)) return;
     const q = Math.floor((tempo + i*.7)*8)/8;               // 8 quadros/s, como os informantes
-    const alt = tam*1.35*(c2.esc || 1);
-    const lar = im.naturalWidth*(alt/im.naturalHeight);
-    const gira = Math.sin(q*1.8 + i)*.03;                   // o balanço miúdo de quem reza
+    const sentado = !!c2.sentado;
+    const alt = tam*1.35*(c2.esc || 1)*(sentado ? .78 : 1);  // sentado, o corpo encolhe
+    const lar = im.naturalWidth*(tam*1.35*(c2.esc || 1)/im.naturalHeight);
+    const gira = Math.sin(q*1.8 + i)*(sentado ? .015 : .03); // quem senta balança menos
     const sopro = 1 + Math.sin(q*2.6 + i*2)*.018;
-    ctx.fillStyle = 'rgba(0,0,0,.3)';
-    ctx.beginPath(); ctx.ellipse(px, py + tam*.06, lar*.38, tam*.1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,' + (sentado ? .22 : .3) + ')';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.06, lar*.38, tam*.09, 0, 0, TAU); ctx.fill();
     ctx.save();
     ctx.translate(px, py + tam*.08);
     ctx.rotate(gira);
     ctx.scale((c2.flip ? -1 : 1)*(2 - sopro), sopro);
+    if(c2.tom) ctx.filter = 'hue-rotate(' + c2.tom + 'deg) saturate(1.15)';
     ctx.drawImage(im, -lar/2, -alt, lar, alt);
+    ctx.filter = 'none';
     ctx.restore();
   });
 }
@@ -6807,6 +6989,31 @@ function pintarFunCapelaPrep(cmx, T){
   /* ================= CAPELA DE VELÓRIO =================
      o mosaico circular: rosácea fúnebre em anéis de pedra fria, gasta */
   const MX = FUN.MOSAICO.x*T, MY = FUN.MOSAICO.y*T, MR = FUN.MOSAICO.raio*T;
+  /* o círculo é um ESTRADO: sobe do chão com dois degraus de cantaria, face
+     frontal sombreada e sombra projetada — alto-relevo, não desenho no piso */
+  const FACE = T*.42;
+  cmx.fillStyle = 'rgba(0,0,0,.42)';                       // a sombra que o estrado joga no chão
+  cmx.beginPath(); cmx.ellipse(MX + T*.08, MY + FACE*.9, MR*1.1, MR*.34, 0, 0, TAU); cmx.fill();
+  for(let d=1; d>=0; d--){                                  // dois degraus, o de baixo mais largo
+    const rr = MR*(1 + .13*(d+1)), hh = FACE*(d ? .55 : 1);
+    cmx.fillStyle = d ? '#3d4354' : '#454b5e';              // a face do degrau, na sombra
+    cmx.beginPath();
+    cmx.ellipse(MX, MY + hh*.5, rr, rr*.42 + hh*.5, 0, 0, Math.PI);
+    cmx.lineTo(MX - rr, MY);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = d ? '#6d7488' : '#7a8298';              // o topo do degrau, iluminado
+    cmx.beginPath(); cmx.ellipse(MX, MY, rr, rr*.42, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(215,224,244,.16)'; cmx.lineWidth = 2;   // a quina que pega luz
+    cmx.beginPath(); cmx.ellipse(MX, MY, rr, rr*.42, 0, Math.PI, TAU); cmx.stroke();
+    cmx.strokeStyle = 'rgba(20,24,34,.55)'; cmx.lineWidth = 1.4;    // as juntas da cantaria
+    for(let k=0; k<18; k++){
+      const a = k/18*TAU;
+      cmx.beginPath();
+      cmx.moveTo(MX + Math.cos(a)*rr*.88, MY + Math.sin(a)*rr*.42*.88);
+      cmx.lineTo(MX + Math.cos(a)*rr, MY + Math.sin(a)*rr*.42);
+      cmx.stroke();
+    }
+  }
   cmx.save();
   cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.clip();
   // anéis concêntricos alternados
@@ -6920,11 +7127,22 @@ function pintarFunCapelaPrep(cmx, T){
     cmx.beginPath(); cmx.moveTo(x0, cy2 - T*.20); cmx.lineTo(x1, cy2 - T*.31); cmx.lineTo(x2, cy2 - T*.14); cmx.stroke();
     cmx.fillStyle = 'rgba(255,190,110,.14)';                    // reflexo pontual das velas
     cmx.beginPath(); cmx.ellipse(x1, cy2 - T*.28, T*.10, T*.03, -.15, 0, TAU); cmx.fill();
-    // a mortalha clara cobrindo o corpo
+    // o defunto preparado: mortalha branca do peito aos pés, rosto à mostra
     cmx.fillStyle = '#c9c4b8';
-    cmx.beginPath(); cmx.ellipse(ex - T*.62, cy2, T*.13, T*.14, 0, 0, TAU); cmx.fill();   // a cabeça
-    cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2, T*.66, T*.15, 0, 0, TAU); cmx.fill();   // o corpo
+    cmx.beginPath(); cmx.ellipse(ex + T*.14, cy2, T*.60, T*.15, 0, 0, TAU); cmx.fill();   // o corpo amortalhado
     cmx.beginPath(); cmx.ellipse(ex + T*.72, cy2, T*.12, T*.10, 0, 0, TAU); cmx.fill();   // os pés
+    cmx.fillStyle = '#b6ab9c';                                                            // o rosto de cera
+    cmx.beginPath(); cmx.ellipse(ex - T*.60, cy2, T*.115, T*.135, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,250,240,.22)';
+    cmx.beginPath(); cmx.ellipse(ex - T*.62, cy2 - T*.03, T*.075, T*.075, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(40,36,50,.55)';                                                 // os olhos fechados
+    cmx.beginPath(); cmx.ellipse(ex - T*.64, cy2 - T*.035, T*.022, T*.008, 0, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(ex - T*.64, cy2 + T*.035, T*.022, T*.008, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(60,54,70,.5)'; cmx.lineWidth = 1;                             // a queixeira
+    cmx.beginPath(); cmx.arc(ex - T*.60, cy2, T*.12, .6, 2.5); cmx.stroke();
+    cmx.fillStyle = '#a99e8c';                                                            // as mãos cruzadas no peito
+    cmx.beginPath(); cmx.ellipse(ex - T*.26, cy2 - T*.02, T*.075, T*.05, .5, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(ex - T*.20, cy2 + T*.03, T*.075, T*.05, -.4, 0, TAU); cmx.fill();
     cmx.strokeStyle = 'rgba(120,116,104,.55)'; cmx.lineWidth = 1.2;                       // as dobras
     for(let k=0; k<3; k++){
       const dx = ex - T*.28 + k*T*.36;
@@ -6932,6 +7150,45 @@ function pintarFunCapelaPrep(cmx, T){
     }
     cmx.fillStyle = 'rgba(50,48,66,.22)';                       // a mortalha na sombra do rebordo
     cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2 + T*.07, T*.66, T*.08, 0, 0, TAU); cmx.fill();
+
+    /* coroas de flores: uma no peito e as grandes de pé em volta do esquife */
+    const coroa = (cx3, cy3, raio, girada, cores) => {
+      cmx.save(); cmx.translate(cx3, cy3); cmx.rotate(girada);
+      cmx.fillStyle = 'rgba(0,0,0,.3)';                         // a sombra do arranjo
+      cmx.beginPath(); cmx.ellipse(raio*.1, raio*.5, raio*1.05, raio*.3, 0, 0, TAU); cmx.fill();
+      cmx.strokeStyle = '#3f5236';                              // a trança de folhagem
+      cmx.lineWidth = Math.max(2.4, raio*.42);
+      cmx.beginPath(); cmx.ellipse(0, 0, raio, raio*.72, 0, 0, TAU); cmx.stroke();
+      cmx.strokeStyle = 'rgba(120,150,104,.5)';
+      cmx.lineWidth = Math.max(1, raio*.14);
+      cmx.beginPath(); cmx.ellipse(0, -raio*.08, raio*.98, raio*.66, 0, 0, TAU); cmx.stroke();
+      for(let k=0; k<11; k++){                                  // as flores presas na coroa
+        const a = k/11*TAU + girada*2;
+        const fx = Math.cos(a)*raio, fy = Math.sin(a)*raio*.72;
+        const c = cores[k % cores.length];
+        cmx.fillStyle = c;
+        cmx.beginPath(); cmx.ellipse(fx, fy, raio*.2, raio*.16, a, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(255,250,225,.5)';                 // o miolo claro
+        cmx.beginPath(); cmx.arc(fx, fy, Math.max(.8, raio*.06), 0, TAU); cmx.fill();
+      }
+      cmx.restore();
+    };
+    const BRANCAS = ['#e6e2d4','#d8d2c2','#cfd8d0'];
+    const ROXAS   = ['#8f7fa8','#b09ec0','#e6e2d4'];
+    const SECAS   = ['#b8a075','#cbb489','#9c8a6a'];
+    coroa(ex + T*.30, cy2 - T*.02, T*.20, .2, BRANCAS);          // a coroa sobre o peito
+    coroa(ex - T*1.28, ey - T*.12, T*.44, -.12, ROXAS);          // de pé, à cabeceira
+    coroa(ex + T*1.30, ey - T*.10, T*.42, .18, BRANCAS);         // de pé, aos pés
+    coroa(ex - T*.62, ey + T*.86, T*.34, .35, SECAS);            // encostadas na frente do esquife
+    coroa(ex + T*.66, ey + T*.88, T*.32, -.28, ROXAS);
+    /* pétalas caídas no estrado, em volta */
+    for(let k=0; k<26; k++){
+      const h = rnd(k*3.7, k*8.1), a = h*TAU, d = T*(1.0 + rnd(k, k*2)*1.4);
+      cmx.fillStyle = ['rgba(230,226,212,.5)','rgba(176,158,192,.45)','rgba(203,180,137,.4)'][k % 3];
+      cmx.beginPath();
+      cmx.ellipse(ex + Math.cos(a)*d, ey + Math.sin(a)*d*.5 + T*.3, T*.055, T*.03, a, 0, TAU);
+      cmx.fill();
+    }
   }
 
   /* ---- fileiras de bancos de madeira, de frente para o esquife ---- */
@@ -7457,6 +7714,128 @@ function pintarFunOficinaColombario(cmx, T){
     cmx.beginPath(); cmx.ellipse(px, py + T*.1, T*.3, T*.12, 0, 0, TAU); cmx.fill();
   });
 
+  /* ========== A PAREDE DE NICHOS: 5x5 empilhados, o monumento do colombário
+     Erguida na face norte, entre as duas entradas: cinco colunas por cinco
+     fiadas, com pilastras nas pontas e cornija em cima. Como a face tem só
+     um tile de altura, o monumento cresce para cima, por sobre o topo do
+     muro — é o que dá a leitura de parede alta em perspectiva 3/4. */
+  {
+    const PX = 19.5*T, BASE = 45*T;                  // canto inferior esquerdo da parede
+    const COL = 5, FIA = 5, LN = T*.92, AN = T*.62;  // largura e altura de cada nicho
+    const larg = COL*LN, alt = FIA*AN;
+    const topo = BASE - alt;
+    // o paredão de fundo, mais claro que o muro comum: pedra lavrada
+    cmx.fillStyle = '#4a5064';
+    cmx.fillRect(PX - T*.34, topo - T*.30, larg + T*.68, alt + T*.34);
+    cmx.fillStyle = 'rgba(214,224,246,.10)';
+    cmx.fillRect(PX - T*.34, topo - T*.30, larg + T*.68, 3);
+    // pilastras das pontas, em alto-relevo
+    [PX - T*.34, PX + larg - T*.02].forEach((qx, i) => {
+      cmx.fillStyle = '#5d6478';
+      cmx.fillRect(qx, topo - T*.30, T*.36, alt + T*.34);
+      cmx.fillStyle = 'rgba(226,234,252,.16)';       // a quina iluminada
+      cmx.fillRect(qx + (i ? T*.28 : 0), topo - T*.30, T*.08, alt + T*.34);
+      cmx.fillStyle = 'rgba(10,12,20,.4)';           // e a que fica na sombra
+      cmx.fillRect(qx + (i ? 0 : T*.28), topo - T*.30, T*.08, alt + T*.34);
+    });
+    // cornija: a laje que fecha o monumento em cima
+    cmx.fillStyle = '#79809a';
+    cmx.fillRect(PX - T*.52, topo - T*.46, larg + T*1.04, T*.20);
+    cmx.fillStyle = 'rgba(236,242,255,.22)';
+    cmx.fillRect(PX - T*.52, topo - T*.46, larg + T*1.04, 2.6);
+    cmx.fillStyle = 'rgba(0,0,0,.42)';
+    cmx.fillRect(PX - T*.52, topo - T*.26, larg + T*1.04, T*.07);
+    // os 25 nichos
+    for(let f=0; f<FIA; f++) for(let c=0; c<COL; c++){
+      const nx = PX + c*LN + LN/2, ny = topo + f*AN;
+      const r = LN*.30, altV = AN*.62, omb = ny + T*.14 + r;
+      const arco = () => {
+        cmx.beginPath();
+        cmx.moveTo(nx - r, ny + T*.14 + altV);
+        cmx.lineTo(nx - r, omb);
+        cmx.arc(nx, omb, r, Math.PI, 0);
+        cmx.lineTo(nx + r, ny + T*.14 + altV);
+        cmx.closePath();
+      };
+      // moldura do vão e prateleira
+      cmx.fillStyle = '#666d82';
+      cmx.fillRect(nx - r - T*.07, ny + T*.10, r*2 + T*.14, altV + T*.13);
+      cmx.fillStyle = '#141721';
+      arco(); cmx.fill();
+      // conteúdo, sem repetir o vizinho de lado nem o de cima
+      const v = (c*3 + f*2 + ((hash(c*4.1, f*7.3)*3)|0)) % 5;
+      cmx.save(); arco(); cmx.clip();
+      const g = cmx.createLinearGradient(0, ny, 0, ny + altV);
+      g.addColorStop(0, 'rgba(0,0,0,.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      cmx.fillStyle = g; cmx.fillRect(nx - r, ny, r*2, altV);
+      const chaoN = ny + T*.14 + altV;
+      if(v === 0){                                   // urna de cerâmica
+        cmx.fillStyle = '#a8a0b6';
+        cmx.beginPath();
+        cmx.ellipse(nx, chaoN - AN*.20, r*.52, AN*.22, 0, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - r*.2, chaoN - AN*.40, r*.4, AN*.16);
+        cmx.fillStyle = 'rgba(240,244,255,.2)';
+        cmx.beginPath(); cmx.ellipse(nx - r*.18, chaoN - AN*.24, r*.16, AN*.09, -.4, 0, TAU); cmx.fill();
+      } else if(v === 1){                            // crânio olhando para fora
+        cmx.fillStyle = '#cfc7ae';
+        cmx.beginPath(); cmx.ellipse(nx, chaoN - AN*.22, r*.44, AN*.2, 0, 0, TAU); cmx.fill();
+        cmx.fillStyle = '#15161d';
+        cmx.beginPath(); cmx.ellipse(nx - r*.17, chaoN - AN*.25, r*.11, AN*.07, 0, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.ellipse(nx + r*.17, chaoN - AN*.25, r*.11, AN*.07, 0, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - r*.06, chaoN - AN*.14, r*.12, AN*.05);
+      } else if(v === 2){                            // ossos cruzados
+        cmx.strokeStyle = '#c3bba4'; cmx.lineCap = 'round';
+        cmx.lineWidth = Math.max(1.6, r*.2);
+        cmx.beginPath();
+        cmx.moveTo(nx - r*.5, chaoN - AN*.28); cmx.lineTo(nx + r*.5, chaoN - AN*.1); cmx.stroke();
+        cmx.beginPath();
+        cmx.moveTo(nx - r*.5, chaoN - AN*.1); cmx.lineTo(nx + r*.5, chaoN - AN*.28); cmx.stroke();
+      } else if(v === 3){                            // vazio, à espera — só teia
+        cmx.strokeStyle = 'rgba(190,196,214,.2)'; cmx.lineWidth = 1;
+        for(let k=0; k<3; k++){
+          cmx.beginPath();
+          cmx.moveTo(nx - r, ny + T*.16);
+          cmx.lineTo(nx - r + r*(k+1)*.7, ny + T*.16 + altV*.5);
+          cmx.stroke();
+        }
+      } else {                                       // lacrado com placa de pedra
+        cmx.fillStyle = '#6f7488';
+        cmx.fillRect(nx - r*.86, chaoN - altV*.86, r*1.72, altV*.8);
+        cmx.fillStyle = 'rgba(228,234,250,.16)';
+        cmx.fillRect(nx - r*.86, chaoN - altV*.86, r*1.72, 2);
+        cmx.strokeStyle = 'rgba(30,34,46,.5)'; cmx.lineWidth = 1;
+        for(let k=0; k<3; k++){                      // o nome gasto, ilegível
+          const ly = chaoN - altV*.7 + k*altV*.2;
+          cmx.beginPath();
+          cmx.moveTo(nx - r*.6, ly); cmx.lineTo(nx + r*(.2 + hash(c+k, f)*.4), ly); cmx.stroke();
+        }
+      }
+      cmx.restore();
+      // plaquinha de nome sob cada nicho
+      cmx.fillStyle = '#828798';
+      cmx.fillRect(nx - r*.7, ny + T*.14 + altV + T*.02, r*1.4, T*.07);
+      cmx.strokeStyle = 'rgba(30,34,46,.45)'; cmx.lineWidth = .9;
+      cmx.beginPath();
+      cmx.moveTo(nx - r*.5, ny + T*.14 + altV + T*.055);
+      cmx.lineTo(nx + r*.5, ny + T*.14 + altV + T*.055);
+      cmx.stroke();
+      cmx.fillStyle = 'rgba(0,0,0,.35)';             // a sombra da prateleira na fiada de baixo
+      cmx.fillRect(nx - r - T*.07, ny + T*.14 + altV + T*.09, r*2 + T*.14, T*.04);
+    }
+    // velas pingadas no pé do monumento e a sombra que ele joga no chão
+    cmx.fillStyle = 'rgba(0,0,0,.45)';
+    cmx.fillRect(PX - T*.52, BASE, larg + T*1.04, T*.22);
+    for(let k=0; k<6; k++){
+      const vx = PX + T*.4 + k*(larg - T*.8)/5;
+      cmx.fillStyle = '#d8d2c0';
+      cmx.fillRect(vx - T*.05, BASE - T*.26, T*.1, T*.26);
+      cmx.fillStyle = 'rgba(255,206,130,.5)';
+      cmx.beginPath(); cmx.ellipse(vx, BASE - T*.3, T*.05, T*.08, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,190,110,.10)';
+      cmx.beginPath(); cmx.ellipse(vx, BASE - T*.05, T*.34, T*.14, 0, 0, TAU); cmx.fill();
+    }
+  }
+
   /* ========== COLOMBÁRIO-LABIRINTO: os nichos funerários (y>=44) ==========
      Em cada face de parede visível dentro do colombário, duas arcadas
      escavadas com prateleira de pedra; dentro, urna, crânio, ossos ou o
@@ -7803,6 +8182,20 @@ function pintarFunCriptaSalao(cmx, T){
   for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
     if(tf(x,y) !== CHAO2) continue;
     const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
+    /* o chão da cova é TERRA, não pedra: cobre a laje inteira antes de tudo */
+    const gT = cmx.createLinearGradient(px, py, px, py + T);
+    gT.addColorStop(0, h > .5 ? '#4a4034' : '#443a2f');
+    gT.addColorStop(1, h > .5 ? '#3a3129' : '#352d26');
+    cmx.fillStyle = gT; cmx.fillRect(px, py, T, T);
+    cmx.fillStyle = 'rgba(120,104,80,' + (.05 + h*.07) + ')';   // poeira levantada
+    cmx.fillRect(px, py, T, T*.3);
+    for(let k=0; k<5; k++){                              // pedrinhas e raízes na terra batida
+      const hx = hash(x*3.3 + k, y*8.1), hy = hash(x*6.7, y*2.9 + k);
+      cmx.fillStyle = hx > .7 ? 'rgba(150,134,108,.22)' : 'rgba(22,18,14,.30)';
+      cmx.beginPath();
+      cmx.ellipse(px + T*hx, py + T*hy, 1 + hx*2.2, .8 + hy*1.6, hx*4, 0, TAU);
+      cmx.fill();
+    }
     if(h > .3){                                          // terra revolvida em manchas miúdas
       for(let k=0; k<3; k++){
         const hx = hash(x*7 + k, y*5), hy = hash(x*5, y*7 + k);
@@ -7906,6 +8299,121 @@ function pintarFunCriptaSalao(cmx, T){
   };
   pLapide(35.2, 5.2, -.14);
   pLapide(41.8, 10.6, .11);
+  pLapide(31.4, 11.9, -.2);
+  pLapide(38.6, 4.8, .16);
+  pLapide(42.6, 15.2, -.09);
+
+  /* a cova é um cemitério inteiro: cruzes fincadas, caveiras, caixões
+     empilhados e as oferendas de quem veio despedir-se */
+  const pCruz = (x, y, alt2, ang) => {
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.4)';
+    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.1, T*.3, T*.1, 0, 0, TAU); cmx.fill();
+    cmx.save(); cmx.translate(px, py); cmx.rotate(ang);
+    const h2 = T*alt2, e = Math.max(2.4, T*.11);
+    cmx.fillStyle = '#4b3d2c';                            // o madeirame
+    cmx.fillRect(-e/2, -h2, e, h2);
+    cmx.fillRect(-T*.3, -h2*.72, T*.6, e*.86);
+    cmx.fillStyle = 'rgba(205,186,150,.2)';               // a face que pega luz
+    cmx.fillRect(-e/2, -h2, e*.4, h2);
+    cmx.fillRect(-T*.3, -h2*.72, T*.6, 1.6);
+    cmx.strokeStyle = 'rgba(18,14,10,.5)'; cmx.lineWidth = 1;
+    cmx.strokeRect(-e/2, -h2, e, h2);
+    cmx.fillStyle = 'rgba(70,58,44,.5)';                  // o barbante amarrando o travessão
+    cmx.fillRect(-e*.9, -h2*.72 - 1, e*1.8, 2);
+    cmx.restore();
+  };
+  [[32.4,7.6,.95,-.10],[36.1,13.4,1.1,.13],[40.2,6.4,.85,-.16],
+   [33.8,15.4,1.0,.08],[42.2,12.1,.9,-.05],[30.9,4.9,.8,.18]]
+    .forEach(([x,y,a,g]) => pCruz(x, y, a, g));
+
+  const pCaveira = (x, y, esc2) => {
+    const px = x*T, py = y*T, r2 = T*.16*esc2;
+    cmx.fillStyle = 'rgba(0,0,0,.4)';
+    cmx.beginPath(); cmx.ellipse(px + r2*.2, py + r2*.5, r2*1.1, r2*.4, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#cfc7ae';                            // a caixa craniana
+    cmx.beginPath(); cmx.ellipse(px, py, r2, r2*.86, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#bdb49a';                            // o maxilar
+    cmx.beginPath(); cmx.ellipse(px, py + r2*.72, r2*.62, r2*.34, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#15161d';                            // as órbitas e o nariz
+    cmx.beginPath(); cmx.ellipse(px - r2*.36, py - r2*.1, r2*.26, r2*.24, 0, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(px + r2*.36, py - r2*.1, r2*.26, r2*.24, 0, 0, TAU); cmx.fill();
+    cmx.beginPath();
+    cmx.moveTo(px, py + r2*.1); cmx.lineTo(px - r2*.14, py + r2*.42); cmx.lineTo(px + r2*.14, py + r2*.42);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(255,252,240,.3)';               // o brilho no alto do crânio
+    cmx.beginPath(); cmx.ellipse(px - r2*.2, py - r2*.42, r2*.4, r2*.2, -.3, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(40,34,26,.4)'; cmx.lineWidth = 1;   // a sutura
+    cmx.beginPath(); cmx.moveTo(px - r2*.5, py - r2*.5); cmx.lineTo(px + r2*.2, py - r2*.72); cmx.stroke();
+  };
+  [[31.7,9.3,1],[34.6,10.8,.85],[39.4,15.6,1.1],[43.0,8.2,.9],
+   [37.2,5.9,.8],[30.6,14.2,1.05],[41.1,4.6,.85]]
+    .forEach(([x,y,e]) => pCaveira(x, y, e));
+
+  const pCaixaoPilha = (x, y, n) => {          // caixões empilhados à espera de cova
+    const px = x*T, py = y*T, w2 = T*1.5, h2 = T*.5;
+    cmx.fillStyle = 'rgba(0,0,0,.42)';
+    cmx.beginPath(); cmx.ellipse(px + T*.08, py + T*.16, w2*.6, T*.16, 0, 0, TAU); cmx.fill();
+    for(let k=n-1; k>=0; k--){
+      const ky = py - k*T*.22, incl = (hash(x + k, y)*2 - 1)*.05;
+      cmx.save(); cmx.translate(px, ky); cmx.rotate(incl);
+      cmx.fillStyle = k % 2 ? '#3c2f22' : '#4a3b2b';       // a tampa
+      cmx.beginPath();
+      cmx.moveTo(-w2/2, -h2*.28); cmx.lineTo(-w2*.16, -h2*.44); cmx.lineTo(w2/2, -h2*.2);
+      cmx.lineTo(w2/2, h2*.2);  cmx.lineTo(-w2*.16, h2*.44); cmx.lineTo(-w2/2, h2*.28);
+      cmx.closePath(); cmx.fill();
+      cmx.fillStyle = 'rgba(206,186,146,.16)';             // a luz na quina de cima
+      cmx.beginPath();
+      cmx.moveTo(-w2/2, -h2*.28); cmx.lineTo(-w2*.16, -h2*.44); cmx.lineTo(w2/2, -h2*.2);
+      cmx.lineTo(w2/2, -h2*.1); cmx.lineTo(-w2*.16, -h2*.32); cmx.lineTo(-w2/2, -h2*.18);
+      cmx.closePath(); cmx.fill();
+      cmx.strokeStyle = 'rgba(14,10,6,.6)'; cmx.lineWidth = 1.4;
+      cmx.beginPath(); cmx.moveTo(-w2*.16, -h2*.44); cmx.lineTo(-w2*.16, h2*.44); cmx.stroke();
+      cmx.fillStyle = 'rgba(90,74,52,.7)';                 // as cintas de ferro
+      cmx.fillRect(-w2*.02, -h2*.4, 2.4, h2*.8);
+      cmx.fillRect(w2*.3, -h2*.32, 2.4, h2*.62);
+      cmx.restore();
+    }
+  };
+  pCaixaoPilha(31.9, 6.2, 3);
+  pCaixaoPilha(42.0, 14.2, 2);
+  pCaixaoPilha(36.4, 4.6, 2);
+
+  const pOferenda = (x, y, tipo) => {          // o que os vivos deixam para os mortos
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.34)';
+    cmx.beginPath(); cmx.ellipse(px + T*.04, py + T*.08, T*.2, T*.08, 0, 0, TAU); cmx.fill();
+    if(tipo === 0){                            // tigela de barro com grão
+      cmx.fillStyle = '#7b5a3e';
+      cmx.beginPath(); cmx.ellipse(px, py, T*.17, T*.1, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = '#c8ab74';
+      cmx.beginPath(); cmx.ellipse(px, py - T*.02, T*.12, T*.06, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,246,220,.25)';
+      cmx.beginPath(); cmx.ellipse(px - T*.05, py - T*.04, T*.05, T*.025, -.3, 0, TAU); cmx.fill();
+    } else if(tipo === 1){                     // ramo de flores secas amarrado
+      cmx.strokeStyle = '#6b5a3a'; cmx.lineWidth = Math.max(1.4, T*.05);
+      cmx.beginPath(); cmx.moveTo(px - T*.16, py + T*.05); cmx.lineTo(px + T*.14, py - T*.06); cmx.stroke();
+      for(let k=0; k<5; k++){
+        const a = k/5*TAU, fx = px + T*.14 + Math.cos(a)*T*.07, fy = py - T*.06 + Math.sin(a)*T*.05;
+        cmx.fillStyle = ['#b8a075','#cbb489','#9a8fa8'][k % 3];
+        cmx.beginPath(); cmx.ellipse(fx, fy, T*.045, T*.032, a, 0, TAU); cmx.fill();
+      }
+      cmx.fillStyle = 'rgba(180,160,120,.5)';
+      cmx.fillRect(px - T*.02, py - T*.01, T*.05, T*.04);
+    } else {                                   // moeda e caneca viradas
+      cmx.fillStyle = '#8a8a96';
+      cmx.beginPath(); cmx.ellipse(px, py, T*.13, T*.09, .3, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(20,18,24,.5)';
+      cmx.beginPath(); cmx.ellipse(px, py, T*.07, T*.05, .3, 0, TAU); cmx.fill();
+      cmx.fillStyle = '#c9a24a';
+      cmx.beginPath(); cmx.arc(px + T*.18, py + T*.05, T*.05, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,240,190,.4)';
+      cmx.beginPath(); cmx.arc(px + T*.17, py + T*.04, T*.02, 0, TAU); cmx.fill();
+    }
+  };
+  [[33.0,6.0,1],[35.6,11.3,0],[40.6,9.1,2],[32.2,13.0,1],
+   [38.0,15.0,0],[43.2,11.4,1],[37.4,7.2,2]]
+    .forEach(([x,y,t]) => pOferenda(x, y, t));
 
   /* ============ 4. ESCADA DE CHEGADA (x36..43, y48..54) ============
      degraus largos subindo do piso 2: linha de sombra no alto de cada
@@ -8012,6 +8520,36 @@ function pintarFunImagens(cmx, T){
   pImg('item-banco', 41.7, 29.7, 1.1);
   pImg('item-lamparina', 42.8, 26.7, .7);
 
+  /* vitrais nas faces de parede: os da capela são os grandes, o resto do piso
+     ganha os menores — parede sem janela faz o castelo virar porão (etapa 8) */
+  const vitral = (x, y, larg, brilho, centro) => {
+    const im = funImg(centro ? 'vitral-centro' : 'vitral-lado');
+    if(!im.complete || !im.naturalWidth) return;
+    const w = larg*T, h = im.naturalHeight*(w/im.naturalWidth);
+    const px = x*T, py = (y + 1)*T;                    // assentado na base da face
+    cmx.fillStyle = 'rgba(0,0,0,.35)';                 // o vão fundo atrás do caixilho
+    cmx.fillRect(px - w*.42, py - h*.92, w*.84, h*.86);
+    cmx.drawImage(im, px - w/2, py - h, w, h);
+    /* a luz colorida caindo no chão logo abaixo — é o que vende o vitral */
+    const g = cmx.createLinearGradient(0, py, 0, py + T*1.15);
+    g.addColorStop(0, 'rgba(120,150,225,' + (.20*brilho) + ')');
+    g.addColorStop(.45, 'rgba(150,190,140,' + (.10*brilho) + ')');
+    g.addColorStop(1, 'rgba(120,150,225,0)');
+    cmx.fillStyle = g;
+    cmx.beginPath();
+    cmx.moveTo(px - w*.34, py); cmx.lineTo(px + w*.34, py);
+    cmx.lineTo(px + w*.62, py + T*1.15); cmx.lineTo(px - w*.62, py + T*1.15);
+    cmx.closePath(); cmx.fill();
+  };
+  /* capela: só os três da parede norte (pedido do dono), e são o trio da
+     foto — a lanceta alta no meio, as menores nos flancos */
+  vitral(6, 4, 1.5, 1);  vitral(9.5, 4, 1.7, 1.15, true);  vitral(13, 4, 1.5, 1);
+  // preparação, salão, oficina e o quarto: janelas menores, sem repetir vizinha
+  vitral(21, 4, 1.2, .8);  vitral(25.5, 4, 1.2, .8);
+  vitral(11, 19, 1.1, .6); vitral(19, 19, 1.1, .6); vitral(28, 19, 1.1, .6);
+  vitral(5, 30, 1.1, .6);  vitral(9.5, 30, 1.1, .6);
+  vitral(41, 25, 1.05, .55);
+
   /* o corpo em preparo na mesa da Lavadeira: pintado deitado, nu com o pano
      de pudor, sujo de terra — a cabeça vem do recorte aprovado pelo dono */
   const cad = funImg('cadaver-cabeca');
@@ -8082,7 +8620,7 @@ function pintarFuneralCache(cmx, T){
 
 const PISO_FUNERAL = {
   id:'funeral', nome:'As Salas de Funeral',
-  bgm:'audio/fase2/trilha-fase2.mp3',   // tapa-buraco até a trilha fúnebre do usuário (F3-RF-22)
+  bgm:'audio/fase3/trilha-fase3.mp3',   // a trilha fúnebre do dono (F3-RF-22)
   paleta:{
     fundo:'#0a0c14',
     chao:[88,92,108],      // pedra azulada e fria
@@ -8115,30 +8653,33 @@ const PISO_FUNERAL = {
   informantes:[
     { nome:'O Carpinteiro de Caixões', chave:'rastro', cor:'#a89b7c', escala:1.5,
       retrato:'img/fase3/velante-carpinteiro.png',
-      voz:{pitch:.75, rate:.9, genero:'m'},
+      voz:{pitch:.75, rate:.9, genero:'m',
+           audios:['audio/fase3/vozes/carpinteiro-1.mp3','audio/fase3/vozes/carpinteiro-2.mp3','audio/fase3/vozes/carpinteiro-3.mp3']},
       x:5.5, y:33.5,       // na oficina, entre os caixões em obra
       falas:[
-        'Chegou inteiro? Fica parado aí que eu tiro a medida. É força do hábito, não leve a mal.',
-        'O Coveiro cava mais cova do que o castelo tem morto. Um dia sobra uma — e é a sua.',
-        'Quando ele some na terra, repare: deixa um rastro de terra revolvida. O chão conta onde ele vai sair.'
+        'Parado aí! Um e oitenta, ombro largo. Pinho serve. Eu nunca errei uma medida.',
+        'Todo mundo que entra nesse castelo passa pela minha bancada. É só questão de tempo!',
+        'Presta atenção na cova: quando ele some, deixa um rastro de terra. Onde a terra mexe, é ele.'
       ], ganho:'Você vai ler o rastro: o ponto onde ele irrompe se anuncia mais cedo.' },
     { nome:'A Lavadeira dos Mortos', chave:'lanterna', cor:'#9fb0c0', escala:1.5,
       retrato:'img/fase3/velante-lavadeira.png',
-      voz:{pitch:1.2, rate:.95, genero:'f'},
+      voz:{pitch:1.2, rate:.95, genero:'f',
+           audios:['audio/fase3/vozes/lavadeira-1.mp3','audio/fase3/vozes/lavadeira-2.mp3','audio/fase3/vozes/lavadeira-3.mp3']},
       x:25.5, y:7.5,       // na sala de preparação, junto às mesas
       falas:[
-        'Fala baixo. Os que eu lavo não acordam mais — mas os lá de baixo têm o sono leve.',
-        'Eu lavei gente que desceu à cova grande em pé. Nenhum voltou para reclamar da água fria.',
-        'A lanterna dele só ilumina a frente. Pelas costas, ele tá morto.'
+        'Chega mais, meu filho. Lavo os mortos há trinta anos... são melhor companhia que muito vivo.',
+        'Essa água fria eu nem sinto mais. O que cansa é fechar os olhinhos de quem chega novo.',
+        'Cuidado com o Coveiro, meu anjo: a lanterna só ilumina a frente. Pelas costas, ele tá morto.'
       ], ganho:'Golpes pelas costas doem muito mais nele.' },
     { nome:'O Sacristão', chave:'mergulhos', cor:'#8d86a8', escala:1.5,
       retrato:'img/fase3/velante-sacristao.png',
-      voz:{pitch:.6, rate:.85, genero:'m'},
+      voz:{pitch:.6, rate:.85, genero:'m',
+           audios:['audio/fase3/vozes/sacristao-1.mp3','audio/fase3/vozes/sacristao-2.mp3','audio/fase3/vozes/sacristao-3.mp3']},
       x:31.5, y:52.2,      // no fundo do colombário — o difícil de achar
       falas:[
-        'Você me achou... Nem os sinos me acham aqui no fundo.',
-        'Eu rezo por todos que ele enterra. A lista não para de crescer.',
-        'Preste atenção nos mergulhos: depois de 2 mergulhos, ele tá morto de cansado.'
+        'Shh... fala baixo. Aqui cada nome tem seu nicho... e alguns ainda respondem quando eu rezo.',
+        'Eu acendo as velas, elas apagam. Acendo de novo. Alguém sopra... e não é o vento.',
+        'Deus me perdoe... mas depois de dois mergulhos, ele tá morto de cansado. Aí é a hora.'
       ], ganho:'Conte os mergulhos: no segundo, ele emerge exausto.' }
   ],
   /* O COVEIRO de verdade (F3-RF-15..19): pazada curta e o ciclo subterrâneo
@@ -8148,12 +8689,17 @@ const PISO_FUNERAL = {
     cfg:{
       nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
       retrato:'img/fase3/coveiro.png',
-      esperaT:1.1, aproximaT:1.6, velAproxima:2.4,
-      comboDist:2.4, comboIntervalo:.55, comboGolpes:1,
-      comboDano:[34], comboAlcance:[2.6],            // a pazada (o Avental derruba p/ 14 no aoIniciar)
-      cavaT:.55, persegueVel:3.4, persegueT:2.6,
-      irromperRaio:2.2, irromperAvisoT:1.0, irromperDano:36,
-      atordoadoT:2.2, mergulhosAteExausto:2, exaustoT:2.4,
+      /* ele não deixa ninguém chegar perto: mal respira entre um golpe e outro,
+         anda depressa e ataca de longe, com dois talhos de pá seguidos */
+      esperaT:.35, aproximaT:2.6, velAproxima:3.6,
+      comboDist:3.4, comboIntervalo:.42, comboGolpes:2,
+      comboDano:[34, 34], comboAlcance:[3.0, 3.0],   // a pazada (o Avental derruba p/ 14 no aoIniciar)
+      /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
+      soVulneravelEm:['atordoado','exausto'],
+      reageDeImediato:true,                          // chegou perto, leva pazada
+      cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
+      irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
+      atordoadoT:2.6, mergulhosAteExausto:2, exaustoT:2.8,
       tremorPasso:7,
       sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2',
             entrada:'fase3/vozes/coveiro-entrada', golpe:'fase3/vozes/coveiro-golpe',
@@ -8250,7 +8796,11 @@ const PISO_FUNERAL = {
     jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
     /* o Avental de Aço amortece a pazada: 34 -> 14 (F3-RF-13) */
     const temAvental = inventario.some(i => i.id === 'avental-acougueiro');
-    PISO_FUNERAL.chefe.cfg.comboDano = [temAvental ? 14 : 34];
+    /* um valor por golpe do combo: a lista curta deixava o 2º talho com dano
+       undefined, a vida do jogador virava NaN e ele ficava imortal */
+    const pazada = temAvental ? 14 : 34;
+    PISO_FUNERAL.chefe.cfg.comboDano =
+      PISO_FUNERAL.chefe.cfg.comboAlcance.map(() => pazada);
     if(temAvental) avisar('O Avental de Aço no peito', 'a pá dele vai doer bem menos');
     etapa = 'livre';
     avisar('As salas de funeral', 'o frio sobe do chão');
@@ -8299,7 +8849,7 @@ const PISO_FUNERAL = {
        && jog.x > FUN.PORTA.x - 1 && jog.x < FUN.PORTA.x + FUN.PORTA.larg + 1){
       criarChefe();
       criarCirios();
-      tocarBgm('audio/fase2/portao-acougueiro.mp3', .16);   // tapa-buraco: trilha da cova pendente (F3-RF-22)
+      tocarBgm('audio/fase3/trilha-cova.mp3', .38);        // a trilha da cova, do dono (F3-RF-22)
       etapa = 'chefe';
     }
   },
