@@ -6881,12 +6881,13 @@ function desenharAguaCripta(ox, oy){
    jeito — sentada nos bancos ou de pé junto ao esquife (pedido do dono).
    `tom` gira a cor da veste; `sentado` encolhe as pernas contra o banco. */
 const COADJ_FUN = [
-  // de pé, velando o corpo
-  {img:'rezador-4', x:8.2,  y:9.4,  esc:1.14, tom:0},
-  {img:'rezador-4', x:11.2, y:9.8,  esc:1.02, tom:-38, flip:true},
-  {img:'rezador-2', x:9.6,  y:8.1,  esc:.95,  tom:26},
-  {img:'rezador-3', x:7.0,  y:11.4, esc:1.06, tom:52},
-  {img:'rezador-1', x:12.4, y:11.7, esc:.9,   tom:-18, flip:true},
+  /* de pé, velando o corpo — em roda POR FORA da pegada do caixão (x 7.95 a
+     11.05, y 8.27 a 11.42), senão o desenhado por cima passa na frente dele */
+  {img:'rezador-4', x:6.8,  y:10.9, esc:1.14, tom:0},
+  {img:'rezador-4', x:12.2, y:11.15, esc:1.02, tom:-38, flip:true},
+  {img:'rezador-2', x:9.5,  y:7.9,  esc:.95,  tom:26},
+  {img:'rezador-3', x:8.3,  y:13.3, esc:1.06, tom:52},
+  {img:'rezador-1', x:10.9, y:13.5, esc:.9,   tom:-18, flip:true},
   // sentados no flanco oeste (bancos em x 3.85 e 5.35, filas y 6.8 / 9.2 / 11.9)
   {img:'rezador-2', x:4.15, y:6.95, esc:.82, tom:14,  sentado:true},
   {img:'rezador-1', x:5.62, y:7.05, esc:.78, tom:-52, sentado:true},
@@ -7194,76 +7195,13 @@ function pintarFunCapelaPrep(cmx, T){
   cmx.strokeStyle = 'rgba(120,128,152,.5)'; cmx.lineWidth = 2.2;
   cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.stroke();
 
-  /* ---- o esquife do velório, no centro do mosaico ---- */
+  /* ---- o velório, no centro do mosaico: o caixão em si é a aquarela recortada,
+     assentada no passe das imagens; aqui ficam só as coroas e as pétalas, todas
+     por fora da pegada dele para não sumirem debaixo do desenho ---- */
   {
-    const ex = MX, ey = MY, w = T*2.35, face = T*.5;
-    // sombra elíptica no chão
-    cmx.fillStyle = 'rgba(0,0,0,.38)';
-    cmx.beginPath(); cmx.ellipse(ex + T*.06, ey + T*.72, w*.56, T*.16, 0, 0, TAU); cmx.fill();
-    // face frontal da mesa alta: pano fúnebre caindo, em dobras
-    cmx.fillStyle = '#343048';
-    cmx.fillRect(ex - w/2, ey + T*.15, w, face);
-    cmx.fillStyle = 'rgba(0,0,0,.30)';
-    cmx.fillRect(ex - w/2, ey + T*.15, w, 3);
-    cmx.strokeStyle = 'rgba(14,12,24,.55)'; cmx.lineWidth = 1.4;
-    for(let k=1; k<6; k++){
-      const fx = ex - w/2 + k*w/6;
-      cmx.beginPath(); cmx.moveTo(fx, ey + T*.19); cmx.quadraticCurveTo(fx + T*.04, ey + T*.42, fx - T*.03, ey + T*.63); cmx.stroke();
-    }
-    cmx.fillStyle = 'rgba(150,150,190,.14)';                    // bainha do pano
-    cmx.fillRect(ex - w/2, ey + T*.15 + face - 3, w, 3);
-    // tampo iluminado
-    cmx.fillStyle = '#79809a';
-    cmx.fillRect(ex - w/2, ey - T*.5, w, T*.65);
-    cmx.fillStyle = 'rgba(215,222,240,.18)';
-    cmx.fillRect(ex - w/2, ey - T*.5, w, 3.5);
-    cmx.strokeStyle = 'rgba(20,22,34,.6)'; cmx.lineWidth = 1.6;
-    cmx.strokeRect(ex - w/2 + 1, ey - T*.5 + 1, w - 2, T*.65 - 2);
-    // o caixão aberto, deitado no tampo (cabeceira a oeste)
-    const cy2 = ey - T*.45, x0 = ex - T*1.02, x1 = ex - T*.4, x2 = ex + T*1.02;
-    const perfil = (m) => {
-      cmx.beginPath();
-      cmx.moveTo(x0, cy2 - T*.20*m); cmx.lineTo(x1, cy2 - T*.31*m); cmx.lineTo(x2, cy2 - T*.14*m);
-      cmx.lineTo(x2, cy2 + T*.14*m); cmx.lineTo(x1, cy2 + T*.31*m); cmx.lineTo(x0, cy2 + T*.20*m);
-      cmx.closePath();
-    };
-    cmx.fillStyle = 'rgba(0,0,0,.28)';                          // sombra do caixão no tampo
-    cmx.beginPath(); cmx.ellipse(ex + T*.04, cy2 + T*.3, T*1.02, T*.13, 0, 0, TAU); cmx.fill();
-    perfil(1);
-    cmx.fillStyle = '#5a4a3a'; cmx.fill();
-    cmx.strokeStyle = 'rgba(20,14,10,.7)'; cmx.lineWidth = 1.8; cmx.stroke();
-    perfil(.66);
-    cmx.fillStyle = '#3a3448'; cmx.fill();                      // o forro de dentro
-    // brilho frio na borda de madeira, do lado da luz
-    cmx.strokeStyle = 'rgba(190,200,225,.30)'; cmx.lineWidth = 1.4;
-    cmx.beginPath(); cmx.moveTo(x0, cy2 - T*.20); cmx.lineTo(x1, cy2 - T*.31); cmx.lineTo(x2, cy2 - T*.14); cmx.stroke();
-    cmx.fillStyle = 'rgba(255,190,110,.14)';                    // reflexo pontual das velas
-    cmx.beginPath(); cmx.ellipse(x1, cy2 - T*.28, T*.10, T*.03, -.15, 0, TAU); cmx.fill();
-    // o defunto preparado: mortalha branca do peito aos pés, rosto à mostra
-    cmx.fillStyle = '#c9c4b8';
-    cmx.beginPath(); cmx.ellipse(ex + T*.14, cy2, T*.60, T*.15, 0, 0, TAU); cmx.fill();   // o corpo amortalhado
-    cmx.beginPath(); cmx.ellipse(ex + T*.72, cy2, T*.12, T*.10, 0, 0, TAU); cmx.fill();   // os pés
-    cmx.fillStyle = '#b6ab9c';                                                            // o rosto de cera
-    cmx.beginPath(); cmx.ellipse(ex - T*.60, cy2, T*.115, T*.135, 0, 0, TAU); cmx.fill();
-    cmx.fillStyle = 'rgba(255,250,240,.22)';
-    cmx.beginPath(); cmx.ellipse(ex - T*.62, cy2 - T*.03, T*.075, T*.075, 0, 0, TAU); cmx.fill();
-    cmx.fillStyle = 'rgba(40,36,50,.55)';                                                 // os olhos fechados
-    cmx.beginPath(); cmx.ellipse(ex - T*.64, cy2 - T*.035, T*.022, T*.008, 0, 0, TAU); cmx.fill();
-    cmx.beginPath(); cmx.ellipse(ex - T*.64, cy2 + T*.035, T*.022, T*.008, 0, 0, TAU); cmx.fill();
-    cmx.strokeStyle = 'rgba(60,54,70,.5)'; cmx.lineWidth = 1;                             // a queixeira
-    cmx.beginPath(); cmx.arc(ex - T*.60, cy2, T*.12, .6, 2.5); cmx.stroke();
-    cmx.fillStyle = '#a99e8c';                                                            // as mãos cruzadas no peito
-    cmx.beginPath(); cmx.ellipse(ex - T*.26, cy2 - T*.02, T*.075, T*.05, .5, 0, TAU); cmx.fill();
-    cmx.beginPath(); cmx.ellipse(ex - T*.20, cy2 + T*.03, T*.075, T*.05, -.4, 0, TAU); cmx.fill();
-    cmx.strokeStyle = 'rgba(120,116,104,.55)'; cmx.lineWidth = 1.2;                       // as dobras
-    for(let k=0; k<3; k++){
-      const dx = ex - T*.28 + k*T*.36;
-      cmx.beginPath(); cmx.moveTo(dx, cy2 - T*.11); cmx.quadraticCurveTo(dx + T*.06, cy2, dx - T*.02, cy2 + T*.11); cmx.stroke();
-    }
-    cmx.fillStyle = 'rgba(50,48,66,.22)';                       // a mortalha na sombra do rebordo
-    cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2 + T*.07, T*.66, T*.08, 0, 0, TAU); cmx.fill();
+    const ex = MX, ey = MY;
 
-    /* coroas de flores: uma no peito e as grandes de pé em volta do esquife */
+    /* coroas de flores grandes, de pé em volta do caixão */
     const coroa = (cx3, cy3, raio, girada, cores) => {
       cmx.save(); cmx.translate(cx3, cy3); cmx.rotate(girada);
       cmx.fillStyle = 'rgba(0,0,0,.3)';                         // a sombra do arranjo
@@ -7288,17 +7226,16 @@ function pintarFunCapelaPrep(cmx, T){
     const BRANCAS = ['#e6e2d4','#d8d2c2','#cfd8d0'];
     const ROXAS   = ['#8f7fa8','#b09ec0','#e6e2d4'];
     const SECAS   = ['#b8a075','#cbb489','#9c8a6a'];
-    coroa(ex + T*.30, cy2 - T*.02, T*.20, .2, BRANCAS);          // a coroa sobre o peito
-    coroa(ex - T*1.28, ey - T*.12, T*.44, -.12, ROXAS);          // de pé, à cabeceira
-    coroa(ex + T*1.30, ey - T*.10, T*.42, .18, BRANCAS);         // de pé, aos pés
-    coroa(ex - T*.62, ey + T*.86, T*.34, .35, SECAS);            // encostadas na frente do esquife
-    coroa(ex + T*.66, ey + T*.88, T*.32, -.28, ROXAS);
-    /* pétalas caídas no estrado, em volta */
+    coroa(ex - T*2.15, ey + T*.55, T*.42, -.12, ROXAS);          // de pé, à cabeceira
+    coroa(ex + T*2.15, ey + T*.50, T*.40, .18, BRANCAS);         // de pé, aos pés
+    coroa(ex - T*.85, ey + T*1.60, T*.34, .35, SECAS);           // encostadas na frente do caixão
+    coroa(ex + T*.90, ey + T*1.65, T*.32, -.28, ROXAS);
+    /* pétalas caídas no mosaico, à frente do caixão */
     for(let k=0; k<26; k++){
-      const h = rnd(k*3.7, k*8.1), a = h*TAU, d = T*(1.0 + rnd(k, k*2)*1.4);
+      const h = rnd(k*3.7, k*8.1), a = h*TAU, d = T*(1.2 + rnd(k, k*2)*1.6);
       cmx.fillStyle = ['rgba(230,226,212,.5)','rgba(176,158,192,.45)','rgba(203,180,137,.4)'][k % 3];
       cmx.beginPath();
-      cmx.ellipse(ex + Math.cos(a)*d, ey + Math.sin(a)*d*.5 + T*.3, T*.055, T*.03, a, 0, TAU);
+      cmx.ellipse(ex + Math.cos(a)*d, ey + Math.sin(a)*d*.5 + T*1.05, T*.055, T*.03, a, 0, TAU);
       cmx.fill();
     }
   }
@@ -8619,6 +8556,13 @@ function pintarFunImagens(cmx, T){
     cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.42, T*.16, 0, 0, TAU); cmx.fill();
     cmx.drawImage(im, x*T - w/2, y*T - h + T*.12, w, h);
   };
+  /* o caixão do velório, no olho do mosaico: dossel, cortinas e o corpo sob a
+     mortalha. As coroas e os castiçais já foram pintados em volta da pegada */
+  pImg('item-caixao-velorio', 9.5, 11.3, 3.1);
+  pImg('item-altar-calices', 9.5, 6.25, 2.5);      // capela: a mesa dos cálices, ao norte
+  pImg('item-tumulo-pedra', 12.6, 6.7, 2.2);       // capela: o sepulcro velho da parede
+  pImg('item-esquife-dourado', 20.3, 12.3, 2.4);   // preparação: o esquife de brocado, à espera
+  pImg('item-esquife-negro', 26.0, 22.4, 2.4);     // salão: mais um coberto, a caminho da cova
   pImg('item-caixao-corrente', 15.3, 8.2, 1.25);   // capela: o caixão que ninguém abre
   pImg('item-caixao-cinza', 25.4, 12.6, 2.1);      // preparação: tampa à espera
   pImg('item-carroca', 35.3, 21.6, 2.1);           // salão: a carroça dos enterros
