@@ -8610,10 +8610,11 @@ function pintarFunImagens(cmx, T){
   pImg('item-banco', 41.7, 29.7, 1.1);
   pImg('item-lamparina', 42.8, 26.7, .7);
 
-  /* vitrais nas faces de parede: os da capela são os grandes, o resto do piso
-     ganha os menores — parede sem janela faz o castelo virar porão (etapa 8) */
-  const vitral = (x, y, larg, brilho, centro) => {
-    const im = funImg(centro ? 'vitral-centro' : 'vitral-lado');
+  /* vitrais: só a sala de velório os tem, e são os três da foto — cada recorte
+     no seu lugar (esquerdo, lanceta alta do meio, direito). Nenhuma outra
+     parede do piso leva vitral. */
+  const vitral = (nome, x, y, larg, brilho) => {
+    const im = funImg(nome);
     if(!im.complete || !im.naturalWidth) return;
     const w = larg*T, h = im.naturalHeight*(w/im.naturalWidth);
     const px = x*T, py = (y + 1)*T;                    // assentado na base da face
@@ -8631,14 +8632,9 @@ function pintarFunImagens(cmx, T){
     cmx.lineTo(px + w*.62, py + T*1.15); cmx.lineTo(px - w*.62, py + T*1.15);
     cmx.closePath(); cmx.fill();
   };
-  /* capela: só os três da parede norte (pedido do dono), e são o trio da
-     foto — a lanceta alta no meio, as menores nos flancos */
-  vitral(6, 4, 1.5, 1);  vitral(9.5, 4, 1.7, 1.15, true);  vitral(13, 4, 1.5, 1);
-  // preparação, salão, oficina e o quarto: janelas menores, sem repetir vizinha
-  vitral(21, 4, 1.2, .8);  vitral(25.5, 4, 1.2, .8);
-  vitral(11, 19, 1.1, .6); vitral(19, 19, 1.1, .6); vitral(28, 19, 1.1, .6);
-  vitral(5, 30, 1.1, .6);  vitral(9.5, 30, 1.1, .6);
-  vitral(41, 25, 1.05, .55);
+  vitral('vitral-esq',     6, 4, 1.5, 1);
+  vitral('vitral-centro', 9.5, 4, 1.7, 1.15);
+  vitral('vitral-dir',    13,  4, 1.5, 1);
 
   /* o corpo em preparo na mesa da Lavadeira: pintado deitado, nu com o pano
      de pudor, sujo de terra — a cabeça vem do recorte aprovado pelo dono */

@@ -113,7 +113,7 @@ O piso onde o castelo lava, vela e enterra os seus mortos. Mesma receita, paleta
 - **Cenário em alto-relevo, em cinco passes de pintura**: paredes 3/4 em pedra fria, cripta e salão, capela e preparação, oficina e colombário, e por último os itens recortados assentados pelo pé. Os PNGs carregam sob demanda e o cache se repinta sozinho quando um chega tarde
 - **A cripta é desenhada viva por cima do cache**: caixões e caixotes **boiando** com rastro na lâmina, **goteiras** pingando em anéis e o reflexo das velas acesas escorrendo para dentro d'água
 - **Um corpo em preparo** na mesa da Lavadeira — deitado, sujo de terra, a água escorrendo para a canaleta
-- **Vitrais de foto**: os vidros da capela são recortados de uma foto de igreja de verdade (`img/fase3/vitrais.jpg`) — a lanceta alta no meio da parede norte, as menores nos flancos e pelo resto do piso, cada uma derramando sua luz colorida no chão
+- **Vitrais de foto**: os três vidros da parede norte da **sala de velório** — e só ali — são recortados de uma foto de igreja de verdade (`img/fase3/vitrais.jpg`), cada um no seu lugar: o esquerdo, a lanceta alta do meio e o direito. A foto é de canto, então o recorte passa por uma homografia que põe as três de pé antes de virar sprite; cada uma derrama sua luz colorida no chão
 
 **Pendente no piso 3** (detalhado em `fase3.prd` §8): as **vozes** dos velantes e do Coveiro (textos fechados em `F3-FALAS.md`, gravação não começou — hoje sai voz sintetizada), a **trilha da fase** (toca a da fase 2 como tapa-buraco), a **porta** recortada mas ainda não espalhada pelo cenário, e os **ajudantes de carpintaria** recortados e ainda não instalados na oficina.
 
