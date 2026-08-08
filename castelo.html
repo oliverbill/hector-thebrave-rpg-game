@@ -3047,14 +3047,27 @@ function desenharArmaNaMao(px, py, r){
        lâmina para fora; as mãos não saem do cabo — empunhadura constante */
     const virado = Math.cos(jog.angulo) < 0;
     const lado = virado ? -1 : 1;
-    ctx.translate(px + lado*tam*.56, my - r*.1);           // à frente do corpo: além da metade do sprite (tam*.45)
+    const wx = px + lado*tam*.5, wy = my - r*.1;           // onde a arma fica, à frente do corpo
+    /* braços esticados do ombro até o cabo: a arma é SEGURADA, não flutua */
+    const braco = (sx, sy, gx, gy) => {
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(50,30,18,.85)';              // contorno
+      ctx.lineWidth = Math.max(2, r*.3);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(gx, gy); ctx.stroke();
+      ctx.strokeStyle = '#a5714a';                         // a pele por dentro, no tom do sprite
+      ctx.lineWidth = Math.max(1.2, r*.18);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(gx, gy); ctx.stroke();
+    };
+    braco(px + lado*r*.5,  my - tam*.46, wx - lado*r*.04, wy - alt*.17);   // do ombro à mão de cima
+    braco(px + lado*r*.35, my - tam*.32, wx - lado*r*.04, wy - alt*.015);  // do cotovelo à empunhadura
+    ctx.translate(wx, wy);
     if(virado) ctx.scale(-1, 1);                           // a lâmina acompanha o olhar
     ctx.rotate(-.09);                                      // leve inclinação, nada de tombar
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
-    /* as duas mãos fechadas no cabo, uma sobre a outra */
+    /* as duas mãos fechadas no cabo, fechando os braços */
     const punho = (yy) => {
       ctx.fillStyle = '#c98f5e';
-      ctx.beginPath(); ctx.ellipse(0, yy, r*.13, r*.10, .25, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, yy, r*.14, r*.11, .25, 0, TAU); ctx.fill();
       ctx.strokeStyle = 'rgba(60,30,15,.65)'; ctx.lineWidth = 1;
       ctx.stroke();
     };
