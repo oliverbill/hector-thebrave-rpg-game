@@ -2030,6 +2030,8 @@ function atualizarBarraChefe(){
   const fq = piso.chefe.fraquezas, f = chefe.cfg;
   const sabeExausto = fq.porEstado.exausto && intel[fq.porEstado.exausto.chave];
   let txt = '';
+  const sv = f.soVulneravelEm;
+  const guardado = sv && sv.indexOf(chefe.estado) < 0;
   if(chefe.estado === 'exausto' && sabeExausto) txt = 'sem fôlego';
   else if(chefe.estado === 'zonzo') txt = 'zonzo';
   else if(chefe.estado === 'atordoado') txt = 'atordoado';
@@ -2039,6 +2041,9 @@ function atualizarBarraChefe(){
       : 'cavando...';
   else if(chefe.estado === 'combo' && sabeExausto)
     txt = 'golpe ' + Math.min(f.comboGolpes, chefe.golpes+1) + ' de ' + f.comboGolpes;
+  /* fora dos estados vulneráveis a lâmina não entra: o HUD avisa, senão o
+     jogador acha que o golpe está bugado */
+  if(guardado && !txt) txt = 'guarda fechada';
   el('chefeEstado').textContent = txt;
 }
 
@@ -2047,6 +2052,15 @@ function golpear(alvo){
   if(chefeSubmerso(alvo)) return;      // debaixo da terra não há o que cortar
   jog.golpe = .2; jog.recarga = .36;
   sGolpe();
+  /* chefe que só abre a guarda em certos estados (cfg.soVulneravelEm): fora
+     deles a lâmina bate na pá e volta — o golpe existe, o dano não */
+  const sv = alvo.cfg && alvo.cfg.soVulneravelEm;
+  if(sv && sv.indexOf(alvo.estado) < 0){
+    sClash(); tremor = 3;
+    faisca(alvo.x + (jog.x < alvo.x ? -1 : 1)*alvo.raio*.8, alvo.y - .2, '#cfd6e8', .12);
+    flutuar(alvo.x, alvo.y - .5, 'guardado', '#9aa4bd');
+    return;
+  }
   const dx = alvo.x-jog.x, dy = alvo.y-jog.y, d = Math.hypot(dx,dy);
   jog.angulo = Math.atan2(dy,dx);
   let dano = jog.dano + irand(5);
@@ -8158,6 +8172,20 @@ function pintarFunCriptaSalao(cmx, T){
   for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
     if(tf(x,y) !== CHAO2) continue;
     const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
+    /* o chão da cova é TERRA, não pedra: cobre a laje inteira antes de tudo */
+    const gT = cmx.createLinearGradient(px, py, px, py + T);
+    gT.addColorStop(0, h > .5 ? '#4a4034' : '#443a2f');
+    gT.addColorStop(1, h > .5 ? '#3a3129' : '#352d26');
+    cmx.fillStyle = gT; cmx.fillRect(px, py, T, T);
+    cmx.fillStyle = 'rgba(120,104,80,' + (.05 + h*.07) + ')';   // poeira levantada
+    cmx.fillRect(px, py, T, T*.3);
+    for(let k=0; k<5; k++){                              // pedrinhas e raízes na terra batida
+      const hx = hash(x*3.3 + k, y*8.1), hy = hash(x*6.7, y*2.9 + k);
+      cmx.fillStyle = hx > .7 ? 'rgba(150,134,108,.22)' : 'rgba(22,18,14,.30)';
+      cmx.beginPath();
+      cmx.ellipse(px + T*hx, py + T*hy, 1 + hx*2.2, .8 + hy*1.6, hx*4, 0, TAU);
+      cmx.fill();
+    }
     if(h > .3){                                          // terra revolvida em manchas miúdas
       for(let k=0; k<3; k++){
         const hx = hash(x*7 + k, y*5), hy = hash(x*5, y*7 + k);
@@ -8261,6 +8289,121 @@ function pintarFunCriptaSalao(cmx, T){
   };
   pLapide(35.2, 5.2, -.14);
   pLapide(41.8, 10.6, .11);
+  pLapide(31.4, 11.9, -.2);
+  pLapide(38.6, 4.8, .16);
+  pLapide(42.6, 15.2, -.09);
+
+  /* a cova é um cemitério inteiro: cruzes fincadas, caveiras, caixões
+     empilhados e as oferendas de quem veio despedir-se */
+  const pCruz = (x, y, alt2, ang) => {
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.4)';
+    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.1, T*.3, T*.1, 0, 0, TAU); cmx.fill();
+    cmx.save(); cmx.translate(px, py); cmx.rotate(ang);
+    const h2 = T*alt2, e = Math.max(2.4, T*.11);
+    cmx.fillStyle = '#4b3d2c';                            // o madeirame
+    cmx.fillRect(-e/2, -h2, e, h2);
+    cmx.fillRect(-T*.3, -h2*.72, T*.6, e*.86);
+    cmx.fillStyle = 'rgba(205,186,150,.2)';               // a face que pega luz
+    cmx.fillRect(-e/2, -h2, e*.4, h2);
+    cmx.fillRect(-T*.3, -h2*.72, T*.6, 1.6);
+    cmx.strokeStyle = 'rgba(18,14,10,.5)'; cmx.lineWidth = 1;
+    cmx.strokeRect(-e/2, -h2, e, h2);
+    cmx.fillStyle = 'rgba(70,58,44,.5)';                  // o barbante amarrando o travessão
+    cmx.fillRect(-e*.9, -h2*.72 - 1, e*1.8, 2);
+    cmx.restore();
+  };
+  [[32.4,7.6,.95,-.10],[36.1,13.4,1.1,.13],[40.2,6.4,.85,-.16],
+   [33.8,15.4,1.0,.08],[42.2,12.1,.9,-.05],[30.9,4.9,.8,.18]]
+    .forEach(([x,y,a,g]) => pCruz(x, y, a, g));
+
+  const pCaveira = (x, y, esc2) => {
+    const px = x*T, py = y*T, r2 = T*.16*esc2;
+    cmx.fillStyle = 'rgba(0,0,0,.4)';
+    cmx.beginPath(); cmx.ellipse(px + r2*.2, py + r2*.5, r2*1.1, r2*.4, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#cfc7ae';                            // a caixa craniana
+    cmx.beginPath(); cmx.ellipse(px, py, r2, r2*.86, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#bdb49a';                            // o maxilar
+    cmx.beginPath(); cmx.ellipse(px, py + r2*.72, r2*.62, r2*.34, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#15161d';                            // as órbitas e o nariz
+    cmx.beginPath(); cmx.ellipse(px - r2*.36, py - r2*.1, r2*.26, r2*.24, 0, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(px + r2*.36, py - r2*.1, r2*.26, r2*.24, 0, 0, TAU); cmx.fill();
+    cmx.beginPath();
+    cmx.moveTo(px, py + r2*.1); cmx.lineTo(px - r2*.14, py + r2*.42); cmx.lineTo(px + r2*.14, py + r2*.42);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(255,252,240,.3)';               // o brilho no alto do crânio
+    cmx.beginPath(); cmx.ellipse(px - r2*.2, py - r2*.42, r2*.4, r2*.2, -.3, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(40,34,26,.4)'; cmx.lineWidth = 1;   // a sutura
+    cmx.beginPath(); cmx.moveTo(px - r2*.5, py - r2*.5); cmx.lineTo(px + r2*.2, py - r2*.72); cmx.stroke();
+  };
+  [[31.7,9.3,1],[34.6,10.8,.85],[39.4,15.6,1.1],[43.0,8.2,.9],
+   [37.2,5.9,.8],[30.6,14.2,1.05],[41.1,4.6,.85]]
+    .forEach(([x,y,e]) => pCaveira(x, y, e));
+
+  const pCaixaoPilha = (x, y, n) => {          // caixões empilhados à espera de cova
+    const px = x*T, py = y*T, w2 = T*1.5, h2 = T*.5;
+    cmx.fillStyle = 'rgba(0,0,0,.42)';
+    cmx.beginPath(); cmx.ellipse(px + T*.08, py + T*.16, w2*.6, T*.16, 0, 0, TAU); cmx.fill();
+    for(let k=n-1; k>=0; k--){
+      const ky = py - k*T*.22, incl = (hash(x + k, y)*2 - 1)*.05;
+      cmx.save(); cmx.translate(px, ky); cmx.rotate(incl);
+      cmx.fillStyle = k % 2 ? '#3c2f22' : '#4a3b2b';       // a tampa
+      cmx.beginPath();
+      cmx.moveTo(-w2/2, -h2*.28); cmx.lineTo(-w2*.16, -h2*.44); cmx.lineTo(w2/2, -h2*.2);
+      cmx.lineTo(w2/2, h2*.2);  cmx.lineTo(-w2*.16, h2*.44); cmx.lineTo(-w2/2, h2*.28);
+      cmx.closePath(); cmx.fill();
+      cmx.fillStyle = 'rgba(206,186,146,.16)';             // a luz na quina de cima
+      cmx.beginPath();
+      cmx.moveTo(-w2/2, -h2*.28); cmx.lineTo(-w2*.16, -h2*.44); cmx.lineTo(w2/2, -h2*.2);
+      cmx.lineTo(w2/2, -h2*.1); cmx.lineTo(-w2*.16, -h2*.32); cmx.lineTo(-w2/2, -h2*.18);
+      cmx.closePath(); cmx.fill();
+      cmx.strokeStyle = 'rgba(14,10,6,.6)'; cmx.lineWidth = 1.4;
+      cmx.beginPath(); cmx.moveTo(-w2*.16, -h2*.44); cmx.lineTo(-w2*.16, h2*.44); cmx.stroke();
+      cmx.fillStyle = 'rgba(90,74,52,.7)';                 // as cintas de ferro
+      cmx.fillRect(-w2*.02, -h2*.4, 2.4, h2*.8);
+      cmx.fillRect(w2*.3, -h2*.32, 2.4, h2*.62);
+      cmx.restore();
+    }
+  };
+  pCaixaoPilha(31.9, 6.2, 3);
+  pCaixaoPilha(42.0, 14.2, 2);
+  pCaixaoPilha(36.4, 4.6, 2);
+
+  const pOferenda = (x, y, tipo) => {          // o que os vivos deixam para os mortos
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.34)';
+    cmx.beginPath(); cmx.ellipse(px + T*.04, py + T*.08, T*.2, T*.08, 0, 0, TAU); cmx.fill();
+    if(tipo === 0){                            // tigela de barro com grão
+      cmx.fillStyle = '#7b5a3e';
+      cmx.beginPath(); cmx.ellipse(px, py, T*.17, T*.1, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = '#c8ab74';
+      cmx.beginPath(); cmx.ellipse(px, py - T*.02, T*.12, T*.06, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,246,220,.25)';
+      cmx.beginPath(); cmx.ellipse(px - T*.05, py - T*.04, T*.05, T*.025, -.3, 0, TAU); cmx.fill();
+    } else if(tipo === 1){                     // ramo de flores secas amarrado
+      cmx.strokeStyle = '#6b5a3a'; cmx.lineWidth = Math.max(1.4, T*.05);
+      cmx.beginPath(); cmx.moveTo(px - T*.16, py + T*.05); cmx.lineTo(px + T*.14, py - T*.06); cmx.stroke();
+      for(let k=0; k<5; k++){
+        const a = k/5*TAU, fx = px + T*.14 + Math.cos(a)*T*.07, fy = py - T*.06 + Math.sin(a)*T*.05;
+        cmx.fillStyle = ['#b8a075','#cbb489','#9a8fa8'][k % 3];
+        cmx.beginPath(); cmx.ellipse(fx, fy, T*.045, T*.032, a, 0, TAU); cmx.fill();
+      }
+      cmx.fillStyle = 'rgba(180,160,120,.5)';
+      cmx.fillRect(px - T*.02, py - T*.01, T*.05, T*.04);
+    } else {                                   // moeda e caneca viradas
+      cmx.fillStyle = '#8a8a96';
+      cmx.beginPath(); cmx.ellipse(px, py, T*.13, T*.09, .3, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(20,18,24,.5)';
+      cmx.beginPath(); cmx.ellipse(px, py, T*.07, T*.05, .3, 0, TAU); cmx.fill();
+      cmx.fillStyle = '#c9a24a';
+      cmx.beginPath(); cmx.arc(px + T*.18, py + T*.05, T*.05, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,240,190,.4)';
+      cmx.beginPath(); cmx.arc(px + T*.17, py + T*.04, T*.02, 0, TAU); cmx.fill();
+    }
+  };
+  [[33.0,6.0,1],[35.6,11.3,0],[40.6,9.1,2],[32.2,13.0,1],
+   [38.0,15.0,0],[43.2,11.4,1],[37.4,7.2,2]]
+    .forEach(([x,y,t]) => pOferenda(x, y, t));
 
   /* ============ 4. ESCADA DE CHEGADA (x36..43, y48..54) ============
      degraus largos subindo do piso 2: linha de sombra no alto de cada
@@ -8535,12 +8678,16 @@ const PISO_FUNERAL = {
     cfg:{
       nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
       retrato:'img/fase3/coveiro.png',
-      esperaT:1.1, aproximaT:1.6, velAproxima:2.4,
-      comboDist:2.4, comboIntervalo:.55, comboGolpes:1,
-      comboDano:[34], comboAlcance:[2.6],            // a pazada (o Avental derruba p/ 14 no aoIniciar)
-      cavaT:.55, persegueVel:3.4, persegueT:2.6,
-      irromperRaio:2.2, irromperAvisoT:1.0, irromperDano:36,
-      atordoadoT:2.2, mergulhosAteExausto:2, exaustoT:2.4,
+      /* ele não deixa ninguém chegar perto: mal respira entre um golpe e outro,
+         anda depressa e ataca de longe, com dois talhos de pá seguidos */
+      esperaT:.35, aproximaT:2.6, velAproxima:3.6,
+      comboDist:3.4, comboIntervalo:.42, comboGolpes:2,
+      comboDano:[34, 34], comboAlcance:[3.0, 3.0],   // a pazada (o Avental derruba p/ 14 no aoIniciar)
+      /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
+      soVulneravelEm:['atordoado','exausto'],
+      cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
+      irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
+      atordoadoT:2.6, mergulhosAteExausto:2, exaustoT:2.8,
       tremorPasso:7,
       sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2',
             entrada:'fase3/vozes/coveiro-entrada', golpe:'fase3/vozes/coveiro-golpe',
