@@ -8,12 +8,12 @@ Uso:
     python3 testes/pinterest.py "cozinha" --dest img/fase2 --n 8
     python3 testes/pinterest.py "coveiro" --dest img/fase3 --n 6 --prefixo npc
 
-A chave de busca vira: "medieval rpg 2d" + <tema>.
+A chave de busca vira: <tema> + "rpg 2D medieval" (o tema vem primeiro).
 Baixa as maiores versões (/originals/) e ignora repetidas e miniaturas.
 """
 import argparse, pathlib, re, shutil, subprocess, sys, urllib.parse
 
-BUSCA = 'https://pt.pinterest.com/search/pins/?q=medieval%20rpg%202d%20'
+BUSCA = 'https://pt.pinterest.com/search/pins/?q='
 UA = ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
 MIN_LADO = 400          # abaixo disso é miniatura do feed, não serve de asset
@@ -25,7 +25,7 @@ def coletar(tema: str, quantos: int) -> list[str]:
     with sync_playwright() as p:
         nav = p.chromium.launch(headless=True)
         pag = nav.new_page(user_agent=UA, viewport={'width': 1400, 'height': 1000})
-        pag.goto(BUSCA + urllib.parse.quote(tema), wait_until='domcontentloaded', timeout=60000)
+        pag.goto(BUSCA + urllib.parse.quote(f'{tema} rpg 2D medieval'), wait_until='domcontentloaded', timeout=60000)
         pag.wait_for_timeout(4000)
         for _ in range(6):                       # rola para o feed carregar mais pins
             achadas = pag.eval_on_selector_all(
@@ -88,7 +88,7 @@ def baixar(urls, dest: pathlib.Path, prefixo: str, quantos: int) -> list[pathlib
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument('tema', help='tema da busca, somado a "medieval rpg 2d"')
+    ap.add_argument('tema', help='tema da busca; a chave final é "<tema> rpg 2D medieval"')
     ap.add_argument('--dest', default='img/tmp', help='pasta de destino')
     ap.add_argument('--n', type=int, default=6, help='quantas imagens baixar')
     ap.add_argument('--prefixo', default=None, help='prefixo dos arquivos (padrão: o tema)')
@@ -98,7 +98,7 @@ def main() -> int:
     if not shutil.which('curl'):
         print('ERRO: curl não encontrado', file=sys.stderr)
         return 1
-    print(f'buscando: "medieval rpg 2d {a.tema}"')
+    print(f'buscando: "{a.tema} rpg 2D medieval"')
     urls = coletar(a.tema, a.n)
     print(f'{len(urls)} candidatas; baixando até {a.n} para {a.dest}/')
     salvos = baixar(urls, pathlib.Path(a.dest), prefixo, a.n)

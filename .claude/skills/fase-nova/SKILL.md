@@ -59,7 +59,7 @@ Ao fim: escrever `faseN.prd` inteiro a partir do `fase-template.prd`, com **toda
 
 ## 2. Imagens do cenário (Pinterest) → revisão
 
-Buscar em **pt.pinterest.com** com a chave `"medieval rpg 2d" + tema` (ex.: `medieval rpg 2d cozinha`, `medieval rpg 2d cripta`).
+Buscar em **pt.pinterest.com** com a chave `tema + "rpg 2D medieval"` — o tema vem **primeiro** (ex.: `cozinha rpg 2D medieval`, `cripta rpg 2D medieval`, `rezador rpg 2D medieval`).
 
 **Raspar com Playwright** — o script `testes/pinterest.py` do repositório já faz tudo (o HTML cru vem sem imagens, carregadas por JS, e o endpoint `BaseSearchResource` devolve 403; por isso navegador de verdade):
 
@@ -68,9 +68,15 @@ python3 testes/pinterest.py "cozinha" --dest img/faseN --n 8
 python3 testes/pinterest.py "coveiro" --dest img/faseN --n 6 --prefixo npc
 ```
 
-Ele monta a chave `"medieval rpg 2d" + tema`, rola o feed para carregar mais pins, prefere a versão `/originals/` (com a servida como reserva), baixa com **curl** (o `urllib` do macOS falha com `CERTIFICATE_VERIFY_FAILED`) e descarta miniatura por dimensão (< 400 px de lado). Se o Chromium do Playwright faltar: `python3 -m playwright install chromium`.
+Ele monta a chave `<tema> rpg 2D medieval`, rola o feed para carregar mais pins, prefere a versão `/originals/` (com a servida como reserva), baixa com **curl** (o `urllib` do macOS falha com `CERTIFICATE_VERIFY_FAILED`) e descarta miniatura por dimensão (< 400 px de lado). Se o Chromium do Playwright faltar: `python3 -m playwright install chromium`.
 
 Buscar **um termo por família de objeto** do §3.1 do PRD (mobília, utensílios, obstáculo, porta, janela, itens de cura) e trazer 3–5 opções de cada.
+
+**Curadoria de estilo — descartar antes de mandar para revisão** (olhar cada download com `Read`):
+
+- **Ficam**: arte pintada 2D de jogo / concept art com traço definido e cores chapadas-pintadas — o estilo que o cenário incorpora bem (ex. da fase 3: `coveiro-b-1.jpg`, `caixao-3.jpg`, `carpinteiro-aj-2.jpg`).
+- **Caem**: renders foto-realistas ou 3D (parecem foto de maquete; o jogo não consegue incorporar — ex.: `carpinteiro-aj-4/5.jpg` da fase 3), pixel-art de resolução baixa que chega pixelada, e qualquer imagem com **marca d'água** de banco de imagens (ex.: `caixao-5.jpg`).
+- Na dúvida entre 2 candidatas, escolher a mais próxima do traço das já aprovadas nas fases anteriores.
 
 **PARE e peça revisão:** enviar as imagens com `SendUserFile` e perguntar quais entram. Só depois de aprovadas, recortar fundo:
 
@@ -84,11 +90,11 @@ uvx --with onnxruntime "rembg[cli]" i entrada.jpg saida.png     # arte/foto
 
 ## 3. Imagens dos personagens → revisão
 
-Mesmo script, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinheira`, `medieval rpg 2d coveiro`).
+Mesmo script, chave `papel + "rpg 2D medieval"` (ex.: `cozinheira rpg 2D medieval`, `coveiro rpg 2D medieval`).
 
 - Um recorte por informante, **PNG sem fundo**, corpo inteiro, de pé.
 - Conferir o recorte olhando o PNG (`Read`) antes de instalar: rembg corta braços e pernas quando o fundo é claro ou o membro se confunde com o cenário — se sair pela metade, escolher **outra figura** em vez de insistir.
-- **Coadjuvantes**: pesquisar as imagens deles com o MESMO mecanismo (`testes/pinterest.py`, chave `"medieval rpg 2d" + papel do grupo` — ex.: `carpideiras velório`, `lavadeiras medievais`); uma cena coletiva rende 4–5 recortes.
+- **Coadjuvantes**: pesquisar as imagens deles com o MESMO mecanismo (`testes/pinterest.py`, chave `papel do grupo + "rpg 2D medieval"` — ex.: `carpideiras velório`, `lavadeiras medievais`); uma cena coletiva rende 4–5 recortes.
 
 **PARE e peça revisão** com `SendUserFile` antes de seguir.
 
@@ -96,7 +102,7 @@ Mesmo script, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinheir
 
 ## 4. Imagem do chefão → revisão
 
-Mesmo script, chave `"medieval rpg 2d" + chefe` (ex.: `medieval rpg 2d butcher boss`).
+Mesmo script, chave `chefe + "rpg 2D medieval"` (ex.: `butcher boss rpg 2D medieval`).
 
 Requisitos herdados, inegociáveis:
 
