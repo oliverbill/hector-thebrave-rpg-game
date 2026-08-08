@@ -3037,10 +3037,25 @@ function desenharArmaNaMao(px, py, r){
   }
   const alt = tam*cfgA.alt, lar = im.naturalWidth*(alt/im.naturalHeight);
   ctx.save();
-  ctx.translate(mx, my);
-  // a rotação leva a parte "de ataque" da imagem para fora, na direção do golpe
-  ctx.rotate(ang + cfgA.rot + (p > 0 ? 0 : .35));
-  ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);     // pivô na empunhadura, junto à mão
+  if(p > 0){
+    // golpe: a rotação leva a parte "de ataque" da imagem para fora, na direção do arco
+    ctx.translate(mx, my);
+    ctx.rotate(ang + cfgA.rot);
+    ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);   // pivô na empunhadura, junto à mão
+  } else {
+    /* em repouso: a arma fica ERGUIDA, cabeça para cima e lâmina para fora,
+       segura à frente do corpo com as duas mãos (F: pedido do dono) */
+    const virado = Math.cos(jog.angulo) < 0;
+    ctx.translate(px + (mx - px)*.45, my - r*.06);         // puxa para o eixo do corpo
+    if(virado) ctx.scale(-1, 1);                           // a lâmina acompanha o olhar
+    ctx.rotate(-.09);                                      // leve inclinação, nada de tombar
+    ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
+    /* a segunda mão fecha no cabo, acima da empunhadura */
+    ctx.fillStyle = '#c98f5e';
+    ctx.beginPath(); ctx.ellipse(0, -alt*(cfgA.pivo*.5), r*.13, r*.10, .25, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(60,30,15,.65)'; ctx.lineWidth = 1;
+    ctx.stroke();
+  }
   ctx.restore();
 }
 function golpeDeArma(){
