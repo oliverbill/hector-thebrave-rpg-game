@@ -7554,15 +7554,6 @@ function pintarFunCriptaSalao(cmx, T){
       cmx.ellipse(px + T*h, py + T*(1 - h*.7), T*(.3 + h*.25), T*(.15 + h*.12), h*3, 0, TAU);
       cmx.fill();
     }
-    /* a superfície: riscos horizontais claros que denunciam líquido parado
-       (é o que faltava — no escuro puro a água lia como buraco) */
-    for(let k=0; k<3; k++){
-      const hk = rnd(x*5 + k, y*3 + k*7);
-      cmx.strokeStyle = 'rgba(178,214,208,' + (.07 + hk*.16) + ')';
-      cmx.lineWidth = .8 + hk*1.4;
-      const ly = py + T*(.12 + k*.31 + hk*.14), lx = px + T*(hk*.3);
-      cmx.beginPath(); cmx.moveTo(lx, ly); cmx.lineTo(lx + T*(.35 + hk*.5), ly); cmx.stroke();
-    }
     // o céu de pedra refletido: manchas frias e largas
     if(h > .42){
       cmx.fillStyle = 'rgba(126,164,168,' + (.05 + h*.07) + ')';
