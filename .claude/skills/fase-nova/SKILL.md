@@ -242,7 +242,8 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 4. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
 5. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
 6. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
-7. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **conferir o deploy**: o GitHub Pages usa build legado — se o build falhar, checar `gh api repos/OWNER/REPO/pages/builds/latest` (o `.nojekyll` na raiz já resolve o caso conhecido).
+7. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
+8. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
 
 ## Armadilhas conhecidas
 
