@@ -80,7 +80,16 @@ Buscar **um termo por família de objeto** do §3.1 do PRD (mobília, utensílio
 - **Caem**: renders foto-realistas ou 3D (parecem foto de maquete; o jogo não consegue incorporar — ex.: `carpinteiro-aj-4/5.jpg` da fase 3), pixel-art de resolução baixa que chega pixelada, e qualquer imagem com **marca d'água** de banco de imagens (ex.: `caixao-5.jpg`).
 - Na dúvida entre 2 candidatas, escolher a mais próxima do traço das já aprovadas nas fases anteriores.
 
-**PARE e peça revisão:** enviar as imagens com `SendUserFile` e perguntar quais entram. Só depois de aprovadas, recortar fundo:
+**PARE e peça revisão — um tema por vez, com o caminho de cada arquivo.** Nada de folha de contato única com tudo junto: para **cada tema** (mobília, porta, janela, obstáculo, cada personagem, o chefe…), mandar as candidatas daquele tema com `SendUserFile` e **listar na resposta o caminho completo de cada uma**, numerado, para o dono abrir e escolher:
+
+```
+Porta — escolha uma:
+1. /Users/.../img/faseN/porta-1.jpg
+2. /Users/.../img/faseN/porta-2.jpg
+3. /Users/.../img/faseN/porta-5.jpg
+```
+
+Esperar a escolha desse tema antes de mandar o próximo. Só depois de aprovadas, recortar fundo:
 
 ```bash
 uvx --with onnxruntime "rembg[cli]" i entrada.jpg saida.png     # arte/foto
@@ -98,7 +107,7 @@ Mesmo script, chave `papel + "rpg 2D medieval"` (ex.: `cozinheira rpg 2D medieva
 - Conferir o recorte olhando o PNG (`Read`) antes de instalar: rembg corta braços e pernas quando o fundo é claro ou o membro se confunde com o cenário — se sair pela metade, escolher **outra figura** em vez de insistir.
 - **Coadjuvantes**: pesquisar as imagens deles com o MESMO mecanismo (`testes/pinterest.py`, chave `papel do grupo + "rpg 2D medieval"` — ex.: `carpideiras velório`, `lavadeiras medievais`); uma cena coletiva rende 4–5 recortes.
 
-**PARE e peça revisão** com `SendUserFile` antes de seguir.
+**PARE e peça revisão** com `SendUserFile` antes de seguir — **um personagem por vez**, listando o caminho de cada candidata para o dono abrir (mesmo formato da etapa 2).
 
 ---
 
@@ -113,7 +122,7 @@ Requisitos herdados, inegociáveis:
 - **`tremorPasso`** no `cfg`: o chão treme a cada pisada.
 - Retrato do chefe pode ser o próprio sprite recortado.
 
-**PARE e peça revisão.**
+**PARE e peça revisão** — mandar as candidatas do chefe com `SendUserFile` e listar o caminho de cada uma.
 
 ---
 
