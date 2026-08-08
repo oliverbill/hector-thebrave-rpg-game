@@ -1839,6 +1839,14 @@ function golpeChefe(dano, alcance){
 }
 function atualizarChefe(dt){
   const c = chefe, f = c.cfg;
+  /* a cartada final: quando a vida cai abaixo do limiar, uma vez só */
+  if(f.desespero){
+    if(atualizarDesespero(c, f, dt)){ c.t -= dt; c.fase += dt; atualizarBarraChefe(); return; }
+    if(!c.usouDesespero && c.hp <= c.hpMax*f.desespero.abaixoDe &&
+       c.estado !== 'atordoado' && Math.hypot(jog.x-c.x, jog.y-c.y) < f.desespero.alcance){
+      entrarAbraco(c, f); return;
+    }
+  }
   c.flash = Math.max(0, c.flash - dt*3);
   c.escudoBate = Math.max(0, c.escudoBate - dt);
   c.golpeAnim = Math.max(0, c.golpeAnim - dt);
@@ -1979,7 +1987,65 @@ function entrarCava(c, f){
 /* debaixo da terra ele não é visto, não empurra e não leva golpe */
 function chefeSubmerso(c){
   return !!(c && c.cfg && c.cfg.cavaT) &&
-         (c.estado === 'cava' || c.estado === 'persegue' || c.estado === 'irrompe');
+         (c.estado === 'cava' || c.estado === 'persegue' || c.estado === 'irrompe' ||
+          c.estado === 'enterrando');
+}
+/* ---- o desespero do chefe encurralado (cfg.desespero) ----
+   Quase morto, ele agarra o jogador, afunda os dois na terra por alguns
+   segundos e sai cuspindo a vítima longe. Escapar não dá: é o preço de
+   deixá-lo chegar a esta altura da vida. */
+function entrarAbraco(c, f){
+  const de = f.desespero;
+  c.estado = 'abraca'; c.t = .5;
+  c.vx = c.vy = 0;
+  c.usouDesespero = true;
+  jog.vx = jog.vy = 0;
+  tremor = 14;
+  if(de.aviso) avisar(de.aviso[0], de.aviso[1]);
+  if(f.sons && f.sons.cava) vozChefe(f.sons.cava);
+  for(let k=0;k<24;k++) terraRevolvida(c.x + (Math.random()-.5)*2.4, c.y + (Math.random()-.5)*1.2);
+}
+function atualizarDesespero(c, f, dt){
+  const de = f.desespero;
+  switch(c.estado){
+    case 'abraca':                       // o bote: ele fecha os braços no jogador
+      c.x += (jog.x - c.x)*Math.min(1, dt*9);
+      c.y += (jog.y - c.y)*Math.min(1, dt*9);
+      jog.vx = jog.vy = 0;
+      if(c.t <= 0){
+        c.estado = 'enterrando'; c.t = de.enterradoT;
+        tremor = 16;
+        for(let k=0;k<30;k++) terraRevolvida(jog.x + (Math.random()-.5)*2, jog.y + (Math.random()-.5)*1.4);
+      }
+      return true;
+    case 'enterrando': {                 // os dois debaixo da terra: dreno e escuro
+      c.x = jog.x; c.y = jog.y;
+      jog.vx = jog.vy = 0;
+      c.dreno = (c.dreno || 0) + dt;
+      if(c.dreno >= 1){                  // uma dentada de dano por segundo lá embaixo
+        c.dreno -= 1;
+        jog.invul = 0; machucar(de.danoPorSegundo, Math.random()*TAU);
+        if(Math.random() < .6) terraRevolvida(jog.x + (Math.random()-.5)*1.2, jog.y);
+      }
+      if(Math.random() < .35) terraRevolvida(jog.x + (Math.random()-.5)*2, jog.y + .3);
+      if(c.t <= 0){
+        c.estado = 'cospe'; c.t = .35;
+        const a = Math.random()*TAU;      // e o arremesso: para longe, sem escolher onde
+        jog.vx = Math.cos(a)*de.arremesso; jog.vy = Math.sin(a)*de.arremesso;
+        jog.invul = 0; machucar(de.danoArremesso, a);
+        jog.dash = 0; jog.dashCd = 1;
+        tremor = 18;
+        if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe);
+        for(let k=0;k<34;k++) terraRevolvida(c.x + (Math.random()-.5)*2.6, c.y + (Math.random()-.5)*1.6);
+      }
+      return true;
+    }
+    case 'cospe':                        // ele sai da terra ofegante: a janela do jogador
+      c.vx *= .8; c.vy *= .8;
+      if(c.t <= 0){ c.estado = 'exausto'; c.t = f.exaustoT; }
+      return true;
+  }
+  return false;
 }
 /* torrão de terra revolvida saltando do chão */
 const CORES_TERRA = ['#4a3a26','#5c4830','#3a2d1d','#6b5638'];
@@ -1994,6 +2060,25 @@ function desenharChefeSubterraneo(c, ox, oy){
   const f = c.cfg;
   if(!chefeSubmerso(c)) return false;
   const px = ox + c.x*tam, py = oy + c.y*tam;
+  if(c.estado === 'enterrando'){
+    /* os dois estão lá embaixo: a tela escurece e a terra ferve por cima */
+    const p = 1 - Math.max(0, c.t)/f.desespero.enterradoT;
+    ctx.fillStyle = 'rgba(12,8,4,' + (.55 + Math.sin(tempo*3)*.06) + ')';
+    ctx.fillRect(0, 0, tela.width, tela.height);
+    const bx = ox + jog.x*tam, by = oy + jog.y*tam;
+    for(let i=0;i<4;i++){
+      const w = Math.sin(tempo*9 + i*1.7);
+      ctx.fillStyle = i === 1 ? '#5c4830' : '#4a3a26';
+      ctx.beginPath();
+      ctx.ellipse(bx + (i-1.5)*tam*.5 + w*tam*.1, by + tam*.06 - Math.abs(w)*tam*.14,
+                  tam*(.5 - i*.06), tam*(.3 - i*.04), w*.25, 0, TAU);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(226,74,74,' + (.25 + .3*Math.abs(Math.sin(tempo*6))) + ')';
+    ctx.lineWidth = Math.max(2, tam*.1);
+    ctx.beginPath(); ctx.arc(bx, by, tam*(1.1 + p*.5), 0, TAU); ctx.stroke();
+    return true;
+  }
   if(c.estado === 'cava') return false;         // ainda afundando: o conteúdo desenha o mergulho
   // lombadas de terra revolvida se deslocando
   ctx.fillStyle = 'rgba(0,0,0,.35)';
@@ -2052,6 +2137,9 @@ function atualizarBarraChefe(){
     txt = 'golpe ' + Math.min(f.comboGolpes, chefe.golpes+1) + ' de ' + f.comboGolpes;
   /* fora dos estados vulneráveis a lâmina não entra: o HUD avisa, senão o
      jogador acha que o golpe está bugado */
+  if(chefe.estado === 'abraca') txt = 'ele te agarrou';
+  else if(chefe.estado === 'enterrando') txt = 'debaixo da terra';
+  else if(chefe.estado === 'cospe') txt = 'te cuspiu fora';
   if(guardado && !txt) txt = 'guarda fechada';
   el('chefeEstado').textContent = txt;
 }
@@ -2321,7 +2409,7 @@ function desenhar(){
 
   informantes.forEach(p => desenharInformante(p, ox, oy));
   if(chefe && chefe.hp > 0 && !desenharChefeSubterraneo(chefe, ox, oy)) piso.chefe.desenhar(chefe, ox, oy);
-  if(vivo) desenharJogador(ox, oy);
+  if(vivo && !(chefe && chefe.estado === 'enterrando')) desenharJogador(ox, oy);
 
   particulas.forEach(p => {
     ctx.globalAlpha = Math.max(0, p.vida);
@@ -8697,6 +8785,12 @@ const PISO_FUNERAL = {
       /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
       soVulneravelEm:['atordoado','exausto'],
       reageDeImediato:true,                          // chegou perto, leva pazada
+      /* a apelação: quase morto, ele abraça o jogador e enterra os dois */
+      desespero:{
+        abaixoDe:.18, alcance:6.5, enterradoT:5,
+        danoPorSegundo:7, danoArremesso:18, arremesso:26,
+        aviso:['Ele te agarra', 'se você desce, desce comigo!']
+      },
       cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
       irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
       atordoadoT:2.6, mergulhosAteExausto:2, exaustoT:2.8,
