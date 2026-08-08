@@ -27,6 +27,8 @@ Abra `castelo.html` em qualquer navegador (ou adicione à tela inicial do iPhone
 - **Ação contextual** (FORÇAR / FALAR / ABRIR) — botão âmbar ou E
 - **Golpe de facão** (depois de achá-lo nas catacumbas) — botão ⚔ ou F; o facão fica na mão do jogador e abre um popup de Inventário ao ser pego
 - **Bolsa/Inventário** — botão ☰ ou I
+- **Pausar** — botão ❚❚ no canto superior direito, ou P/Esc: congela o mundo e cala música, ambientes e voz; volta no ponto exato
+- **Fechar o jogo** — botão ✕ ao lado, sempre visível: pergunta antes e despede-se (o navegador só fecha sozinho a aba que ele mesmo abriu)
 - **Esparadrapo** (cura 25% da vida) — dois na areia, um em cada canto de cima, só durante a luta com o Gladiador; repostos a cada tentativa
 
 Cada botão traz a tecla correspondente impressa no rótulo.
