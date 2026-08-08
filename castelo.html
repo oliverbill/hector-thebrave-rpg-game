@@ -6417,6 +6417,82 @@ function desenharCoveiro(c, ox, oy){
   }
 }
 
+/* --- a cripta alagada viva: brilho que corre na lâmina e goteiras pingando.
+   O cache dá a cor; isto dá o movimento que faz o olho ler ÁGUA. --- */
+const CRIPTA = {x1:15, y1:32, x2:28, y2:42};
+const GOTEIRAS = [[18.5,38.2],[24.5,36.6],[20.8,41.6],[26.3,40.1],[17.2,34.8]];
+function desenharAguaCripta(ox, oy){
+  const x0 = ox + CRIPTA.x1*tam, y0 = oy + CRIPTA.y1*tam;
+  const larg = (CRIPTA.x2 - CRIPTA.x1 + 1)*tam, alt = (CRIPTA.y2 - CRIPTA.y1 + 1)*tam;
+  if(foraDaVista(x0 + larg/2, y0 + alt/2, Math.max(larg, alt))) return;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0, y0, larg, alt); ctx.clip();   // nada escapa para a margem
+
+  /* faixas de brilho arrastando devagar: a superfície respira */
+  for(let k=0; k<7; k++){
+    const fase = tempo*.13 + k*.37;
+    const fy = y0 + ((fase % 1) * alt);
+    const fx = x0 + Math.sin(tempo*.5 + k*2.1)*tam*.9;
+    const g = ctx.createLinearGradient(0, fy - tam*.5, 0, fy + tam*.5);
+    g.addColorStop(0, 'rgba(150,200,196,0)');
+    g.addColorStop(.5, 'rgba(150,200,196,' + (.05 + Math.abs(Math.sin(tempo*.4 + k))*.05) + ')');
+    g.addColorStop(1, 'rgba(150,200,196,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(fx, fy - tam*.5, larg, tam);
+  }
+  /* rugas curtas que aparecem e somem, espalhadas pela lâmina */
+  ctx.strokeStyle = 'rgba(190,226,220,.22)';
+  for(let k=0; k<22; k++){
+    const hx = hash(k*3.3, 7.1), hy = hash(k*5.9, 2.3);
+    const rx = x0 + hx*larg, ry = y0 + hy*alt;
+    const p = (tempo*.35 + hx*3 + hy*5) % 1;
+    const op = Math.sin(p*Math.PI);
+    if(op <= .05) continue;
+    ctx.globalAlpha = op*.5;
+    ctx.lineWidth = 1 + op;
+    ctx.beginPath();
+    ctx.moveTo(rx - tam*.22, ry);
+    ctx.quadraticCurveTo(rx, ry - tam*.06*op, rx + tam*.22, ry);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  /* as goteiras: anel que nasce, cresce e some — o pulso da cripta */
+  GOTEIRAS.forEach(([gx, gy], i) => {
+    const px = ox + gx*tam, py = oy + gy*tam;
+    for(let k=0; k<3; k++){
+      const p = ((tempo*.5 + i*.6 + k*.33) % 1);
+      const raio = tam*(.1 + p*.55), op = (1 - p)*.35;
+      if(op <= .01) continue;
+      ctx.strokeStyle = 'rgba(198,232,226,' + op + ')';
+      ctx.lineWidth = Math.max(.8, 1.8*(1-p));
+      ctx.beginPath(); ctx.ellipse(px, py, raio, raio*.42, 0, 0, TAU); ctx.stroke();
+    }
+    // a gota caindo, que fecha o ciclo
+    const q = (tempo*.5 + i*.6) % 1;
+    if(q > .72){
+      const t2 = (q - .72)/.28;
+      ctx.fillStyle = 'rgba(210,238,232,' + (.5*(1-t2)) + ')';
+      ctx.beginPath();
+      ctx.ellipse(px, py - tam*(1.1 - t2*1.1), tam*.035, tam*.075, 0, 0, TAU);
+      ctx.fill();
+    }
+  });
+  /* o brilho do que está aceso perto: a água devolve a luz das velas */
+  braseiros.forEach(b => {
+    if(b.x < CRIPTA.x1 - 2 || b.x > CRIPTA.x2 + 2 || b.y < CRIPTA.y1 - 2 || b.y > CRIPTA.y2 + 2) return;
+    const px = ox + b.x*tam, py = oy + (b.y + .8)*tam;
+    const tremula = .6 + Math.sin(tempo*6 + b.fase)*.4;
+    const g = ctx.createLinearGradient(px, py, px, py + tam*2.4);
+    g.addColorStop(0, 'rgba(255,196,120,' + (.16*tremula) + ')');
+    g.addColorStop(1, 'rgba(255,196,120,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(px, py + tam*1.1, tam*.42, tam*1.2, 0, 0, TAU);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
 /* --- coadjuvantes: o velório na capela, com os rezadores recortados --- */
 const COADJ_FUN = [
   {img:'rezador-4', x:8.2,  y:9.5,  esc:1.12},              // de pé, diante do esquife
@@ -7409,7 +7485,7 @@ function pintarFunCriptaSalao(cmx, T){
   // um só gradiente radial para a lâmina d'água toda: verde-petróleo, sem azul
   const cxA = (CR.x1 + CR.x2 + 1)*.5*T, cyA = (CR.y1 + CR.y2 + 1)*.5*T;
   const gAgua = cmx.createRadialGradient(cxA, cyA, T*.6, cxA, cyA, (CR.x2 - CR.x1 + 1)*T*.62);
-  gAgua.addColorStop(0, '#17262a'); gAgua.addColorStop(1, '#0c1416');
+  gAgua.addColorStop(0, '#2e4c4a'); gAgua.addColorStop(.55, '#22393b'); gAgua.addColorStop(1, '#16272b');
   for(let y=CR.y1; y<=CR.y2; y++) for(let x=CR.x1; x<=CR.x2; x++){
     if(!naAgua(x,y)) continue;
     const px = x*T, py = y*T, h = rnd(x,y);
@@ -7421,10 +7497,21 @@ function pintarFunCriptaSalao(cmx, T){
       cmx.ellipse(px + T*h, py + T*(1 - h*.7), T*(.3 + h*.25), T*(.15 + h*.12), h*3, 0, TAU);
       cmx.fill();
     }
-    // réstia de reflexo na superfície parada
-    if(h > .28 && h < .48){
-      cmx.strokeStyle = 'rgba(120,150,150,.08)'; cmx.lineWidth = 1.2;
-      cmx.beginPath(); cmx.moveTo(px + T*.12, py + T*(.25 + h)); cmx.lineTo(px + T*.82, py + T*(.25 + h)); cmx.stroke();
+    /* a superfície: riscos horizontais claros que denunciam líquido parado
+       (é o que faltava — no escuro puro a água lia como buraco) */
+    for(let k=0; k<3; k++){
+      const hk = rnd(x*5 + k, y*3 + k*7);
+      cmx.strokeStyle = 'rgba(178,214,208,' + (.07 + hk*.16) + ')';
+      cmx.lineWidth = .8 + hk*1.4;
+      const ly = py + T*(.12 + k*.31 + hk*.14), lx = px + T*(hk*.3);
+      cmx.beginPath(); cmx.moveTo(lx, ly); cmx.lineTo(lx + T*(.35 + hk*.5), ly); cmx.stroke();
+    }
+    // o céu de pedra refletido: manchas frias e largas
+    if(h > .42){
+      cmx.fillStyle = 'rgba(126,164,168,' + (.05 + h*.07) + ')';
+      cmx.beginPath();
+      cmx.ellipse(px + T*(1-h), py + T*h, T*(.35 + h*.2), T*.1, 0, 0, TAU);
+      cmx.fill();
     }
     // onde a pedra mergulha: a quina clara e o paredão molhado descendo
     const ac = tf(x, y-1);
@@ -7450,6 +7537,16 @@ function pintarFunCriptaSalao(cmx, T){
       cmx.fillRect(px, py + T - bz - 1.6, T, 1.6);       // a quina pega luz antes de cair
       cmx.fillStyle = 'rgba(9,16,19,.6)';
       cmx.fillRect(px, py + T - bz, T, bz);
+      /* a orla: espuma suja e limo acumulado onde a água bate na pedra */
+      cmx.fillStyle = 'rgba(196,214,196,.22)';
+      cmx.fillRect(px, py + T, T, 2.4);
+      for(let k=0; k<3; k++){
+        const hk = rnd(x*11 + k, y*13);
+        cmx.fillStyle = 'rgba(150,178,150,' + (.10 + hk*.16) + ')';
+        cmx.beginPath();
+        cmx.ellipse(px + T*(.15 + k*.34 + hk*.1), py + T + 2 + hk*2, T*(.09 + hk*.07), 1.8 + hk*1.4, 0, 0, TAU);
+        cmx.fill();
+      }
     }
     cmx.fillStyle = 'rgba(9,16,19,.55)';
     if(naAgua(x+1, y)) cmx.fillRect(px + T - bz*.7, py, bz*.7, T);
@@ -8174,6 +8271,7 @@ const PISO_FUNERAL = {
     avisar('A terra se abre', 'a cova grande espera');
   },
   desenharCenario(ox, oy){
+    desenharAguaCripta(ox, oy);
     desenharCoadjuvantesFun(ox, oy);
     desenharVelasCaminho(ox, oy);
     desenharAguaBenta(ox, oy);
