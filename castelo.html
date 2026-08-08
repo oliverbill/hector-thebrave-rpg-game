@@ -8134,11 +8134,13 @@ const PISO_FUNERAL = {
       irromperRaio:2.2, irromperAvisoT:1.0, irromperDano:36,
       atordoadoT:2.2, mergulhosAteExausto:2, exaustoT:2.4,
       tremorPasso:7,
-      sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2'},
+      sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2',
+            entrada:'fase3/vozes/coveiro-entrada', golpe:'fase3/vozes/coveiro-golpe',
+            levaGolpe:'fase3/vozes/coveiro-levagolpe'},
       entrada:['O Coveiro', 'a pá dele nunca descansa'],
       abertura:{
         falas:['Eu cavo, você deita! Aqui embaixo ninguém reclama!'],
-        voz:{pitch:.5, rate:.8, genero:'m'}   // clipe real entra na etapa 6 (coveiro-entrada.mp3)
+        voz:{pitch:.5, rate:.8, genero:'m', audios:['audio/fase3/vozes/coveiro-entrada.mp3']}
       }
     },
     fraquezas:{
