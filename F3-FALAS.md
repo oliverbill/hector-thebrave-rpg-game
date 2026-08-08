@@ -9,7 +9,7 @@ Como nas Fases 1–2: as duas primeiras falas são ambientação, a terceira ent
 | Arquivo | Fala |
 |---|---|
 | `carpinteiro-1.mp3` | Parado aí! Um e oitenta, ombro largo. Pinho serve. Eu nunca errei uma medida. |
-| `carpinteiro-2.mp3` | Todo mundo que desce aquela escada acaba passando pela minha bancada. É só questão de tempo. |
+| `carpinteiro-2.mp3` | Todo mundo que entra nesse castelo passa pela minha bancada. É só questão de tempo! |
 | `carpinteiro-3.mp3` | Presta atenção na cova: quando ele some, deixa um rastro de terra. Onde a terra mexe, é ele. |
 
 ## A Lavadeira dos Mortos — voz feminina, maternal e cansada (chave `lanterna`)
