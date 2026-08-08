@@ -192,6 +192,8 @@
   #invAcao{background:var(--brasa); border:1px solid var(--brasa); color:#120d06;
     font-family:var(--mono); font-size:12px; letter-spacing:.2em; padding:11px 26px; text-transform:uppercase;}
   #invAcao:active{background:transparent; color:var(--brasa);}
+  /* ainda não dá para usar: o botão continua à vista, apagado, e a descrição diz por quê */
+  #invAcao:disabled{background:transparent; border-color:#4a4056; color:#6d6478; cursor:default;}
   #invNome{font-family:var(--serifa); font-size:19px; color:var(--osso); margin-bottom:8px;}
   #invDesc{font-size:11px; color:#9d94ad; line-height:1.7; margin-bottom:18px;}
   #invFechar{background:transparent; border:1px solid var(--brasa); color:var(--brasa);
@@ -2811,12 +2813,13 @@ function renderizarListaInv(){
      o clique no avental não fazia nada, porque `pegarItem` só empunha arma */
   const a = el('invAcao');
   const it = invSelecionado;
-  const vestivel = !!it.veste && vestido !== it.id && horaDeVestir();
+  const porVestir = !!it.veste && vestido !== it.id;      // no corpo é que não está
+  const cedo = porVestir && !horaDeVestir();              // mas ainda não é hora
   const empunhavel = !!(piso.pegarItem && ARMAS[it.id] && jog.arma !== it.id);
-  a.style.display = (vestivel || empunhavel) ? '' : 'none';
-  a.textContent = vestivel ? 'Vestir' : 'Pegar';
-  if(it.veste && vestido !== it.id && !horaDeVestir())
-    el('invDesc').textContent += ' — só na hora de encarar o chefe.';
+  a.style.display = (porVestir || empunhavel) ? '' : 'none';
+  a.textContent = porVestir ? 'Vestir' : 'Pegar';
+  a.disabled = cedo;
+  if(cedo) el('invDesc').textContent += ' — só dá para vestir na hora de encarar o chefe.';
 }
 /* escolher da bolsa fecha a bolsa: o jogador volta ao jogo já usando a peça */
 el('invAcao').addEventListener('click', () => {
