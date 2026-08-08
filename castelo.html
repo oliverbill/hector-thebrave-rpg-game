@@ -3047,7 +3047,7 @@ function desenharArmaNaMao(px, py, r){
        do machado sobe do lado do olhar e o cabo cruza o corpo até o quadril
        oposto; as duas mãos ficam fechadas no cabo o tempo todo */
     const virado = Math.cos(jog.angulo) < 0;
-    ctx.translate(px - (virado ? -1 : 1)*tam*.16, my + tam*.02);  // a base do cabo, no quadril oposto
+    ctx.translate(px - (virado ? -1 : 1)*tam*.42, my + tam*.06);  // a base do cabo, afastada do quadril oposto
     if(virado) ctx.scale(-1, 1);                           // espelha tudo com o olhar
     ctx.rotate(.55);                                       // a diagonal atravessando o peito
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
