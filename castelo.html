@@ -400,6 +400,40 @@ const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('
 const imgJogador = new Image(); imgJogador.src = 'img/jogador.png';
 /* o avental de aço recortado do fundo preto, para vestir por cima do tronco */
 const imgAvental = new Image(); imgAvental.src = 'img/fase2/avental-vestido.png';
+/* No escuro da fase o couro sumia dentro do tronco. A cópia visível é montada
+   UMA vez — silhueta escura por trás para descolar do corpo, filete claro em
+   volta e o couro clareado por cima. Aplicar ctx.filter por quadro derrubaria
+   o fps, como já aconteceu com o castiçal. */
+let aventalCv = null;
+function aventalVisivel(){
+  if(aventalCv) return aventalCv;
+  if(!(imgAvental.complete && imgAvental.naturalWidth > 0)) return null;
+  const iw = imgAvental.naturalWidth, ih = imgAvental.naturalHeight;
+  const m = Math.round(iw*.16);                       // folga para o contorno caber
+  const c = document.createElement('canvas');
+  c.width = iw + m*2; c.height = ih + m*2;
+  const g = c.getContext('2d');
+  /* a silhueta chapada, usada nas duas bordas */
+  const silhueta = (cor) => {
+    const s = document.createElement('canvas');
+    s.width = c.width; s.height = c.height;
+    const sg = s.getContext('2d');
+    sg.drawImage(imgAvental, m, m);
+    sg.globalCompositeOperation = 'source-in';
+    sg.fillStyle = cor;
+    sg.fillRect(0, 0, s.width, s.height);
+    return s;
+  };
+  const esticar = (cv, f) => g.drawImage(cv, -(c.width*(f-1))/2, -(c.height*(f-1))/2,
+                                         c.width*f, c.height*f);
+  esticar(silhueta('#100c14'), 1.16);                 // o vulto escuro, que separa do corpo
+  esticar(silhueta('#c2a06a'), 1.045);                // o filete claro do couro no reflexo
+  g.filter = 'brightness(1.55) saturate(1.1)';
+  g.drawImage(imgAvental, m, m);                      // o couro, clareado
+  g.filter = 'none';
+  aventalCv = c;
+  return c;
+}
 let fatiasJog = null;               // avatar fatiado: tronco + pernas animadas
 function montarFatiasJog(){
   const iw = imgJogador.naturalWidth, ih = imgJogador.naturalHeight;
@@ -576,6 +610,61 @@ function sEspadaAcerta(){
   o2g.gain.exponentialRampToValueAtTime(0.0001, t + 0.21);
   o2.connect(o2g); saida(o2g, 0.28);
   parar(o2, 0.24);
+}
+
+/* ---- a pá do Coveiro: ferro chato e pesado, nada de fio ----
+   O talho é mais grave e mais lento que o da espada, e o acerto é chapa
+   batendo: clangor curto e abafado, baque de ferro no corpo e a terra que
+   salta da lâmina. Sem a cauda de sino que a espada deixa. */
+function sPaCorta(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  const n = ruido(), bp = filtro('bandpass', 300, 1.4);
+  bp.frequency.setValueAtTime(230, t);
+  bp.frequency.exponentialRampToValueAtTime(1050, t + 0.13);
+  bp.frequency.exponentialRampToValueAtTime(400, t + 0.34);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.19, t + 0.07);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
+  n.connect(bp); bp.connect(g); saida(g, 0.5);
+  parar(n, 0.4);
+}
+function sPaAcerta(){
+  if(!iniAudio()) return;
+  const t = ac.currentTime;
+  // a chapa: dois parciais desafinados que morrem depressa
+  [[196, 0.30, 0.26], [289, 0.16, 0.19]].forEach(([f, amp, dur]) => {
+    const o = ac.createOscillator();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f*0.72, t + dur);
+    const og = ac.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(amp, t + 0.004);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(og); saida(og, 0.5);
+    parar(o, dur + 0.05);
+  });
+  // o baque do ferro no corpo
+  const o2 = ac.createOscillator();
+  o2.type = 'sine';
+  o2.frequency.setValueAtTime(96, t);
+  o2.frequency.exponentialRampToValueAtTime(42, t + 0.18);
+  const o2g = ac.createGain();
+  o2g.gain.setValueAtTime(0.0001, t);
+  o2g.gain.exponentialRampToValueAtTime(0.42, t + 0.008);
+  o2g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o2.connect(o2g); saida(o2g, 0.25);
+  parar(o2, 0.26);
+  // e a terra que salta da lâmina
+  const n = ruido(), hp = filtro('highpass', 1900, .8);
+  const ng = ac.createGain();
+  ng.gain.setValueAtTime(0.0001, t);
+  ng.gain.exponentialRampToValueAtTime(0.13, t + 0.006);
+  ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+  n.connect(hp); hp.connect(ng); saida(ng, 0.6);
+  parar(n, 0.2);
 }
 
 /* vocalização humana por formantes (base para grunhidos, gritos, tosse) */
@@ -1834,10 +1923,13 @@ function golpeChefe(dano, alcance){
   chefe.golpeAnim = .22;
   const sons = chefe.cfg.sons;
   if(sons && sons.golpe) vozChefe(sons.golpe);
-  sEspadaCorta();
+  /* cada chefe bate com o que tem na mão: o Coveiro não corta, ele bate de pá */
+  const pa = chefe.cfg.armaSom === 'pa';
+  if(pa) sPaCorta(); else sEspadaCorta();
   for(let k=0;k<6;k++) faisca(chefe.x + Math.cos(chefe.angulo)*1.4, chefe.y + Math.sin(chefe.angulo)*1.4, '#e0d0b0', .12);
   if(d < alcance && dif < 1.25){
-    if(jog.golpe > 0) sClash();    // o jogador também estava golpeando: aço contra aço
+    if(pa) sPaAcerta();            // chapa no corpo, com ou sem o golpe do jogador
+    else if(jog.golpe > 0) sClash();   // o jogador também estava golpeando: aço contra aço
     else sCorte();                 // o gemido vem do machucar (sDorJog)
     machucar(dano, ang); jog.vx += Math.cos(ang)*10; jog.vy += Math.sin(ang)*10;
   }
@@ -2683,9 +2775,14 @@ function desenharCorpoJogador(ox, oy){
     ctx.drawImage(f.tronco, -sW/2, -(f.corte + 2)*esc, sW, (f.corte + 2)*esc);
     /* o que ele veste por cima do tronco. Medidas em pixels da foto do avatar
        (64x159): ombro em y 52, quadril em 99 — o avental cai do peito à coxa */
-    if(vestido === 'avental-acougueiro' && imgAvental.complete && imgAvental.naturalWidth > 0){
-      const aw = 27*esc, ah = 58*esc;
-      ctx.drawImage(imgAvental, 3*esc - aw/2, (52 - 101 + 2)*esc, aw, ah);
+    if(vestido === 'avental-acougueiro'){
+      const av = aventalVisivel();
+      if(av){
+        /* a moldura carrega a folga do contorno: o couro em si continua com a
+           medida do corpo, 30 de largura por 62 de altura */
+        const aw = 30*esc, ah = 62*esc, f = av.width/imgAvental.naturalWidth;
+        ctx.drawImage(av, 3*esc - aw*f/2, (52 - 101 + 2)*esc - ah*(f-1)/2, aw*f, ah*f);
+      }
     }
     ctx.restore();
     ctx.filter = 'none';
@@ -8850,6 +8947,7 @@ const PISO_FUNERAL = {
       /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
       soVulneravelEm:['atordoado','exausto'],
       reageDeImediato:true,                          // chegou perto, leva pazada
+      armaSom:'pa',                                  // ferro chato batendo, não lâmina cortando
       /* a apelação: quase morto, ele abraça o jogador e enterra os dois.
          O susto é o preço; a conta é de uma pazada só, na hora do arremesso */
       desespero:{
