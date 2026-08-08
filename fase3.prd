@@ -1,0 +1,187 @@
+# PRD — Fase 3: As Salas de Funeral
+
+**Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
+**Fase:** 3 de 6 — salas de funeral, capela, cripta e colombário, e O Coveiro
+**Status:** rascunho aprovado em questionário — aguardando "ok" para construção
+**Escrito em:** 06/08/2026
+
+---
+
+## 0. Sobre este documento
+
+Preenchido **antes** da construção via questionário de 06/08/2026 (processo `/fase-nova`, etapa 1). Toda resposta do usuário entra na coluna Origem; os números de combate levam ⚠ — valem até a primeira sessão de jogo real.
+
+Numeração: prefixo de fase, `F3-RF-01` em diante.
+
+---
+
+## 1. Objetivo
+
+Vencido o Açougueiro, o jogador sobe das cozinhas e entra nas **Salas de Funeral** — o piso onde o castelo lava, vela e enterra os seus mortos. A capela de velório, a sala de preparação dos corpos e a oficina de caixões ainda trabalham; mais fundo, a **cripta alagada** de água parada e o **colombário em labirinto** guardam o caminho até a cova grande, onde **O Coveiro** cava dia e noite. O jogador atravessa a água fria, reacende as velas do caminho, ouve três velantes que conhecem os vícios do Coveiro e o enfrenta vestindo o **Avental de Aço** — saindo com a **Lanterna dos Mortos**, que revelará o invisível no laboratório do Alquimista (fase 4).
+
+**Pilar de design desta fase** — triplo, por decisão do usuário (*"1, 2 e 3"*):
+
+1. **Frio, água e silêncio** — o oposto da cozinha: pedra molhada, água parada, eco; o som é escasso e cada ruído assusta.
+2. **O peso dos mortos** — caixões, mortalhas, nichos; a presença dos corpos é o terror, e alguns não estão tão mortos assim.
+3. **A luz que se apaga** — velas que morrem em ciclo, trechos de escuridão; a visão é recurso disputado.
+
+**Tom:** sombrio e assustador — coisas se mexendo no escuro, caixões que abrem, sustos.
+
+**Item herdado da fase anterior:** **Avental de Aço do Açougueiro** — vestido, **reduz drasticamente o dano da pá do Coveiro** (*"protege de um ataque do chefe"*). É armadura: sem ele, a luta é quase impossível.
+**Item entregue ao fim desta fase:** **Lanterna dos Mortos** — luz que não apaga e revela o invisível; a chave contra o Alquimista na Fase 4. (Ressonância dupla: nasce no piso da escuridão.)
+
+---
+
+## 2. Baseline — HERDADO
+
+Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: transição com animação do castelo e início automático, `retomar()` sem perder progresso, música da luta disparada **na entrada da arena**, botão PULAR, ducking preso à legenda, vozes/batidas/tremor pelo `cfg`, escala por informante, camadas de ambiente por proximidade (`piso.ambientes`), atalhos `?piso=3`, `?piso=3&chefe=1`, `?piso=3&transicao=1`, e os testes (`node testes/geometria.js`).
+
+**O que esta fase deve acrescentar ao motor** (justificar cada um na construção):
+
+1. **Estados de chefe "cava/persegue/irrompe"** — a máquina genérica ganha, via `cfg`, o ciclo submerso (invulnerável) → rastro que persegue → emersão em área telegrafada → atordoado se errar. É a primeira mecânica de chefe que não é corpo-a-corpo contínuo.
+2. **Agarrão de inimigo comum** — as mãos imobilizam o jogador e drenam vida até ele se soltar (esmagar GOLPE). Novo verbo de combate.
+3. **Zonas de luz cíclica** — trechos onde as velas apagam e acendem em ciclo; no escuro, os vultos atacam. (Implementável como conteúdo sobre o sistema de luz atual; se precisar de motor, registrar aqui.)
+
+---
+
+## 3. Requisitos funcionais
+
+### 3.1 Mundo e cenário
+
+| # | Requisito | Origem |
+|---|---|---|
+| F3-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase3-funeral rooms.png`), **sempre com paredes visiveis**: capela com mosaico circular, salas de serviço, cripta alagada com caixões boiando, colombário, oficina do carpinteiro | fixado — imagem de inspiração |
+| F3-RF-02 | Regiões **sempre com detalhes em alto relevo**: **escada de chegada** (das cozinhas), **capela de velório** (mosaico circular no chão, esquifes), **sala de preparação dos corpos**, **oficina de caixões + depósito**, **cripta alagada**, **colombário em labirinto**, **quarto do Coveiro**, **cova grande** (arena) | questionário 06/08 — regiões marcadas |
+| F3-RF-03 | Obstáculo cíclico duplo: **mãos dos mortos** (25 HP, ataque de 5) irrompem do chão em ritmo fixo (janela de dano aprendível) **e velas que apagam** — trechos escurecem em ciclo e, no escuro, os vultos(45 HP, ataque de 9) atacam | questionário 06/08 — *"1 e 3"* |
+| F3-RF-04 | Labirinto (`gerarLabirinto`, semente própria) no **colombário**; travessia falsa: a **escada desmoronada** que parece levar à arena mas termina no buraco | questionário 06/08 — recomendado aceito |
+| F3-RF-05 | A cripta alagada usa água em alto-relevo (padrão da grande cisterna da fase 2), com caixões boiando e travessia por passarelas/pedras | derivado da imagem de inspiração |
+
+**HERDADO:** cenário detalhado em alto-relevo (perspectiva 3/4), caminhos conectados, imagens de referência são inspiração.
+
+### 3.2 Personagens e apresentação
+
+| # | Requisito | Origem |
+|---|---|---|
+| F3-RF-06 | Três velantes: **O Carpinteiro de Caixões** (chave `rastro`, na oficina — mede as pessoas com o olhar), **A Lavadeira dos Mortos** (chave `lanterna`, na sala de preparação) e **O Sacristão** (chave `mergulhos`, no fundo do colombário — o difícil de achar) | questionário 06/08 — *"Carpinteiro, Lavadeira e Sacristão"* |
+| F3-RF-07 | Retratos e sprites do Pinterest (`testes/pinterest.py`), PNG sem fundo, revisados pelo usuário antes de entrar; escala 1.5× | processo /fase-nova |
+
+
+| F3-RF-25 | **Velório na capela**: além das estações de trabalho, um grupo de coadjuvantes **vela um corpo** num esquife (círios, mortalha, cabeças baixas), com **som de choro** subindo por proximidade | pedido 06/08 — *"adicione pessoas velando o corpo com som de choros"* |
+| F3-RF-27 | **Rezadores na capela**: outro grupo de coadjuvantes **rezando** — ajoelhados nos bancos e de pé com as mãos postas, com murmúrio de rezas por proximidade | pedido 06/08 — *"adicione pessoas rezando na capela"* |
+| F3-RF-28 | **Ajudantes de carpintaria na oficina**: grupo trabalhando nos caixões — serrando, martelando, aplainando — com serrote e martelo audíveis por proximidade (a estação de trabalho da oficina) | pedido 06/08 — *"Adicione ajudantes de carpintaria trabalhando"* |
+
+**HERDADO:** animação em loop, presença no mapa, facho dourado sobre quem tem segredo, PULAR.
+
+### 3.3 Progressão e missão
+
+| # | Requisito | Origem |
+|---|---|---|
+| F3-RF-08 | 4 tarefas: **Atravessar a cripta alagada** · **Reacender as velas do caminho** · **Ouvir os velantes (0/3)** · **Derrotar o Coveiro** | questionário 06/08 — recomendado aceito |
+| F3-RF-09 | A arena (cova grande) só abre com os 3 velantes ouvidos **e** ⚠ as velas do caminho reacesas — trava dupla no padrão das fases 1–2 | derivado das tarefas |
+| F3-RF-10 | Morte devolve à **soleira da cova grande**, vida cheia, tudo mantido | questionário 06/08 — recomendado aceito |
+
+### 3.4 Itens, inventário e combate
+
+| # | Requisito | Origem |
+|---|---|---|
+| F3-RF-11 | Cura espalhada: **água benta** (frascos, 15%, botão Q); cura da arena: **dois círios acesos** nos cantos (25%, repostos por tentativa) | questionário 06/08 — recomendado aceito |
+| F3-RF-12 | Inimigos comuns: **vultos** (sombras que só se erguem nos trechos escuros — a luz os afugenta) e **mãos que perseguem e AGARRAM: imobilizam o jogador e drenam vida até ele se soltar esmagando o GOLPE** | questionário 06/08 — *"vultos + mãos q perseguem e te imobilizam enquanto tiram vida"* |
+| F3-RF-13 | **Avental de Aço equipado reduz o dano da pá do Coveiro** (⚠ −60%) e ⚠ encurta o agarrão das mãos | questionário 06/08 — *"protege de um ataque do chefe"* |
+| F3-RF-14 | Recompensa: **Lanterna dos Mortos** — vai à bolsa com popup; na fase 4 revela o invisível | questionário 06/08 |
+
+**HERDADO:** golpe nunca automático; popup de inventário; sangue e gemidos.
+
+### 3.5 O chefe: O Coveiro
+
+Mecânica inédita — **ele cava e some** (questionário 06/08, recomendado aceito). Nada de investida em linha reta: o ciclo dele é subterrâneo.
+
+| # | Requisito | Origem |
+|---|---|---|
+| F3-RF-15 | Ciclo: espera → aproxima → **pazada** (golpe curto, o único que o Avental amortece) → **CAVA** (some na terra, invulnerável) → **rastro de terra revolvida persegue o jogador** → **IRROMPE** debaixo dos pés (área circular telegrafada no chão, ~1s) → se errar, sai **atordoado** (janela de dano) | questionário 06/08 |
+| F3-RF-16 | Após **2 mergulhos**, ele emerge **exausto** (*"morto de cansado"*) — janela longa | fala do Sacristão, ditada pelo usuário |
+| F3-RF-17 | Ele carrega uma **lanterna** que ilumina só a frente; pelas costas, dano dobrado | fala da Lavadeira, ditada pelo usuário |
+| F3-RF-18 | Fraquezas × chaves: `rastro` (Carpinteiro) → ⚠ ×2.2 no atordoado pós-erro (e o ponto de emersão fica telegrafado mais cedo); `lanterna` (Lavadeira) → ⚠ ×2.1 pelas costas; `mergulhos` (Sacristão) → ⚠ ×2.2 no exausto (e contador de mergulhos no HUD) | questionário 06/08 |
+| F3-RF-19 | Números oficiais (questionário 06/08): `hp:850, pazadaDano:34 (14 com Avental), irromperDano:36`. ⚠ ainda de partida: `raio:1.0, irromperRaio:2.2, persegueVel:3.4, persegueT:2.6, atordoadoT:2.2, exaustoT:2.4, tremorPasso:7` — corpo 2× o jogador (~4,6 tiles), pernas desenhadas que andam | questionário 06/08 — HP 850, pazada 34→14, irromper 36 (uma edição anterior do arquivo trazia 900; prevaleceu a resposta explícita do questionário) |
+| F3-RF-20 | Fala de abertura com legenda antes da luta, voz gravada real — texto a fechar em F3-FALAS.md | herdado (RF-27/28) |
+
+**Falas-segredo, nas palavras do usuário (base para F3-FALAS.md):**
+
+- Carpinteiro: *"quando ele some, deixa um rastro de terra"*
+- Lavadeira: *"a lanterna só ilumina a frente. Pelas costas, ele tá morto"*
+- Sacristão: *"depois de 2 mergulhos, ele tá morto de cansado"*
+
+### 3.6 Áudio
+
+| # | Requisito | Origem |
+|---|---|---|
+| F3-RF-21 | Vozes: 3 falas × 3 velantes + 3 do Coveiro (entrada/golpe/leva-golpe), **gravações reais, pedidas uma a uma**, −14 a −17 LUFS | processo /fase-nova, etapa 6 |
+| F3-RF-22 | Trilhas: BGM fúnebre do piso + trilha da cova grande — **fornecidas pelo usuário** | questionário 06/08 |
+| F3-RF-23 | SFX via `/buscar-sfx-prd`: terra cavando, emersão/estouro de terra, mãos raspando pedra, sussurro de vulto, sopro apagando vela, gota d'água/eco da cripta, sino fúnebre, madeira de caixão, choro de velório | derivado do §3 |
+| F3-RF-26 | **Grito alto quando um vulto surge** — one-shot no momento em que ele se ergue do escuro, acima do volume do ambiente (o susto é o ponto) | pedido 06/08 — *"Adicione um grito alto quando um vulto surgir"* |
+| F3-RF-24 | Ambientes por proximidade (`piso.ambientes`): gotejar + eco na cripta, **coro fúnebre baixo + o choro do velório na capela (F3-RF-25)**, **serrote e martelo na oficina**, água na preparação, **murmúrio de rezas dos rezadores (F3-RF-27)**, vento oco no colombário | processo /fase-nova, etapa 8 |
+
+### 3.7 Controles e HUD — HERDADO
+
+Rótulos novos: `ACENDER` (velas do caminho, botão E). Soltar-se do agarrão: **esmagar GOLPE (F)** — instrução aparece na tela na primeira vez. Sem tecla nova.
+
+---
+
+## 4. Requisitos não-funcionais — HERDADO
+
+RNF-01 a RNF-05 do template. O piso 3 não pode regredir os pisos 1–2 (o teste de geometria roda para todos).
+
+---
+
+## 5. Decisões revertidas — PREENCHER DURANTE
+
+*(vazio — construção não começou)*
+
+---
+
+## 6. Critérios de aceite
+
+**HERDADO** — os 12 do template.
+
+**Específicos desta fase:**
+
+- [ ] O Avental de Aço tem uso real: a pazada dói ~60% menos com ele
+- [ ] O Coveiro some de verdade (invulnerável submerso) e o rastro persegue; errar a emersão o atordoa
+- [ ] 2 mergulhos → exausto, visível e contável (com a chave do Sacristão, no HUD)
+- [ ] Mãos agarram, drenam e soltam ao esmagar GOLPE; vultos só existem no escuro
+- [ ] As velas do caminho apagam/acendem em ciclo e a tarefa de reacender conta no HUD
+- [ ] A cripta alagada é atravessável e legível (água em alto-relevo, caixões boiando)
+- [ ] A escada desmoronada engana mas não frustra (fica claro que é fim de linha)
+- [ ] Vencer abre a bolsa com a Lanterna dos Mortos
+
+---
+
+## 7. Adições posteriores — PREENCHER DEPOIS
+
+*(vazio)*
+
+---
+
+## 8. Pendências conhecidas
+
+- Balanceamento (F3-RF-19) vale até a primeira sessão real
+- Trilhas do usuário pendentes (F3-RF-22)
+- CI para `testes/geometria.js` continua em aberto (herdada)
+
+---
+
+## Apêndice A — Assets
+
+| Tipo | Item | Formato | Status |
+|---|---|---|---|
+| Cenário | caixões, velas/círios, nichos, mesas de preparação, ferramentas, água | Pinterest → revisão → PNG | pendente (etapa 2) |
+| Retrato NPC | Carpinteiro, Lavadeira, Sacristão | PNG sem fundo | pendente (etapa 3) |
+| Coadjuvantes | ~15 figuras (carpinteiros, lavadeiras, carpideiras) | PNG sem fundo | pendente (etapa 3) |
+| Chefe | O Coveiro (com pá e lanterna) | PNG sem fundo, 2× o jogador | pendente (etapa 4) |
+| Item | Lanterna dos Mortos (popup) · água benta · círio | PNG sem fundo | pendente |
+| Voz | 9 de velantes + 3 do Coveiro | gravação real → MP3 −14/−17 LUFS | pendente (etapa 6, uma a uma) |
+| Trilha | BGM do piso + luta da cova | MP3 | pendente — usuário |
+| SFX | lista do F3-RF-23 | MP3 CC0, 3 opções cada | pendente (/buscar-sfx-prd) |
+
+## Apêndice B — Ordem de trabalho
+
+A do template, com o processo `/fase-nova`: PRD ok → imagens (cenário → personagens → chefe, com revisões) → mapa e geometria (+ teste) → NPCs sem voz → chefe (estados novos no motor via cfg) → falas fechadas → vozes uma a uma → itens e curas → coadjuvantes + ambientes → verificação completa → README/PRD → entrega.

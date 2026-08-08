@@ -28,9 +28,11 @@ const src = [
   pega(/function construirCalabouco\(\)\{[\s\S]*?\n\}/),
   pega(/const COZ = \{[\s\S]*?\n\};/),
   pega(/const ESTACOES = \[[\s\S]*?\];/),
-  pega(/function construirCozinhas\(\)\{[\s\S]*?\n\}/)
+  pega(/function construirCozinhas\(\)\{[\s\S]*?\n\}/),
+  pega(/const FUN = \{[\s\S]*?\n\};/),
+  pega(/function construirFuneral\(\)\{[\s\S]*?\n\}/)
 ].join('\n');
-new Function(...Object.keys(ctx), src + '\nthis.calabouco = construirCalabouco; this.cozinhas = construirCozinhas;')
+new Function(...Object.keys(ctx), src + '\nthis.calabouco = construirCalabouco; this.cozinhas = construirCozinhas; this.funeral = construirFuneral;')
   .apply(ctx, Object.values(ctx));
 
 /* alvos por piso: [nome, x, y, exigência]
@@ -70,6 +72,27 @@ const PISOS = [
       ['caldo NE (41,5)', 41, 5, 'anda']
     ],
     selado: { alvo: [37, 9], abrir: [[30, 9], [30, 10], [30, 11]] }
+  },
+  {
+    nome: 'Piso 3 — As Salas de Funeral', mapa: ctx.funeral(), spawn: [40, 52],
+    alvos: [
+      ['O Carpinteiro de Caixões (5,33)', 5, 33, 'fala'],
+      ['A Lavadeira dos Mortos (25,7)', 25, 7, 'fala'],
+      ['O Sacristão (31,52)', 31, 52, 'fala'],
+      ['capela — mosaico (9,10)', 9, 10, 'alcanca'],
+      ['preparação dos corpos (23,9)', 23, 9, 'alcanca'],
+      ['oficina de caixões (5,33)', 5, 33, 'alcanca'],
+      ['depósito (5,39)', 5, 39, 'alcanca'],
+      ['quarto do Coveiro (40,28)', 40, 28, 'alcanca'],
+      ['cripta margem NO (16,32)', 16, 32, 'alcanca'],
+      ['cripta margem leste (27,32)', 27, 32, 'alcanca'],
+      ['cripta margem sul (16,41)', 16, 41, 'alcanca'],
+      ['colombário oeste (4,51)', 4, 51, 'alcanca'],
+      ['escada desmoronada (31,18)', 31, 18, 'alcanca'],
+      ['soleira da cova (37,19)', 37, 19, 'alcanca'],
+      ['cova grande — arena (37,9)', 37, 9, 'anda']
+    ],
+    selado: { alvo: [37, 9], abrir: [[36, 17], [37, 17], [38, 17]] }
   }
 ];
 

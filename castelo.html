@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#141019">
+<meta name="apple-mobile-web-app-title" content="Hector">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="img/icone-180.png">
 <title>O Castelo</title>
 <style>
   :root{
@@ -13,7 +16,8 @@
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --serifa: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   }
-  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; user-select:none;}
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;}
   html,body{height:100%; overflow:hidden; background:#141019; color:var(--osso);
     font-family:var(--mono); overscroll-behavior:none; touch-action:none;}
   #app{position:fixed; inset:0;}
@@ -158,6 +162,24 @@
     font-family:var(--mono); font-size:12px; letter-spacing:.2em; padding:11px 26px; text-transform:uppercase;}
   #invFechar:active{background:var(--brasa); color:#120d06;}
 
+  #btnMenu{margin-left:auto; pointer-events:auto; width:36px; height:36px;
+    border:1px solid #443659; border-radius:4px; background:#1d1729cc; color:#9d94ad;
+    display:flex; align-items:center; justify-content:center; font-size:17px;}
+  #btnMenu:active{border-color:var(--brasa); color:var(--brasa);}
+  #menuJogo{position:absolute; inset:0; z-index:8; background:rgba(8,5,14,.85);
+    display:flex; align-items:center; justify-content:center; padding:30px;}
+  #menuJogo.oculto{display:none;}
+  #menuCard{background:#150f22; border:1px solid var(--brasa); border-radius:4px;
+    padding:22px 34px 24px; text-align:center; box-shadow:0 0 44px #e8a13c44;
+    animation:invEntra .25s ease-out;}
+  #menuCard h2{font-family:var(--mono); font-weight:400; color:var(--brasa); letter-spacing:.28em;
+    text-transform:uppercase; font-size:12px; margin-bottom:18px;}
+  #menuCard button{display:block; width:220px; margin:0 auto 10px; background:transparent;
+    border:1px solid var(--brasa); color:var(--brasa); font-family:var(--mono); font-size:12px;
+    letter-spacing:.2em; padding:12px 0; text-transform:uppercase;}
+  #menuCard button:active, #menuCard button.on{background:var(--brasa); color:#120d06;}
+  #menuCard #mVoltar{border-color:#443659; color:#9d94ad; margin-bottom:0;}
+
   #btnGolpe{width:70px; height:70px; border-color:#8a4a3a; background:#241410d9; display:none;}
   #btnGolpe.on{display:flex;}
   #btnGolpe .n{color:#e8b48a;}
@@ -171,6 +193,7 @@
   <div id="hud">
     <div id="vida"><div id="vidaFill"></div></div>
     <span id="segredos">SEGREDOS </span>
+    <div id="btnMenu">⚙</div>
   </div>
 
   <div id="missao"><div id="mTitulo"></div></div>
@@ -208,6 +231,15 @@
     <div id="bolsa">
       <div class="rot">Bolsa</div>
       <div class="itens" id="bolsaItens"></div>
+    </div>
+  </div>
+
+  <div id="menuJogo" class="oculto">
+    <div id="menuCard">
+      <h2>Menu</h2>
+      <button id="mSemMusica">Sem música</button>
+      <button id="mSair">Sair do jogo</button>
+      <button id="mVoltar">Voltar</button>
     </div>
   </div>
 
@@ -275,6 +307,20 @@ const PAREDE = 0, CHAO = 1, GRADE = 2, CHAO2 = 3,   // CHAO2: piso alternativo (
 let LARG = 1, ALT = 1;
 
 const el = id => document.getElementById(id);
+/* escreve estilo/texto só quando muda: tocar no DOM todo quadro força o
+   navegador a recalcular estilo mesmo com o mesmo valor */
+const uiUltimo = {};
+function uiEstilo(id, prop, valor){
+  const chave = id + '.' + prop;
+  if(uiUltimo[chave] === valor) return;
+  uiUltimo[chave] = valor;
+  el(id).style[prop] = valor;
+}
+function uiTexto(id, valor){
+  if(uiUltimo['#' + id] === valor) return;
+  uiUltimo['#' + id] = valor;
+  el(id).textContent = valor;
+}
 const irand = n => Math.floor(Math.random()*n);
 const clamp = (v,a,b) => v<a?a:(v>b?b:v);
 const idx = (x,y) => y*LARG + x;
@@ -919,6 +965,15 @@ function falarVoz(texto, voz, url){
     const a = new Audio(url);
     audioFala = a;
     a.volume = 1;
+    /* voz.ganho > 1 empurra a gravação acima do teto do HTMLAudio (volume máx = 1),
+       roteando o elemento pelo Web Audio — precisa para vozes que competem com a cozinha */
+    if(voz.ganho && voz.ganho !== 1 && iniAudio()){
+      try{
+        const fonte = ac.createMediaElementSource(a);
+        const g = ac.createGain(); g.gain.value = voz.ganho;
+        fonte.connect(g); g.connect(masterGain);
+      }catch(e){}
+    }
     abaixarBgm(true);
     a.addEventListener('ended', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
     a.addEventListener('error', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
@@ -1124,31 +1179,47 @@ function animarCastelo(de, para, aoFim){
 let ambientes = [];
 function criarAmbientes(lista){
   pararAmbientes();
-  ambientes = (lista || []).map(a => ({...a, audio:null, vol:0}));
+  ambientes = (lista || []).map(a => ({...a, audio:null, vol:0, volAplicado:0}));
+  /* pré-carrega os clipes já na entrada do piso: criar o Audio no meio do jogo
+     baixa e decodifica o mp3 na primeira aproximação — e isso engasga o quadro */
+  ambientes.forEach(a => {
+    try{
+      a.audio = new Audio(a.url);
+      a.audio.loop = true; a.audio.preload = 'auto'; a.audio.volume = 0;
+    }catch(e){}
+  });
 }
 function pararAmbientes(){
   ambientes.forEach(a => { if(a.audio){ try{ a.audio.pause(); }catch(e){} } });
   ambientes = [];
 }
-function atualizarAmbientes(){
+let ambRelogio = 0;
+function atualizarAmbientes(dt){
   if(!ambientes.length || !jog) return;
+  /* mexer em HTMLAudio 60 vezes por segundo custa caro: ajusta ~8x/s, que o
+     ouvido não distingue, e só escreve volume quando ele mudou de verdade */
+  ambRelogio += dt;
+  if(ambRelogio < .12) return;
+  const passo = ambRelogio; ambRelogio = 0;
   ambientes.forEach(a => {
     // o foco mais perto entre os pontos declarados manda no volume
     let d = Infinity;
     a.pontos.forEach(([px, py]) => { d = Math.min(d, Math.hypot(px - jog.x, py - jog.y)); });
     const perto = a.raio, longe = a.raio + (a.desvanece || 5);
     const f = d >= longe ? 0 : d <= perto ? 1 : 1 - (d - perto)/(longe - perto);
-    const alvo = f*f*(a.ganho || .35)*(dialogo ? .25 : 1);   // cala junto com a música na fala
-    a.vol += (alvo - a.vol)*.12;
-    if(a.vol < .01){
+    const alvo = f*f*(a.ganho || .35)*(dialogo ? .07 : 1);   // na fala os focos quase calam: a voz fica na frente
+    a.vol += (alvo - a.vol)*Math.min(1, passo*6);
+    if(a.vol < .006){
       if(a.audio && !a.audio.paused){ try{ a.audio.pause(); }catch(e){} }
       return;
     }
     if(!a.audio){
       try{ a.audio = new Audio(a.url); a.audio.loop = true; }catch(e){ return; }
     }
-    a.audio.volume = Math.min(1, a.vol);
-    if(a.audio.paused){ try{ a.audio.play().catch(() => {}); }catch(e){} }
+    const v = Math.min(1, a.vol);
+    if(Math.abs(v - a.volAplicado) > .004){ a.audio.volume = v; a.volAplicado = v; }
+    // histerese: só religa com folga acima do ponto de pausa, para não tremelicar
+    if(a.audio.paused && a.vol > .012){ try{ a.audio.play().catch(() => {}); }catch(e){} }
   });
 }
 
@@ -1660,7 +1731,8 @@ function criarChefe(){
   chefe = {
     cfg:f, x:f.x, y:f.y, vx:0, vy:0, raio:f.raio, hp:f.hp, hpMax:f.hp,
     estado:'espera', t:f.esperaT, golpes:0, angulo:Math.PI, flash:0,
-    investindo:false, bateuParede:false, pisada:0, escudoBate:0, bateu:0, golpeAnim:0, fase:0
+    investindo:false, bateuParede:false, pisada:0, escudoBate:0, bateu:0, golpeAnim:0, fase:0,
+    mergulhos:0
   };
   el('chefeNome').textContent = f.nome;
   el('chefeBarra').classList.add('on');
@@ -1743,7 +1815,10 @@ function atualizarChefe(dt){
         c.golpes++;
         const i = Math.min(c.golpes, f.comboGolpes) - 1;
         golpeChefe(f.comboDano[i], f.comboAlcance[i]);
-        if(c.golpes >= f.comboGolpes){ c.estado = 'exausto'; c.t = f.exaustoT; }
+        if(c.golpes >= f.comboGolpes){
+          if(f.cavaT) entrarCava(c, f);          // ciclo subterrâneo (só com cfg.cavaT)
+          else { c.estado = 'exausto'; c.t = f.exaustoT; }
+        }
         else c.t = f.comboIntervalo;
       }
       break;
@@ -1781,22 +1856,126 @@ function atualizarChefe(dt){
     case 'zonzo':
       if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
       break;
+
+    /* ---- ciclo subterrâneo (só entra aqui quando o cfg tem cavaT) ---- */
+    case 'cava':                    // mergulho: meio segundo afundando na terra
+      c.vx *= .7; c.vy *= .7;
+      if(Math.random() < .6) terraRevolvida(c.x + (Math.random()-.5)*c.raio*1.4, c.y + (Math.random()-.5)*c.raio*.7);
+      if(c.t <= 0){ c.estado = 'persegue'; c.t = f.persegueT; }
+      break;
+
+    case 'persegue': {              // submerso e invulnerável: só o rastro persegue
+      const [ax, ay] = dirLivre(c, dx/d, dy/d);
+      c.vx += (ax*f.persegueVel - c.vx)*Math.min(1, dt*6);
+      c.vy += (ay*f.persegueVel - c.vy)*Math.min(1, dt*6);
+      mover(c, c.vx*dt, c.vy*dt);
+      if(Math.random() < .8) terraRevolvida(c.x + (Math.random()-.5)*.9, c.y + (Math.random()-.5)*.5);
+      tremor = Math.max(tremor, 1.5);
+      if(c.t <= 0){ c.estado = 'irrompe'; c.t = f.irromperAvisoT; c.vx = c.vy = 0; }
+      break;
+    }
+
+    case 'irrompe':                 // o ponto travou: círculo de aviso, então a emersão
+      if(c.t <= 0){
+        c.mergulhos++;
+        const ang = Math.atan2(dy, dx);
+        const acertou = d < f.irromperRaio;
+        c.angulo = ang; c.golpeAnim = .22;
+        tremor = 22;
+        if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe); else sBaterParede();
+        for(let k=0;k<26;k++)
+          terraRevolvida(c.x + (Math.random()-.5)*f.irromperRaio*1.5, c.y + (Math.random()-.5)*f.irromperRaio);
+        if(acertou){ machucar(f.irromperDano, ang); jog.vx += Math.cos(ang)*13; jog.vy += Math.sin(ang)*13; }
+        if(f.mergulhosAteExausto && c.mergulhos >= f.mergulhosAteExausto){
+          c.mergulhos = 0; c.estado = 'exausto'; c.t = f.exaustoT;      // sem fôlego: janela longa
+        }
+        else if(!acertou){ c.estado = 'atordoado'; c.t = f.atordoadoT; } // errou: janela de dano
+        else { c.estado = 'aproxima'; c.t = f.aproximaT; }
+      }
+      break;
+
+    case 'atordoado':               // o par do 'zonzo' para quem cava
+      c.vx *= .8; c.vy *= .8;
+      if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      break;
   }
   atualizarBarraChefe();
 }
+/* entra na terra: o começo do ciclo cava -> persegue -> irrompe */
+function entrarCava(c, f){
+  c.estado = 'cava'; c.t = f.cavaT;
+  c.vx = c.vy = 0; c.investindo = false;
+  if(f.sons && f.sons.cava) vozChefe(f.sons.cava);
+  tremor = Math.max(tremor, 8);
+  for(let k=0;k<14;k++) terraRevolvida(c.x + (Math.random()-.5)*c.raio*1.6, c.y + (Math.random()-.5)*c.raio*.8);
+}
+/* debaixo da terra ele não é visto, não empurra e não leva golpe */
+function chefeSubmerso(c){
+  return !!(c && c.cfg && c.cfg.cavaT) &&
+         (c.estado === 'cava' || c.estado === 'persegue' || c.estado === 'irrompe');
+}
+/* torrão de terra revolvida saltando do chão */
+const CORES_TERRA = ['#4a3a26','#5c4830','#3a2d1d','#6b5638'];
+function terraRevolvida(x, y){
+  particulas.push({x, y, vx:(Math.random()-.5)*2.2, vy:-.8 - Math.random()*1.8,
+    vida:.4 + Math.random()*.4, cor:CORES_TERRA[irand(CORES_TERRA.length)],
+    tam:.06 + Math.random()*.08});
+}
+/* rastro de terra + aviso de emersão: o motor chama antes do desenhar do conteúdo;
+   devolve true enquanto o chefe está debaixo da terra (o corpo não aparece) */
+function desenharChefeSubterraneo(c, ox, oy){
+  const f = c.cfg;
+  if(!chefeSubmerso(c)) return false;
+  const px = ox + c.x*tam, py = oy + c.y*tam;
+  if(c.estado === 'cava') return false;         // ainda afundando: o conteúdo desenha o mergulho
+  // lombadas de terra revolvida se deslocando
+  ctx.fillStyle = 'rgba(0,0,0,.35)';
+  ctx.beginPath(); ctx.ellipse(px, py + tam*.16, c.raio*tam*1.05, c.raio*tam*.4, 0, 0, TAU); ctx.fill();
+  for(let i=0;i<3;i++){
+    const w = Math.sin(tempo*11 + i*2.1);
+    ctx.fillStyle = i === 1 ? '#5c4830' : '#4a3a26';
+    ctx.beginPath();
+    ctx.ellipse(px + (i-1)*c.raio*tam*.5 + w*tam*.06, py + tam*.05 - Math.abs(w)*tam*.1,
+                c.raio*tam*(.44 - i*.06), c.raio*tam*(.26 - i*.04), w*.2, 0, TAU);
+    ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(214,196,160,.14)';
+  ctx.beginPath(); ctx.ellipse(px, py - tam*.06, c.raio*tam*.5, c.raio*tam*.14, 0, 0, TAU); ctx.fill();
+  if(c.estado === 'irrompe'){                   // círculo telegrafado piscando no chão
+    const p = 1 - Math.max(0, c.t)/f.irromperAvisoT;
+    const pisca = Math.abs(Math.sin(tempo*14));
+    const r = f.irromperRaio*tam;
+    ctx.fillStyle = 'rgba(226,74,74,' + (.07 + .12*pisca + .1*p) + ')';
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(226,74,74,' + (.3 + .5*pisca) + ')';
+    ctx.lineWidth = Math.max(2, tam*.09);
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,190,120,' + (.25 + .45*p) + ')';
+    ctx.lineWidth = Math.max(1, tam*.05);
+    ctx.beginPath(); ctx.arc(px, py, r*p, 0, TAU); ctx.stroke();   // o tempo fechando
+  }
+  return true;
+}
 function atualizarBarraChefe(){
   el('chefeFill').style.transform = 'scaleX(' + Math.max(0, chefe.hp/chefe.hpMax) + ')';
-  const fq = piso.chefe.fraquezas;
+  const fq = piso.chefe.fraquezas, f = chefe.cfg;
+  const sabeExausto = fq.porEstado.exausto && intel[fq.porEstado.exausto.chave];
   let txt = '';
-  if(chefe.estado === 'exausto' && intel[fq.porEstado.exausto.chave]) txt = 'sem fôlego';
+  if(chefe.estado === 'exausto' && sabeExausto) txt = 'sem fôlego';
   else if(chefe.estado === 'zonzo') txt = 'zonzo';
-  else if(chefe.estado === 'combo' && intel[fq.porEstado.exausto.chave])
-    txt = 'golpe ' + Math.min(chefe.cfg.comboGolpes, chefe.golpes+1) + ' de ' + chefe.cfg.comboGolpes;
+  else if(chefe.estado === 'atordoado') txt = 'atordoado';
+  else if(chefe.estado === 'cava' || chefe.estado === 'persegue' || chefe.estado === 'irrompe')
+    txt = (sabeExausto && f.mergulhosAteExausto)          // a chave dos mergulhos conta o ciclo
+      ? 'mergulho ' + Math.min(f.mergulhosAteExausto, chefe.mergulhos + 1) + ' de ' + f.mergulhosAteExausto
+      : 'cavando...';
+  else if(chefe.estado === 'combo' && sabeExausto)
+    txt = 'golpe ' + Math.min(f.comboGolpes, chefe.golpes+1) + ' de ' + f.comboGolpes;
   el('chefeEstado').textContent = txt;
 }
 
 /* ---------- combate do jogador ---------- */
 function golpear(alvo){
+  if(chefeSubmerso(alvo)) return;      // debaixo da terra não há o que cortar
   jog.golpe = .2; jog.recarga = .36;
   sGolpe();
   const dx = alvo.x-jog.x, dy = alvo.y-jog.y, d = Math.hypot(dx,dy);
@@ -1883,13 +2062,15 @@ const entrada = {x:0, y:0};
 let toqueId = null, jbx = 0, jby = 0, jvx = 0, jvy = 0, joyAtivo = false;
 const teclas = {};
 tela.addEventListener('touchstart', e => {
+  e.preventDefault();
   if(dialogo){ avancarDialogo(); return; }
   for(const t of e.changedTouches){
     if(toqueId === null && t.clientX < window.innerWidth*.6){
       toqueId = t.identifier; jbx = jvx = t.clientX; jby = jvy = t.clientY; joyAtivo = true;
     }
   }
-}, {passive:true});
+}, {passive:false});
+window.addEventListener('contextmenu', e => e.preventDefault());
 tela.addEventListener('touchmove', e => {
   for(const t of e.changedTouches) if(t.identifier === toqueId){ jvx = t.clientX; jvy = t.clientY; }
 }, {passive:true});
@@ -1907,6 +2088,7 @@ tela.addEventListener('mousedown', () => { if(dialogo) avancarDialogo(); });
 window.addEventListener('keydown', e => {
   teclas[e.key.toLowerCase()] = true;
   if(e.key === ' '){ e.preventDefault(); if(dialogo) avancarDialogo(); else rolar(); }
+  if(e.key === 'Escape') abrirMenu();
   if(e.key.toLowerCase() === 'e'){ if(dialogo) avancarDialogo(); else agir(); }
   if(e.key.toLowerCase() === 'q') usarTrapo();
   if(e.key.toLowerCase() === 'f' && piso.acaoGolpe) piso.acaoGolpe();
@@ -1931,6 +2113,9 @@ function lerEntrada(){
 function atualizar(dt){
   tempo += dt;
   atualizarParticulas(dt);
+  /* os ambientes fundem mesmo com o jogo pausado: é o diálogo (que pausa tudo)
+     que mais precisa do ducking — congelar aqui deixava os ajudantes gritando */
+  atualizarAmbientes(dt);
   if(!jog || etapa === 'menu' || pausado || !vivo) return;
 
   lerEntrada();
@@ -1960,7 +2145,7 @@ function atualizar(dt){
   if(chefeAtivo){
     const dx = jog.x-chefe.x, dy = jog.y-chefe.y, d = Math.hypot(dx,dy);
     const min = jog.raio + chefe.raio;
-    if(d < min && d > .001){
+    if(d < min && d > .001 && !chefeSubmerso(chefe)){   // submerso, o corpo não empurra
       mover(jog, dx/d*(min-d), dy/d*(min-d));
       jog.vx *= .6; jog.vy *= .6;
     }
@@ -1968,17 +2153,16 @@ function atualizar(dt){
   }
 
   if(piso.atualizar) piso.atualizar(dt);
-  atualizarAmbientes();
   informantes.forEach(p => p.fase += dt);
   definirInteracao();
 
   camX += (jog.x - camX)*Math.min(1, dt*7);
   camY += (jog.y - camY)*Math.min(1, dt*7);
 
-  el('cargaDash').style.transform = 'scaleY(' + jog.dashCd + ')';
+  uiEstilo('cargaDash', 'transform', 'scaleY(' + jog.dashCd.toFixed(2) + ')');
   el('btnDash').classList.toggle('off', jog.dashCd > 0 || jog.dashOff);
   el('btnPocao').classList.toggle('off', jog.pocoes <= 0);
-  el('vidaFill').style.transform = 'scaleX(' + Math.max(0, jog.hp/jog.hpMax) + ')';
+  uiEstilo('vidaFill', 'transform', 'scaleX(' + Math.max(0, jog.hp/jog.hpMax).toFixed(3) + ')');
 }
 function definirInteracao(){
   interacao = null;
@@ -1994,8 +2178,8 @@ function definirInteracao(){
   const b = el('btnAcao');
   if(interacao){
     b.classList.add('on');
-    el('acaoRotulo').textContent = interacao.rotulo;
-    el('acaoIcone').textContent = interacao.icone;
+    uiTexto('acaoRotulo', interacao.rotulo);
+    uiTexto('acaoIcone', interacao.icone);
   } else b.classList.remove('on');
 }
 
@@ -2010,6 +2194,12 @@ function redimensionar(){
 }
 window.addEventListener('resize', redimensionar);
 
+let vinheta = null, vinhetaW = 0, vinhetaH = 0;
+/* fora do enquadramento? (coordenadas de tela, com margem em px) —
+   evita pagar gradientes e sprites de tudo que a câmera nem vê */
+function foraDaVista(px, py, m){
+  return px < -m || px > W + m || py < -m || py > H + m;
+}
 function desenhar(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle = '#0c0912'; ctx.fillRect(0,0,W,H);
@@ -2018,7 +2208,13 @@ function desenhar(){
   let ox = W/2 - camX*tam, oy = H/2 - camY*tam;
   if(tremor > 0){ ox += (Math.random()-.5)*tremor; oy += (Math.random()-.5)*tremor; }
 
-  ctx.drawImage(cacheMapa, ox, oy, LARG*tam, ALT*tam);
+  /* só a fatia visível do cache: escalar o mapa inteiro por quadro pesa nos mapas grandes */
+  const Tc = cacheMapa.width/LARG;
+  const u0 = Math.max(0, -ox/tam), v0 = Math.max(0, -oy/tam);
+  const u1 = Math.min(LARG, (W - ox)/tam), v1 = Math.min(ALT, (H - oy)/tam);
+  if(u1 > u0 && v1 > v0)
+    ctx.drawImage(cacheMapa, u0*Tc, v0*Tc, (u1-u0)*Tc, (v1-v0)*Tc,
+                  ox + u0*tam, oy + v0*tam, (u1-u0)*tam, (v1-v0)*tam);
 
   if(piso.desenharCenario) piso.desenharCenario(ox, oy);
   destrocos.forEach(d => {
@@ -2028,7 +2224,7 @@ function desenhar(){
   });
 
   informantes.forEach(p => desenharInformante(p, ox, oy));
-  if(chefe && chefe.hp > 0) piso.chefe.desenhar(chefe, ox, oy);
+  if(chefe && chefe.hp > 0 && !desenharChefeSubterraneo(chefe, ox, oy)) piso.chefe.desenhar(chefe, ox, oy);
   if(vivo) desenharJogador(ox, oy);
 
   particulas.forEach(p => {
@@ -2046,13 +2242,17 @@ function desenhar(){
   lcx.globalCompositeOperation = 'lighter';
   const k = dpr/2;
   braseiros.forEach(b => {
+    const bx = ox + b.x*tam, by = oy + b.y*tam;
+    if(foraDaVista(bx, by, tam*4)) return;
     const tr = .88 + Math.sin(tempo*7 + b.fase)*.07 + Math.sin(tempo*16 + b.fase)*.04;
-    luzRadial((ox + b.x*tam)*k, (oy + b.y*tam)*k, tam*3.6*tr*k, 'rgba(226,146,58,.85)');
+    luzRadial(bx*k, by*k, tam*3.6*tr*k, 'rgba(226,146,58,.85)');
   });
   informantes.forEach(p => {   // facho dourado sobre quem ainda tem segredo para contar
     if(p.feito || (piso.falarLiberado && !piso.falarLiberado())) return;
+    const px = ox + p.x*tam, py = oy + p.y*tam;
+    if(foraDaVista(px, py, tam*3.4)) return;
     const tr = .75 + Math.sin(tempo*3 + p.fase)*.25;
-    luzRadial((ox + p.x*tam)*k, (oy + p.y*tam)*k, tam*3.0*tr*k, 'rgba(240,190,90,.6)');
+    luzRadial(px*k, py*k, tam*3.0*tr*k, 'rgba(240,190,90,.6)');
   });
   luzRadial((ox + jog.x*tam)*k, (oy + jog.y*tam)*k, tam*2.4*k, 'rgba(255,214,160,.45)');
   lcx.globalCompositeOperation = 'source-over';
@@ -2063,6 +2263,7 @@ function desenhar(){
   ctx.globalCompositeOperation = 'lighter';
   braseiros.forEach(b => {
     const px = ox + b.x*tam, py = oy + b.y*tam;
+    if(foraDaVista(px, py, tam*1.3)) return;
     const f = .8 + Math.sin(tempo*9 + b.fase)*.2;
     const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.85*f));
     g.addColorStop(0, 'rgba(255,224,160,.7)');
@@ -2083,9 +2284,12 @@ function desenhar(){
   });
   ctx.globalAlpha = 1;
 
-  const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.5, W/2, H/2, Math.max(W,H)*.85);
-  vg.addColorStop(0, 'rgba(6,4,10,0)'); vg.addColorStop(1, 'rgba(6,4,10,.6)');
-  ctx.fillStyle = vg; ctx.fillRect(0,0,W,H);
+  if(!vinheta || vinhetaW !== W || vinhetaH !== H){   // o gradiente só muda com a janela
+    vinheta = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*.5, W/2, H/2, Math.max(W,H)*.85);
+    vinheta.addColorStop(0, 'rgba(6,4,10,0)'); vinheta.addColorStop(1, 'rgba(6,4,10,.6)');
+    vinhetaW = W; vinhetaH = H;
+  }
+  ctx.fillStyle = vinheta; ctx.fillRect(0,0,W,H);
 
   if(joyAtivo){
     ctx.strokeStyle = 'rgba(232,161,60,.3)'; ctx.lineWidth = 2;
@@ -2109,6 +2313,7 @@ function imgRetrato(url){
 }
 function desenharInformante(p, ox, oy){
   const px = ox + p.x*tam, py = oy + p.y*tam, r = tam*.26;
+  if(foraDaVista(px, py, tam*3.5)) return;
   const resp = Math.sin(p.fase*1.6)*tam*.03;
   /* loop de GIF: o tempo anda em quadros discretos (8 por segundo), repetindo o ciclo */
   const q = Math.floor(p.fase*8)/8;
@@ -2244,7 +2449,7 @@ function desenharJogador(ox, oy){
 
 /* ---------- HUD, véu e fluxo ---------- */
 function atualizarHUD(){
-  el('vidaFill').style.transform = 'scaleX(' + Math.max(0, jog.hp/jog.hpMax) + ')';
+  uiEstilo('vidaFill', 'transform', 'scaleX(' + Math.max(0, jog.hp/jog.hpMax).toFixed(3) + ')');
   el('sPocoes').textContent = jog.pocoes;
   informantes.forEach((p,i) => {
     const d = el('seg-' + i);
@@ -2355,6 +2560,34 @@ el('invFechar').addEventListener('click', fecharPopupInventario);
 el('btnBolsa').addEventListener('touchstart', e => { e.preventDefault(); abrirInventario(); }, {passive:false});
 el('btnBolsa').addEventListener('mousedown', abrirInventario);
 
+/* ---------- menu do jogo ---------- */
+function pintarMenu(){
+  el('mSemMusica').textContent = semMusica ? 'Sem música ✓' : 'Sem música';
+  el('mSemMusica').classList.toggle('on', semMusica);
+}
+function abrirMenu(){
+  if(etapa === 'menu') return;                       // na tela-título não há o que pausar
+  if(!el('menuJogo').classList.contains('oculto')){ fecharMenu(); return; }
+  pintarMenu();
+  el('menuJogo').classList.remove('oculto');
+  pausado = true;
+}
+function fecharMenu(){
+  el('menuJogo').classList.add('oculto');
+  if(!dialogo && el('popupInv').classList.contains('oculto')) pausado = false;
+}
+el('btnMenu').addEventListener('touchstart', e => { e.preventDefault(); abrirMenu(); }, {passive:false});
+el('btnMenu').addEventListener('mousedown', abrirMenu);
+el('mVoltar').addEventListener('click', fecharMenu);
+el('mSair').addEventListener('click', () => location.reload());
+el('mSemMusica').addEventListener('click', () => {
+  semMusica = !semMusica;
+  try{ localStorage.setItem('hector.semMusica', semMusica ? '1' : '0'); }catch(e){}
+  if(semMusica) pararBgm();
+  else if(bgmDesejada.url) tocarBgm(bgmDesejada.url, bgmDesejada.vol);
+  pintarMenu();
+});
+
 function iniciarPiso(p){
   piso = p;
   etapa = 'inicio'; vivo = true; pausado = false;
@@ -2407,9 +2640,14 @@ el('comecar').addEventListener('click', () => {
 /* ---------- música de fundo (loop por piso) ---------- */
 let bgmAudio = null, bgmSrc = null, bgmFade = null, bgmVolAtual = .35;
 const BGM_VOL = .35, BGM_VOL_FALA = .08;
+/* preferência do menu: só cala a trilha — vozes, ambientes e efeitos ficam */
+let semMusica = false;
+try{ semMusica = localStorage.getItem('hector.semMusica') === '1'; }catch(e){}
+let bgmDesejada = {url:null, vol:null};   // o que tocaria, para religar quando a música voltar
 function tocarBgm(url, vol){
+  bgmDesejada = {url, vol};
   bgmVolAtual = vol != null ? vol : BGM_VOL;
-  if(!url){ pararBgm(); return; }
+  if(!url || semMusica){ pararBgm(); return; }
   if(bgmSrc === url && bgmAudio){
     try{ bgmAudio.volume = dialogo ? BGM_VOL_FALA : bgmVolAtual; bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
     return;
@@ -2799,10 +3037,31 @@ function desenharArmaNaMao(px, py, r){
   }
   const alt = tam*cfgA.alt, lar = im.naturalWidth*(alt/im.naturalHeight);
   ctx.save();
-  ctx.translate(mx, my);
-  // a rotação leva a parte "de ataque" da imagem para fora, na direção do golpe
-  ctx.rotate(ang + cfgA.rot + (p > 0 ? 0 : .35));
-  ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);     // pivô na empunhadura, junto à mão
+  if(p > 0){
+    // golpe: a rotação leva a parte "de ataque" da imagem para fora, na direção do arco
+    ctx.translate(mx, my);
+    ctx.rotate(ang + cfgA.rot);
+    ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);   // pivô na empunhadura, junto à mão
+  } else {
+    /* em repouso: empunhadura diagonal, como a referência do dono — a cabeça
+       do machado sobe do lado do olhar e o cabo cruza o corpo até o quadril
+       oposto; as duas mãos ficam fechadas no cabo o tempo todo */
+    const virado = Math.cos(jog.angulo) < 0;
+    const lado = virado ? -1 : 1;
+    ctx.translate(px + lado*tam*.42, my + tam*.06);        // a arma inteira ao lado do olhar, fora do corpo
+    if(virado) ctx.scale(-1, 1);                           // espelha tudo com o olhar
+    ctx.rotate(.55);                                       // a diagonal atravessando o peito
+    ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
+    /* as duas mãos fechadas no cabo */
+    const punho = (yy) => {
+      ctx.fillStyle = '#c98f5e';
+      ctx.beginPath(); ctx.ellipse(0, yy, r*.14, r*.11, .25, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(60,30,15,.65)'; ctx.lineWidth = 1;
+      ctx.stroke();
+    };
+    punho(-alt*.04);                                       // a mão de baixo, na base do cabo
+    punho(-alt*.45);                                       // a mão de cima, no meio do cabo
+  }
   ctx.restore();
 }
 function golpeDeArma(){
@@ -2860,6 +3119,7 @@ function atualizarRatazanas(dt, paradas){
 function desenharRatazanas(ox, oy){
   ratazanas.forEach(rz => {
     if(rz.hp <= 0) return;
+    if(foraDaVista(ox + rz.x*tam, oy + rz.y*tam, tam*1.5)) return;
     if(rz.barata){ desenharBarata(rz, ox, oy); return; }
     const px = ox + rz.x*tam, py = oy + rz.y*tam, r = tam*.20;
     ctx.fillStyle = 'rgba(0,0,0,.3)';
@@ -3370,7 +3630,7 @@ const PISO_CALABOUCO = {
     const bg = el('btnGolpe');
     bg.classList.toggle('on', etapa !== 'preso');
     bg.classList.toggle('off', jog.recarga > 0);
-    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    uiEstilo('cargaGolpe', 'transform', 'scaleY(' + Math.min(1, jog.recarga/.36).toFixed(2) + ')');
     if(!vistoCata && jog.y > 34.5){
       vistoCata = true;
       avisar('As catacumbas', 'a Ladra se esconde no fundo — siga a luz dourada');
@@ -3576,6 +3836,7 @@ function alturaLabareda(e){
 function desenharLabaredas(ox, oy){
   labaredas.forEach(e => {
     const px = ox + e.x*tam, py = oy + e.y*tam;
+    if(foraDaVista(px, py, tam*1.6)) return;
     // a boca de ferro no chão, sempre visível
     ctx.fillStyle = 'rgba(0,0,0,.5)';
     ctx.beginPath(); ctx.ellipse(px, py, tam*.34, tam*.2, 0, 0, TAU); ctx.fill();
@@ -3690,6 +3951,7 @@ function pintarPortaArte(g, x, y, w, h, comArgola){
 function desenharPortasInternas(ox, oy){
   portasInternas.forEach(p => {
     if(p.ab > .98) return;                       // escancarada: some da vista
+    if(foraDaVista(ox + (p.x + .5)*tam, oy + (p.y + .5)*tam, tam*2.6)) return;
     if(!p.vert){
       /* porta de FRENTE, na arte da referência: UMA folha só ocupando o vão,
          com a dobradiça na ombreira esquerda — abre girando para dentro
@@ -3799,6 +4061,7 @@ function desenharAjudantes(ox, oy){
     const im = imgsAjudantes[a.img];
     if(!(im.complete && im.naturalWidth > 0)) return;
     const px = ox + a.x*tam, py = oy + a.y*tam;
+    if(foraDaVista(px, py, tam*1.6)) return;
     const alt = tam*1.15;                                // bem menor que o Cozinheiro
     const lar = im.naturalWidth*(alt/im.naturalHeight);
     /* o mesmo loop de GIF dos informantes: balança, respira e quica */
@@ -3820,6 +4083,7 @@ function desenharAjudantes(ox, oy){
 /* --- a água da cisterna respira: brilho frio pulsando e ondulações sobre o cache --- */
 function desenharCisterna(ox, oy){
   const cx = ox + 23*tam, cy = oy + 46*tam;
+  if(foraDaVista(cx, cy, tam*2.8)) return;
   // o brilho azulado que sobe da água — se vê de longe, como as piscinas da inspiração
   const pulso = .6 + Math.sin(tempo*1.6)*.4;
   const gL = ctx.createRadialGradient(cx, cy, 0, cx, cy, tam*2.4);
@@ -3890,6 +4154,7 @@ function desenharPaes(ox, oy){
   paes.forEach(pa => {
     if(pa.pego) return;
     const px = ox + pa.x*tam, py = oy + pa.y*tam;
+    if(foraDaVista(px, py, tam*.9)) return;
     const fl = Math.sin(tempo*2.4 + pa.x*3)*tam*.05;
     const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.5));
     g.addColorStop(0, 'rgba(143,196,138,.30)'); g.addColorStop(1, 'rgba(143,196,138,0)');
@@ -3913,6 +4178,7 @@ function desenharCaldos(ox, oy){
   caldos.forEach(cd => {
     if(cd.pego) return;
     const px = ox + cd.x*tam, py = oy + cd.y*tam;
+    if(foraDaVista(px, py, tam)) return;
     const pulso = .5 + Math.sin(tempo*3.1 + cd.x)*.5;
     const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
     g.addColorStop(0, 'rgba(143,196,138,' + (.30 + pulso*.18) + ')');
@@ -3957,6 +4223,7 @@ function desenharPorta2(ox, oy){
   const P = COZ.PORTA;
   const x0 = ox + P.x*tam - tam*.3, y0 = oy + P.y*tam - tam*.15;
   const w = tam*1.6, h = tam*P.alt + tam*.3;
+  if(foraDaVista(x0 + w/2, y0 + h/2, tam*3)) return;
   const pronta = imgPorta.complete && imgPorta.naturalWidth > 0;
   if(!porta2.aberta){
     if(pronta) ctx.drawImage(imgPorta, x0, y0, w, h);
@@ -5050,6 +5317,7 @@ function pintarCozinhasCache(cmx, T){
 function desenharCarcacas(ox, oy){
   [[33.9,4.15],[38.9,4.15]].forEach(([cx,cy],i) => {
     const px = ox + cx*tam, py = oy + cy*tam;
+    if(foraDaVista(px, py + tam, tam*2.2)) return;
     const bal = Math.sin(tempo*.9 + i*2.1)*.05;
     ctx.save();
     ctx.translate(px, py);
@@ -5080,6 +5348,7 @@ function desenharRosacea(ox, oy){
   /* a água da GRANDE cisterna do salão: brilho frio pulsando e ondulações */
   const R = COZ.ROSACEA;
   const px = ox + R.x*tam, py = oy + (R.y - .05)*tam;
+  if(foraDaVista(px, py, tam*3.8)) return;
   const pulso = .6 + Math.sin(tempo*1.3)*.4;
   const gL = ctx.createRadialGradient(px, py, 0, px, py, tam*3.6);
   gL.addColorStop(0, 'rgba(90,210,230,' + (.14 + pulso*.08) + ')');
@@ -5155,7 +5424,7 @@ const PISO_COZINHAS = {
   informantes:[
     { nome:'O Cozinheiro', chave:'pausa', cor:'#d8c7a8', escala:1.5,
       retrato:'img/fase2/cozinheiro.png',
-      voz:{pitch:.7, rate:.9, genero:'m',
+      voz:{pitch:.7, rate:.9, genero:'m', ganho:1.8,
            audios:['audio/fase2/vozes/cozinheiro-1.mp3','audio/fase2/vozes/cozinheiro-2.mp3','audio/fase2/vozes/cozinheiro-3.mp3']},
       x:11.5, y:9.5,       // junto aos fogões da cozinha grande
       falas:[
@@ -5340,7 +5609,7 @@ const PISO_COZINHAS = {
     const bg = el('btnGolpe');
     bg.classList.add('on');
     bg.classList.toggle('off', jog.recarga > 0);
-    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    uiEstilo('cargaGolpe', 'transform', 'scaleY(' + Math.min(1, jog.recarga/.36).toFixed(2) + ')');
     if(jog.y < 18.5 && jog.x < 29) marcarTarefa('t-fogo');
     if(jog.y > 44.2 && jog.x < 34) marcarTarefa('t-adega');
     if(!vistoAdega && jog.y > 44.2 && jog.x < 34){
@@ -5412,8 +5681,2681 @@ const PISO_COZINHAS = {
   }
 };
 
+/* ========== mecânicas da fase 3 (conteúdo compartilhado) ==========
+   Mãos que agarram, zonas de luz cíclica e vultos — dirigidas por listas do
+   piso, no padrão de atualizarRatazanas: o piso 3 chama criarMaos/criarZonasLuz/
+   criarVultos no aoIniciar, atualizarMaos/atualizarZonasLuz/atualizarVultos no
+   atualizar, desenharZonasLuz/desenharMaos/desenharVultos no desenharCenario e
+   aponta acaoGolpe para golpeFase3. Nada disso roda nos pisos 1-2. */
+let maos = [], zonasLuz = [], vultos = [];
+let agarrao = null, avisoAgarrao = false;
+
+/* --- mãos dos mortos: perseguem devagar e AGARRAM (F3-RF-12) --- */
+function criarMaos(pontos){
+  agarrao = null; avisoAgarrao = false;
+  maos = pontos.map(p => ({x:p.x, y:p.y, hx:p.x, hy:p.y, vx:0, vy:0, raio:.34,
+    hp:p.hp != null ? p.hp : 25, dreno:p.dreno != null ? p.dreno : 5,
+    vel:p.vel != null ? p.vel : 1.4, fase:Math.random()*TAU, flash:0,
+    passo:Math.random()*15, olhar:-1}));
+}
+function agarrar(m){
+  agarrao = {mao:m, x:jog.x, y:jog.y, apertos:0, tique:0,
+    /* o avental de aço encurta o agarrão (F3-RF-13) */
+    precisa: inventario.some(i => i.id === 'avental-acougueiro') ? 2 : 3,
+    dashOffAntes: jog.dashOff};
+  jog.dashOff = true;                 // nem anda nem rola enquanto preso
+  jog.vx = jog.vy = 0;
+  tremor = 8; sFerro();
+  tocarSfx('audio/fase3/sons/mao-raspando-1.mp3', .9);
+  if(!avisoAgarrao){ avisoAgarrao = true; avisar('Ela te agarrou!', 'esmague GOLPE para se soltar'); }
+}
+function soltarAgarrao(){
+  if(!agarrao) return;
+  jog.dashOff = agarrao.dashOffAntes;
+  agarrao = null;
+}
+function debaterAgarrao(){            // cada aperto de GOLPE debate contra a mão
+  const g = agarrao;
+  if(!g) return;
+  g.apertos++;
+  jog.golpe = .12; sGolpe(); tremor = 6;
+  for(let k=0;k<6;k++) faisca(jog.x, jog.y + .3, '#cfc4a6', .13);
+  flutuar(jog.x, jog.y - .7, g.apertos + '/' + g.precisa, '#f4e2b4');
+  if(g.apertos >= g.precisa){         // soltou: a mão se desfaz em ossos
+    g.mao.hp = 0;
+    sEspadaAcerta();
+    for(let k=0;k<16;k++) faisca(g.mao.x, g.mao.y + .2, '#cfc4a6', .16);
+    for(let k=0;k<8;k++) terraRevolvida(g.mao.x, g.mao.y + .3);
+    soltarAgarrao();
+    jog.invul = Math.max(jog.invul, .6);
+    flutuar(jog.x, jog.y - .5, 'livre!', '#8fc48a');
+  }
+}
+function atualizarMaos(dt){
+  maos.forEach(m => {
+    if(m.hp <= 0) return;
+    m.fase += dt;
+    m.flash = Math.max(0, m.flash - dt*4);
+    if(agarrao && agarrao.mao === m){
+      /* preso: imobiliza no lugar do agarrão e drena vida por segundo */
+      jog.x = agarrao.x; jog.y = agarrao.y; jog.vx = jog.vy = 0;
+      m.x = jog.x; m.y = jog.y + .22;
+      jog.hp -= m.dreno*dt;
+      agarrao.tique += dt;
+      if(agarrao.tique >= 1){
+        agarrao.tique -= 1;
+        flutuar(jog.x, jog.y - .4, -m.dreno, '#ff8a96');
+        jog.flash = 1; sDorJog();
+        if(Math.random() < .5) mancharSangue(jog.x, jog.y + .3);
+      }
+      atualizarHUD();
+      if(jog.hp <= 0){ soltarAgarrao(); morrer(); }
+      return;
+    }
+    const dx = jog.x-m.x, dy = jog.y-m.y, d = Math.max(.01, Math.hypot(dx,dy));
+    if(d < 6.5){                      // persegue devagar, arranhando a pedra
+      m.vx += (dx/d*m.vel - m.vx)*Math.min(1, dt*4);
+      m.vy += (dy/d*m.vel - m.vy)*Math.min(1, dt*4);
+    } else {
+      m.vx -= m.vx*3*dt; m.vy -= m.vy*3*dt;
+    }
+    mover(m, m.vx*dt, m.vy*dt);
+    /* o quadro do engatinhar corre com o caminho percorrido: ela ANDA */
+    const vel2 = Math.hypot(m.vx, m.vy);
+    m.passo += (vel2 > .12 ? vel2*7 : 1.6)*dt;
+    if(Math.abs(m.vx) > .05) m.olhar = m.vx > 0 ? 1 : -1;
+    /* alcançou: agarra (o rolamento em curso ainda escapa) */
+    if(!agarrao && d < m.raio + jog.raio + .05 && jog.dash <= 0 && jog.invul <= 0 && vivo) agarrar(m);
+  });
+}
+function golpearMao(m, cortante){
+  const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
+  m.hp -= dano; m.flash = 1;
+  if(cortante) sCorte(); else sEspadaAcerta();
+  flutuar(m.x, m.y - .4, dano, cortante ? '#ffd88a' : '#f4e2b4');
+  for(let k=0;k<8;k++) faisca(m.x, m.y, '#cfc4a6', .12);
+  if(m.hp <= 0){
+    if(agarrao && agarrao.mao === m) soltarAgarrao();
+    sEspadaAcerta();
+    for(let k=0;k<14;k++) faisca(m.x, m.y, '#cfc4a6', .15);
+    for(let k=0;k<6;k++) terraRevolvida(m.x, m.y + .2);
+  }
+}
+function desenharMaos(ox, oy){
+  maos.forEach(m => {
+    if(m.hp <= 0) return;
+    const px = ox + m.x*tam, py = oy + m.y*tam, r = tam*.34;
+    const presa = agarrao && agarrao.mao === m;
+
+    /* o buraco de onde ela saiu fica para trás, na terra revolvida */
+    const bx = ox + m.hx*tam, by = oy + m.hy*tam;
+    ctx.fillStyle = 'rgba(0,0,0,.42)';
+    ctx.beginPath(); ctx.ellipse(bx, by + r*.5, r*1.05, r*.42, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2e2418';
+    ctx.beginPath(); ctx.ellipse(bx, by + r*.45, r*.8, r*.3, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#4a3a26';
+    ctx.beginPath(); ctx.ellipse(bx - r*.45, by + r*.38, r*.26, r*.12, .4, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(bx + r*.5, by + r*.46, r*.22, r*.1, -.3, 0, TAU); ctx.fill();
+
+    if(imgMaoAnda.complete && imgMaoAnda.naturalWidth > 0){
+      /* a mão engatinhando: quadros do vídeo, corridos conforme ela anda */
+      const q = presa ? (Math.floor(tempo*14) % MAO_Q) : (Math.floor(m.passo) % MAO_Q);
+      const alt = tam*.92, lar = MAO_QL*(alt/MAO_QA);
+      const pulo = Math.abs(Math.sin(m.passo*.42))*r*.1;      // o corpo sobe a cada passada
+      ctx.fillStyle = 'rgba(0,0,0,.35)';                       // a sombra dela no chão
+      ctx.beginPath(); ctx.ellipse(px, py + r*.42, lar*.3, r*.2, 0, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(px, py - pulo);
+      if(m.olhar > 0) ctx.scale(-1, 1);                        // a arte anda para a esquerda
+      ctx.rotate(Math.sin(m.passo*.3)*.04);
+      if(m.flash > 0) ctx.filter = 'brightness(2.4)';
+      ctx.drawImage(imgMaoAnda, q*MAO_QL, 0, MAO_QL, MAO_QA,
+                    -lar*.52, -alt*.72, lar, alt);
+      ctx.filter = 'none';
+      ctx.restore();
+      return;
+    }
+
+    const osso = m.flash > 0 ? '#ffffff' : '#cfc4a6';
+    const bob = presa ? 0 : Math.sin(m.fase*3)*r*.08;
+    ctx.save();
+    ctx.translate(px, py - r*.1 + bob);
+    ctx.rotate(presa ? Math.sin(tempo*16)*.07 : Math.sin(m.fase*1.6)*.14);
+    /* punho saindo do chão */
+    ctx.strokeStyle = osso; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, r*.3);
+    ctx.beginPath(); ctx.moveTo(0, r*.6); ctx.lineTo(0, r*.1); ctx.stroke();
+    /* palma */
+    ctx.fillStyle = osso;
+    ctx.beginPath(); ctx.ellipse(0, 0, r*.42, r*.5, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(0, r*.1, r*.24, r*.2, 0, 0, TAU); ctx.fill();
+    /* cinco dedos articulados em linhas, abrindo e fechando */
+    for(let i=0;i<5;i++){
+      const a0 = -Math.PI/2 + (i-2)*.42;
+      const curva = presa ? 1.05 + Math.sin(tempo*15 + i)*.12
+                          : .5 + Math.sin(m.fase*4 + i*1.7)*.4;
+      const c1 = r*(i === 0 ? .34 : .5 - Math.abs(i-2)*.055);   // o polegar é curto
+      const c2 = c1*.72;
+      const x0 = Math.cos(a0)*r*.36, y0 = Math.sin(a0)*r*.42;
+      const a1 = a0 + curva*.55, a2 = a1 + curva*.75;
+      const x1 = x0 + Math.cos(a1)*c1, y1 = y0 + Math.sin(a1)*c1;
+      const x2 = x1 + Math.cos(a2)*c2, y2 = y1 + Math.sin(a2)*c2;
+      ctx.strokeStyle = osso;
+      ctx.lineWidth = Math.max(1.5, r*.14);
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.lineWidth = Math.max(1, r*.11);
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      ctx.fillStyle = '#a89a7c';                               // as juntas
+      ctx.beginPath(); ctx.arc(x1, y1, Math.max(1, r*.07), 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+/* --- zonas de luz cíclica: as velas apagam e o escuro desce (F3-RF-03) --- */
+function criarZonasLuz(lista){
+  zonasLuz = lista.map(z => ({claroT:4, escuroT:4, fase:0, ...z, escura:false, veu:0}));
+}
+function atualizarZonasLuz(dt){
+  zonasLuz.forEach(z => {
+    const ciclo = z.claroT + z.escuroT;
+    const c = (tempo + z.fase) % ciclo;
+    const escura = c >= z.claroT;
+    /* o sopro só é ouvido por quem está perto da zona */
+    if(escura && !z.escura){
+      const px = Math.max(z.x, Math.min(jog.x, z.x + z.larg));
+      const py = Math.max(z.y, Math.min(jog.y, z.y + z.alt));
+      if(Math.hypot(jog.x - px, jog.y - py) < 9) tocarSfx('audio/fase3/sons/sopro-vela-1.mp3', .7);
+    }
+    z.escura = escura;
+    z.veu += ((escura ? 1 : 0) - z.veu)*Math.min(1, dt*2.2);
+  });
+}
+function zonaDe(v){ return zonasLuz[v.zona]; }
+function desenharZonasLuz(ox, oy){
+  zonasLuz.forEach(z => {
+    if(z.veu <= .015) return;
+    const x = ox + z.x*tam, y = oy + z.y*tam, w = z.larg*tam, h = z.alt*tam;
+    ctx.fillStyle = 'rgba(5,3,12,' + (z.veu*.55) + ')';
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(3,2,8,' + (z.veu*.35) + ')';   // miolo ainda mais fundo
+    ctx.fillRect(x + w*.12, y + h*.12, w*.76, h*.76);
+  });
+}
+
+/* --- vultos: sombras que só se erguem no escuro (F3-RF-12/26) --- */
+function criarVultos(lista){
+  vultos = lista.map(v => ({x:v.x, y:v.y, hx:v.x, hy:v.y, zona:v.zona || 0,
+    vx:0, vy:0, raio:.4, hp:v.hp != null ? v.hp : 45, dano:v.dano != null ? v.dano : 9,
+    vel:v.vel != null ? v.vel : 2.1, estado:'submerso', p:0, atraso:0,
+    fase:Math.random()*TAU, flash:0, morde:0}));
+}
+function vultoVulneravel(v){ return v.hp > 0 && (v.estado === 'ativo' || v.estado === 'ergue'); }
+function atualizarVultos(dt){
+  vultos.forEach(v => {
+    if(v.hp <= 0) return;
+    v.fase += dt;
+    v.flash = Math.max(0, v.flash - dt*4);
+    v.morde = Math.max(0, v.morde - dt);
+    const z = zonaDe(v), escuro = z && z.escura;
+    switch(v.estado){
+      case 'submerso':               // afundado e invulnerável, deriva de volta pra casa
+        v.x += (v.hx - v.x)*Math.min(1, dt*.8);
+        v.y += (v.hy - v.y)*Math.min(1, dt*.8);
+        if(escuro && Math.hypot(jog.x - v.x, jog.y - v.y) < 7){
+          /* só se ergue (e grita) quando o jogador passa perto — o susto é pessoal */
+          v.atraso -= dt;
+          if(v.atraso <= 0){
+            v.estado = 'ergue'; v.p = 0;
+            if(z.grito) tocarSfx(z.grito, 1);     // o grito do susto (F3-RF-26)
+          }
+        } else v.atraso = Math.random()*.6;       // sobe desencontrado do vizinho
+        break;
+      case 'ergue':
+        v.p = Math.min(1, v.p + dt/.7);
+        if(v.p >= 1) v.estado = 'ativo';
+        break;
+      case 'ativo': {
+        if(!escuro){ v.estado = 'afunda'; break; }
+        const dx = jog.x-v.x, dy = jog.y-v.y, d = Math.max(.01, Math.hypot(dx,dy));
+        if(d < 8){
+          v.vx += (dx/d*v.vel - v.vx)*Math.min(1, dt*3);
+          v.vy += (dy/d*v.vel - v.vy)*Math.min(1, dt*3);
+        } else { v.vx -= v.vx*2*dt; v.vy -= v.vy*2*dt; }
+        mover(v, v.vx*dt, v.vy*dt);
+        if(d < v.raio + jog.raio + .1 && v.morde <= 0){
+          v.morde = .9;
+          tocarSfx('audio/fase3/sons/sussurro-vulto-1.mp3', .8);
+          machucar(v.dano, Math.atan2(dy, dx));
+        }
+        break;
+      }
+      case 'afunda':
+        v.p = Math.max(0, v.p - dt/.6);
+        v.vx = v.vy = 0;
+        if(v.p <= 0){ v.estado = 'submerso'; v.atraso = Math.random()*.6; }
+        break;
+    }
+  });
+}
+function golpearVulto(v, cortante){
+  if(!vultoVulneravel(v)) return;
+  const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
+  v.hp -= dano; v.flash = 1;
+  v.vx += (v.x-jog.x)*3; v.vy += (v.y-jog.y)*3;
+  if(cortante) sCorte(); else sEspadaAcerta();
+  flutuar(v.x, v.y - .6, dano, cortante ? '#ffd88a' : '#f4e2b4');
+  for(let k=0;k<10;k++) faisca(v.x, v.y, '#3a3350', .13);
+  if(v.hp <= 0){
+    tocarSfx('audio/fase3/sons/sussurro-vulto-2.mp3', .9);
+    for(let k=0;k<18;k++) faisca(v.x, v.y, '#5a5470', .16);
+  }
+}
+function desenharVultos(ox, oy){
+  vultos.forEach(v => {
+    if(v.hp <= 0 || v.estado === 'submerso') return;
+    const sobe = v.estado === 'ativo' ? 1 : v.p;
+    const px = ox + v.x*tam, py = oy + v.y*tam, r = tam*.46;
+    const flut = Math.sin(v.fase*2.3)*r*.1;
+    ctx.save();
+    ctx.globalAlpha = .25 + .65*sobe;
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + r*.75, r*.8*sobe, r*.26*sobe, 0, 0, TAU); ctx.fill();
+    ctx.translate(px, py + flut - r*.3*sobe);
+    ctx.scale(1, sobe);
+    if(imgVulto.complete && imgVulto.naturalWidth > 0){
+      /* o sprite aprovado: capuz de olhos acesos e garras-foice */
+      const altV = tam*1.7, larV = imgVulto.naturalWidth*(altV/imgVulto.naturalHeight);
+      ctx.rotate(Math.sin(v.fase*2.1)*.06);
+      if(v.flash > 0) ctx.filter = 'brightness(2.3) saturate(.3)';
+      ctx.globalAlpha *= .94;
+      ctx.drawImage(imgVulto, -larV/2, -altV*.62, larV, altV*.999);
+      ctx.filter = 'none';
+      const og2 = ctx.createRadialGradient(0, -r*.35, 0, 0, -r*.35, r*.6);
+      og2.addColorStop(0, 'rgba(190,220,190,.22)'); og2.addColorStop(1, 'rgba(190,220,190,0)');
+      ctx.fillStyle = og2;
+      ctx.beginPath(); ctx.arc(0, -r*.35, r*.6, 0, TAU); ctx.fill();
+      ctx.restore();
+      return;
+    }
+    /* massa escura ondulante: cúpula com barra de ondas embaixo */
+    ctx.fillStyle = v.flash > 0 ? '#5a5470' : '#161122';
+    ctx.beginPath();
+    ctx.moveTo(-r*.85, r*.6);
+    ctx.quadraticCurveTo(-r*1.05 + Math.sin(v.fase*3)*r*.1, -r*.2, 0, -r*.95);
+    ctx.quadraticCurveTo(r*1.05 + Math.sin(v.fase*3.4)*r*.1, -r*.2, r*.85, r*.6);
+    for(let i=0;i<5;i++){                       // a bainha ondula feito pano rasgado
+      const wx = r*.85 - (i+1)*r*.34;
+      const wy = r*.6 + Math.sin(v.fase*5 + i*1.9)*r*.16;
+      ctx.quadraticCurveTo(wx + r*.17, wy + r*.3, wx, wy);
+    }
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(90,84,120,.25)';       // um respiro de volume
+    ctx.beginPath(); ctx.ellipse(-r*.2, -r*.35, r*.4, r*.5, .3, 0, TAU); ctx.fill();
+    /* olhos claros */
+    const og = ctx.createRadialGradient(0, -r*.35, 0, 0, -r*.35, r*.55);
+    og.addColorStop(0, 'rgba(207,214,255,.35)'); og.addColorStop(1, 'rgba(207,214,255,0)');
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.arc(0, -r*.35, r*.55, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#cfd6ff';
+    const pisc = Math.sin(v.fase*1.3) > -.92 ? 1 : .15;   // piscada rara
+    [-1,1].forEach(k => {
+      ctx.beginPath();
+      ctx.ellipse(k*r*.22, -r*.38, r*.09, r*.13*pisc, k*.2, 0, TAU);
+      ctx.fill();
+    });
+    ctx.restore();
+  });
+}
+
+/* --- GOLPE da fase 3: primeiro se debate, depois corta mãos e vultos --- */
+function golpeFase3(){
+  if(agarrao){ debaterAgarrao(); return; }    // preso: o aperto vale pelo golpe
+  if(jog.recarga > 0) return;
+  golpeDeArma();                              // chefe e ratazanas do jeito de sempre
+  const cortante = !!ARMAS[jog.arma];
+  maos.forEach(m => {
+    if(m.hp > 0 && Math.hypot(m.x-jog.x, m.y-jog.y) < 1.3) golpearMao(m, cortante);
+  });
+  vultos.forEach(v => {
+    if(Math.hypot(v.x-jog.x, v.y-jog.y) < 1.4) golpearVulto(v, cortante);
+  });
+}
+
+/* ================================================================
+   CONTEÚDO — PISO 3: AS SALAS DE FUNERAL
+   O piso onde o castelo lava, vela e enterra os seus mortos.
+   O Coveiro cava dia e noite no fundo da cova grande. (fase3.prd)
+   ESQUELETO: mapa + piso mínimo. Chefe/inimigos novos vêm da frente
+   do motor (F3-RF-15..19); aqui o cfg é provisório, na forma do
+   Açougueiro, só para a arena e os testes funcionarem.
+   ================================================================ */
+
+const FUN = {                      // geografia do piso (planta: capela e cova ao norte, cripta e colombário ao sul)
+  LARG:46, ALT:58,
+  /* passagem SELADA da cova grande: 3 tiles de PAREDE na linha y=17,
+     x36..38 — abre como a porta da câmara do piso 2 (tiles viram CHAO) */
+  PORTA:{x:36, y:17, larg:3},
+  MOSAICO:{x:9.5, y:10.5, raio:3.4}    // o mosaico circular da capela (geometria; a pintura vem depois)
+};
+let porta3 = null;
+/* cada cômodo se apresenta na primeira vez que o jogador entra nele */
+const COMODOS_FUN = [
+  {x1:3,  y1:5,  x2:16, y2:16, nome:'A capela do velório',   sub:'rezam por alguém que ainda não foi enterrado'},
+  {x1:19, y1:5,  x2:27, y2:13, nome:'A sala de preparação',  sub:'é aqui que os mortos são lavados'},
+  {x1:5,  y1:20, x2:41, y2:23, nome:'O salão dos enterros',  sub:'os caixões passam por aqui, arrastados'},
+  {x1:3,  y1:31, x2:11, y2:35, nome:'A oficina de caixões',  sub:'o Carpinteiro tira a medida de todo mundo'},
+  {x1:3,  y1:37, x2:11, y2:41, nome:'O depósito',            sub:'tábuas, pregos e o que sobra dos caixões'},
+  {x1:12.5, y1:30.5, x2:31, y2:43, nome:'A cripta alagada',  sub:'água parada — pise só nas passarelas'},
+  {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de nichos; o Sacristão está no fundo'},
+  {x1:38, y1:26, x2:43, y2:30, nome:'O quarto do Coveiro',   sub:'ele dorme ao lado da pá'},
+  {x1:30, y1:4,  x2:43, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'}
+];
+const vistos = new Set();
+function anunciarComodo(){
+  for(const c of COMODOS_FUN){
+    if(vistos.has(c.nome)) continue;
+    if(jog.x >= c.x1 && jog.x <= c.x2 && jog.y >= c.y1 && jog.y <= c.y2){
+      vistos.add(c.nome);
+      avisar(c.nome, c.sub);
+      return;
+    }
+  }
+}
+
+function construirFuneral(){
+  const t = new Uint8Array(FUN.LARG*FUN.ALT).fill(PAREDE);
+  const bra = [], dec = [];
+  const ix = (x,y) => y*FUN.LARG + x;
+  const cavar = (x1,y1,x2,y2,tile) => {
+    for(let y=y1;y<=y2;y++) for(let x=x1;x<=x2;x++) t[ix(x,y)] = (tile===undefined?CHAO:tile);
+  };
+
+  /* ---- capela de velório, no noroeste: sala grande com o mosaico circular ---- */
+  cavar(3,5,16,16);
+  for(let y=7; y<=13; y++) for(let x=6; x<=12; x++){
+    if(Math.hypot(x + .5 - FUN.MOSAICO.x, y + .5 - FUN.MOSAICO.y) < FUN.MOSAICO.raio) t[ix(x,y)] = CHAO2;
+  }
+  /* ---- sala de preparação dos corpos, a leste da capela ---- */
+  cavar(19,5,27,13);
+  cavar(17,8,18,9);             // porta capela <-> preparação
+  /* ---- cova grande: a arena do Coveiro, SELADA (FUN.PORTA fica PAREDE) ---- */
+  cavar(30,4,43,16,CHAO2);
+  cavar(36,18,38,19);           // a soleira: corredor curto até o salão
+
+  /* ---- salão central, ligando tudo ---- */
+  cavar(5,20,41,23);
+  cavar(8,17,9,19);             // corredor capela -> salão
+  cavar(22,14,23,19);           // corredor preparação -> salão
+  /* a ESCADA DESMORONADA: parte do salão rumo à arena e morre num buraco (travessia falsa) */
+  cavar(31,18,32,19);
+  cavar(31,17,32,17,FOSSO);     // o buraco onde a escada ruiu
+  /* ---- quarto do Coveiro: pequeno e trancável, a leste do salão ---- */
+  cavar(38,26,43,30);
+  cavar(40,24,41,25);           // porta do quarto
+
+  /* ---- oficina de caixões (norte) + depósito (sul), a oeste ---- */
+  cavar(3,31,11,41);
+  for(let x=3; x<=11; x++) t[ix(x,36)] = PAREDE;   // divisória oficina/depósito
+  cavar(6,36,7,36);             // porta da divisória
+  cavar(6,24,7,30);             // corredor salão -> oficina
+
+  /* ---- CRIPTA ALAGADA, centro-sul: água parada (FOSSO) com passarelas (PONTE) ---- */
+  cavar(15,32,28,42,FOSSO);
+  cavar(13,24,14,33);           // corredor oeste do salão à beira d'água
+  cavar(29,24,30,33);           // corredor leste do salão à beira d'água
+  cavar(15,32,17,33);           // margem noroeste
+  cavar(26,32,28,33);           // margem leste
+  cavar(15,41,18,42);           // margem sul, rumo ao colombário
+  /* travessia 1 (oeste): passarela direta */
+  cavar(16,34,16,40,PONTE);
+  /* travessia 2 (leste): desce e contorna por baixo */
+  cavar(27,34,27,39,PONTE);
+  cavar(17,40,27,40,PONTE);
+  /* becos d'água: passarelas que morrem sobre a água parada */
+  cavar(22,36,22,39,PONTE);     // espigão que sobe do caminho sul e acaba no nada
+  cavar(22,33,25,33,PONTE);     // espigão que sai da margem leste e acaba no nada
+
+  /* ---- colombário em LABIRINTO, no sul: celas 2x2 numa grade 10x3 ---- */
+  const lab = gerarLabirinto(10, 3, 20260806);
+  for(let ly=0; ly<3; ly++) for(let lx=0; lx<10; lx++){
+    const c = lab[ly*10+lx], gx = 4+lx*3, gy = 45+ly*3;
+    cavar(gx, gy, gx+1, gy+1);
+    if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
+    if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
+  }
+  /* as duas entradas do colombário */
+  cavar(5,42,6,44);             // oeste: desce do depósito
+  cavar(16,43,17,44);           // centro: desce da margem sul da cripta
+
+  /* ---- escada de chegada (vinda das cozinhas), canto sudeste ---- */
+  cavar(36,48,43,54,CHAO2);
+  cavar(39,33,40,47);           // corredor leste: sobe da escada
+  cavar(31,32,38,33);           // e dobra rumo ao salão pelo corredor leste
+
+  /* ---- luzes: poucas e espaçadas — o piso é sombrio ---- */
+  [[9.5,5.6],[4,15.6],[15,15.6],                    // capela
+   [23,5.6],[26.5,12.5],                            // preparação
+   [31,4.6],[42,4.6],[37,15.5],                     // cova grande
+   [37,19],                                         // soleira da cova
+   [10,20.5],[22,20.5],[34,20.5],                   // salão
+   [40.5,26.5],                                     // quarto do Coveiro
+   [4,31.6],[10,40.5],                              // oficina e depósito
+   [16,32.5],[27,32.5],[16.5,41.5],                 // margens da cripta
+   [7.5,46.5],[25.5,49.5],[30.5,51.5],              // colombário
+   [39.5,44],[40,48.6]                              // corredor leste e escada
+  ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
+
+  /* ---- decoração ---- */
+  // capela: esquifes (pares de caixote), teias e a água que escorre
+  [[6,8.5],[7,8.5],[6,12.5],[7,12.5],[12,8.5],[13,8.5]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  dec.push({tipo:'teia', x:3.4, y:5.4, flip:false}); dec.push({tipo:'teia', x:15.6, y:5.4, flip:true});
+  dec.push({tipo:'poca', x:4.5, y:10}); dec.push({tipo:'palha', x:12, y:14.5});
+  // preparação: as mesas dos corpos, água e correntes
+  dec.push({tipo:'caixote', x:20.5, y:6.5}); dec.push({tipo:'caixote', x:24.5, y:6.5});
+  dec.push({tipo:'corrente_parede', x:21, y:4.3}); dec.push({tipo:'corrente_parede', x:24, y:4.3});
+  dec.push({tipo:'poca', x:22, y:9.5}); dec.push({tipo:'poca', x:24.5, y:11.8});
+  dec.push({tipo:'osso', x:26.5, y:6.5});
+  // cova grande: correntes, ossos de quem já desceu e um esquife à beira
+  [[33,3.3],[38,3.3],[41,3.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
+  dec.push({tipo:'caixote', x:31.5, y:5.5}); dec.push({tipo:'caixote', x:32.5, y:5.5});
+  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:42.5, y:14.5});
+  dec.push({tipo:'poca', x:35, y:7.5}); dec.push({tipo:'poca', x:40, y:12});
+  // escada desmoronada: o aviso de quem não voltou
+  dec.push({tipo:'rachadura', x:31.5, y:19.2}); dec.push({tipo:'osso', x:32.4, y:18.6});
+  // salão: pedra gasta e goteiras
+  dec.push({tipo:'poca', x:18, y:22}); dec.push({tipo:'poca', x:30, y:21.5});
+  dec.push({tipo:'rachadura', x:25, y:22.6});
+  // quarto do Coveiro: a cama de palha e as coisas dele
+  dec.push({tipo:'palha', x:42.5, y:29.3}); dec.push({tipo:'caixote', x:38.8, y:26.8});
+  dec.push({tipo:'barril', x:43, y:27.2});
+  // oficina de caixões: caixões em obra e serragem
+  [[4.5,33.5],[5.5,33.9],[9,32.5],[10,34.5]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  dec.push({tipo:'palha', x:10.5, y:31.6}); dec.push({tipo:'barril', x:3.8, y:35.2});
+  // depósito: tábuas e pregos
+  [[4,37.6],[5,38],[10.5,37.5]].forEach(([x,y]) => dec.push({tipo:'barril',x,y}));
+  dec.push({tipo:'caixote', x:9.5, y:40.5}); dec.push({tipo:'caixote', x:3.8, y:40.6});
+  dec.push({tipo:'teia', x:3.4, y:37.4, flip:false});
+  // cripta alagada: caixões boiando na água parada
+  // os caixotes da cripta boiam: entram como destroços vivos, não como decor parado
+  dec.push({tipo:'poca', x:16, y:33.4}); dec.push({tipo:'poca', x:27, y:33.5});
+  dec.push({tipo:'poca', x:17.5, y:41.5}); dec.push({tipo:'osso', x:15.5, y:42.3});
+  // colombário: os nichos guardam o que sobrou
+  dec.push({tipo:'teia', x:4.4, y:45.4, flip:false}); dec.push({tipo:'teia', x:32.5, y:45.4, flip:true});
+  dec.push({tipo:'caveira', x:13.5, y:48.5}); dec.push({tipo:'caveira', x:27.5, y:51.5});
+  dec.push({tipo:'caveira', x:4.5, y:52.5}); dec.push({tipo:'osso', x:20.5, y:45.5});
+  dec.push({tipo:'osso', x:31.5, y:48.5});
+  // escada de chegada
+  dec.push({tipo:'teia', x:36.4, y:48.4, flip:false}); dec.push({tipo:'rachadura', x:39, y:51});
+  dec.push({tipo:'barril', x:42.5, y:53.5});
+
+  return {larg:FUN.LARG, alt:FUN.ALT, tiles:t, braseiros:bra, decor:dec};
+}
+
+/* --- o piso, montado (esqueleto: F3-RF-01..05 na geometria; o resto vem depois) --- */
+/* --- as velas do caminho (t-velas): apagadas até o jogador ACENDER com E --- */
+let velasCaminho = [], aguaBenta = [], cirios = [];
+function criarVelasCaminho(){
+  velasCaminho = [
+    {x:9.5,  y:21.5},   // salão, saída da capela
+    {x:22.5, y:21.5},   // salão, centro
+    {x:16.5, y:33},     // margem noroeste da cripta
+    {x:17,   y:41.5},   // margem sul da cripta
+    {x:6,    y:44}      // descida do colombário
+  ].map(v => ({...v, acesa:false}));
+}
+function desenharVelasCaminho(ox, oy){
+  velasCaminho.forEach(v => {
+    const px = ox + v.x*tam, py = oy + v.y*tam;
+    // castiçal
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.16, tam*.06, 0, 0, TAU); ctx.fill();
+    const spr = imgCastical.complete && imgCastical.naturalWidth > 0;
+    if(spr){
+      const altC = tam*1.05, larC = imgCastical.naturalWidth*(altC/imgCastical.naturalHeight);
+      ctx.save();
+      if(!v.acesa) ctx.filter = 'grayscale(.7) brightness(.6)';
+      ctx.drawImage(imgCastical, px - larC/2, py + tam*.14 - altC, larC, altC);
+      ctx.filter = 'none';
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#5a5264';
+      ctx.fillRect(px - tam*.05, py - tam*.1, tam*.1, tam*.22);
+      ctx.fillStyle = v.acesa ? '#e8e2d2' : '#8a8494';
+      ctx.fillRect(px - tam*.04, py - tam*.34, tam*.08, tam*.26);
+    }
+    if(v.acesa){
+      const tr = .8 + Math.sin(tempo*9 + v.x)*.2;
+      const topoV = spr ? py + tam*.14 - tam*1.02 : py - tam*.4;
+      ctx.fillStyle = '#ffd27a';
+      ctx.beginPath(); ctx.ellipse(px, topoV, tam*.045, tam*.09*tr, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,230,.85)';
+      ctx.beginPath(); ctx.ellipse(px, topoV - tam*.02, tam*.02, tam*.045, 0, 0, TAU); ctx.fill();
+    } else {
+      // fio de fumaça da vela morta
+      ctx.strokeStyle = 'rgba(180,180,200,.25)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, spr ? py + tam*.14 - tam*.98 : py - tam*.36);
+      ctx.quadraticCurveTo(px + tam*.06, py - tam*.5, px - tam*.03, py - tam*.62);
+      ctx.stroke();
+    }
+  });
+}
+function acenderVela(v){
+  v.acesa = true;
+  braseiros.push({x:v.x, y:v.y - .3, fase:Math.random()*TAU});   // a luz passa a existir
+  sTrapo(); tremor = 2;
+  for(let k=0;k<10;k++) faisca(v.x, v.y - .4, '#ffd27a', .1);
+  const n = velasCaminho.filter(w => w.acesa).length;
+  const cont = el('t-velas-cont');
+  if(cont) cont.textContent = n + '/' + velasCaminho.length;
+  flutuar(v.x, v.y - .8, n + '/' + velasCaminho.length, '#ffd27a');
+  if(n === velasCaminho.length){ marcarTarefa('t-velas'); avisar('O caminho está aceso', 'a cova espera por você'); }
+}
+/* --- água benta: a cura espalhada da fase (15%) --- */
+function criarAguaBenta(){
+  aguaBenta = [
+    {x:10, y:11},      // capela
+    {x:23, y:8.5},     // preparação
+    {x:7.5, y:39.5},   // depósito
+    {x:20.5, y:46.5},  // colombário oeste
+    {x:29.5, y:49.5},  // colombário leste
+    {x:40.5, y:28}     // quarto do Coveiro
+  ].map(a => ({...a, pego:false}));
+}
+function desenharAguaBenta(ox, oy){
+  aguaBenta.forEach(a => {
+    if(a.pego) return;
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    const fl = Math.sin(tempo*2.4 + a.x*3)*tam*.05;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*.5));
+    g.addColorStop(0, 'rgba(120,190,235,.30)'); g.addColorStop(1, 'rgba(120,190,235,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*.5, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.13, tam*.14, tam*.06, 0, 0, TAU); ctx.fill();
+    // o frasco
+    ctx.save(); ctx.translate(px, py - tam*.05 + fl);
+    ctx.fillStyle = '#cfe6f4';
+    ctx.fillRect(-tam*.07, -tam*.16, tam*.14, tam*.24);
+    ctx.fillStyle = '#5a9cc9';
+    ctx.fillRect(-tam*.055, -tam*.06, tam*.11, tam*.13);
+    ctx.fillStyle = '#8a6a3a';
+    ctx.fillRect(-tam*.035, -tam*.23, tam*.07, tam*.08);
+    ctx.fillStyle = 'rgba(255,255,255,.5)';
+    ctx.fillRect(-tam*.05, -tam*.14, tam*.03, tam*.16);
+    ctx.restore();
+  });
+}
+/* --- círios da cova: a cura da arena (25%), repostos a cada tentativa --- */
+function criarCirios(){
+  cirios = [
+    {x:31.5, y:5.4, pego:false},
+    {x:42.5, y:5.4, pego:false}
+  ];
+}
+function desenharCirios(ox, oy){
+  cirios.forEach(c2 => {
+    if(c2.pego) return;
+    const px = ox + c2.x*tam, py = oy + c2.y*tam;
+    const pulso = .5 + Math.sin(tempo*3.1 + c2.x)*.5;
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
+    g.addColorStop(0, 'rgba(143,196,138,' + (.28 + pulso*.16) + ')');
+    g.addColorStop(1, 'rgba(143,196,138,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*(.6 + pulso*.12), 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.16, tam*.16, tam*.07, 0, 0, TAU); ctx.fill();
+    if(imgCirio.complete && imgCirio.naturalWidth > 0){
+      const altC = tam*.92, larC = imgCirio.naturalWidth*(altC/imgCirio.naturalHeight);
+      ctx.drawImage(imgCirio, px - larC/2, py + tam*.16 - altC, larC, altC);
+    } else {
+      ctx.fillStyle = '#efe9d8';
+      ctx.fillRect(px - tam*.08, py - tam*.36, tam*.16, tam*.5);
+      ctx.fillStyle = '#ffd27a';
+      ctx.beginPath(); ctx.ellipse(px, py - tam*.44, tam*.05, tam*.1, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,235,.9)';
+      ctx.beginPath(); ctx.ellipse(px, py - tam*.46, tam*.022, tam*.05, 0, 0, TAU); ctx.fill();
+    }
+  });
+}
+
+/* --- imagens da fase 3: os sprites aprovados na revisão --- */
+const imgCoveiro = new Image(); imgCoveiro.src = 'img/fase3/coveiro.png';
+const imgVulto = new Image(); imgVulto.src = 'img/fase3/vulto.png';
+/* a mão que engatinha: 15 quadros lado a lado, recortados do vídeo do dono */
+const imgMaoAnda = new Image(); imgMaoAnda.src = 'img/fase3/mao-anda.png';
+const MAO_Q = 15, MAO_QL = 213, MAO_QA = 199;
+const imgCastical = new Image(); imgCastical.src = 'img/fase3/item-castical-2.png';
+const imgCirio = new Image(); imgCirio.src = 'img/fase3/item-vela-prato.png';
+/* itens de cenário: carregam sob demanda e repintam o cache quando chegam */
+const imgsFun = {};
+let recacheFun = false;
+function funImg(nome){
+  let im = imgsFun[nome];
+  if(!im){
+    im = new Image();
+    im.src = 'img/fase3/' + nome + '.png';
+    im.onload = () => {
+      if(recacheFun || !piso || piso.id !== 'funeral' || !mapa) return;
+      recacheFun = true;
+      setTimeout(() => { recacheFun = false; if(piso.id === 'funeral' && mapa) desenharCache(); }, 150);
+    };
+    imgsFun[nome] = im;
+  }
+  return im;
+}
+
+/* --- o Coveiro em pessoa: sprite com pernas que pisam, pá e lanterna --- */
+function desenharCoveiro(c, ox, oy){
+  const px = ox + c.x*tam, py = oy + c.y*tam, r = c.raio*tam;
+  ctx.fillStyle = 'rgba(0,0,0,.45)';
+  ctx.beginPath(); ctx.ellipse(px, py + r*.92, r*1.05, r*.36, 0, 0, TAU); ctx.fill();
+
+  const exausto = c.estado === 'exausto', tonto = c.estado === 'atordoado', cavando = c.estado === 'cava';
+  const golpe = c.golpeAnim > 0 ? c.golpeAnim/.22 : 0;
+  const flip = Math.cos(c.angulo) > 0;                  // a arte olha para a esquerda
+
+  let ajoelha = 0;
+  if(c.flash > 0) ajoelha = Math.max(ajoelha, Math.min(1, c.flash*1.1));
+  if(tonto) ajoelha = Math.max(ajoelha, .8 + Math.sin(tempo*9)*.1);
+  if(exausto) ajoelha = Math.max(ajoelha, .6);
+
+  const andando = c.estado === 'aproxima';
+  const gingado = andando ? Math.sin(c.pisada*5.5)*.08 : 0;
+  const wind = c.estado === 'combo' && golpe === 0 ? Math.max(0, 1 - Math.max(0, c.t)/.32) : 0;
+
+  let incl = 0;
+  if(andando) incl = .14 + Math.sin(c.pisada*5.5)*.06;
+  if(cavando) incl = .38 + Math.sin(tempo*13)*.14;      // dobrado sobre a pá, terra voando
+  incl += golpe ? Math.sin((1-golpe)*Math.PI)*.5 : -wind*.30;
+
+  const lunge = golpe ? Math.sin((1-golpe)*Math.PI)*r*.5 : 0;
+  const passo = andando ? Math.abs(Math.sin(c.pisada*5.5))*r*.13 : 0;
+  const lx = Math.cos(c.angulo)*lunge, ly = Math.sin(c.angulo)*lunge*.4 - passo;
+
+  if(cavando && Math.random() < .5){
+    particulas.push({x:c.x + (Math.random()-.5)*.8, y:c.y + .5,
+      vx:(Math.random()-.5)*1.6, vy:-1.2 - Math.random()*1.2,
+      vida:.5, cor:'rgba(90,74,52,.7)', tam:.1});
+  }
+  if(andando && Math.random() < .3){
+    const lado = Math.sin(c.pisada*5.5) > 0 ? 1 : -1;
+    particulas.push({x:c.x + lado*.4, y:c.y + .8,
+      vx:(Math.random()-.5)*.7 - lado*.3, vy:-.25 - Math.random()*.3,
+      vida:.4, cor:'rgba(120,104,84,.4)', tam:.09});
+  }
+
+  /* pernas magras de calça surrada, botas plantadas no chão: nada de flutuar */
+  const base = py + r*.95, alt = r*3.8;
+  const pernaAlt = r*(.92 - ajoelha*.35);
+  const balanco = andando ? Math.sin(c.pisada*5.5)*.5 : 0;
+  const hipY = base + ly - pernaAlt + ajoelha*r*.36;
+  const perna = (lado, ang) => {
+    ctx.save();
+    ctx.translate(px + lx*.55 + lado*r*.32, hipY);
+    ctx.rotate(ang);
+    ctx.fillStyle = c.flash > .5 ? '#8d8698' : '#221d24';
+    ctx.beginPath();
+    ctx.moveTo(-r*.17, 0); ctx.lineTo(r*.17, 0);
+    ctx.lineTo(r*.13, pernaAlt*.96); ctx.lineTo(-r*.13, pernaAlt*.96);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3a333c';                           // remendo no joelho
+    ctx.beginPath(); ctx.ellipse(0, pernaAlt*.46, r*.14, r*.1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#0e0b12';                           // bota
+    ctx.beginPath(); ctx.ellipse(Math.sin(ang)*r*.06, pernaAlt*.98, r*.25, r*.14, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(200,190,215,.12)';
+    ctx.beginPath(); ctx.ellipse(0, pernaAlt*.90, r*.18, r*.05, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+  };
+  perna(-1, balanco);
+  perna(1, -balanco);
+
+  const iw = imgCoveiro.naturalWidth, ih = imgCoveiro.naturalHeight;
+  if(imgCoveiro.complete && iw > 0){
+    const lar = alt*iw/ih;
+    const resp = exausto ? Math.sin(tempo*7)*.06 : Math.sin(tempo*1.8)*.015;
+    const soco = andando ? Math.abs(Math.cos(c.pisada*5.5))*.03 : 0;
+    ctx.save();
+    ctx.translate(px + lx, hipY + r*.14);
+    if(flip) ctx.scale(-1, 1);
+    ctx.rotate(-incl + gingado + (tonto ? Math.sin(tempo*11)*.08 : 0));
+    ctx.scale(1 + ajoelha*.07 + soco, (1 - ajoelha*.24 - soco)*(1 + resp));
+    if(c.flash > .5) ctx.filter = 'brightness(2.1) saturate(.4)';
+    ctx.drawImage(imgCoveiro, -lar/2, -alt, lar, alt);
+    ctx.filter = 'none';
+    ctx.restore();
+    /* o bafo âmbar da lanterna dele — a fraqueza que a Lavadeira ensina */
+    const lgx = px + lx + (flip ? 1 : -1)*r*.72, lgy = hipY + r*.14 - alt*.42;
+    const lg = ctx.createRadialGradient(lgx, lgy, 0, lgx, lgy, Math.max(1, r*1.1));
+    lg.addColorStop(0, 'rgba(255,190,90,.20)'); lg.addColorStop(1, 'rgba(255,190,90,0)');
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lgx, lgy, r*1.1, 0, TAU); ctx.fill();
+  } else {
+    ctx.fillStyle = '#2c2a33';
+    ctx.beginPath(); ctx.ellipse(px, py - r*.1, r*.78, r*.95, 0, 0, TAU); ctx.fill();
+  }
+
+  /* a pá erguida no windup e o arco da pazada */
+  const topoC = hipY + r*.14 - alt;
+  if(wind > .25){
+    const ga = c.angulo + Math.PI*.82;
+    ctx.strokeStyle = 'rgba(205,198,188,' + (wind*.75) + ')';
+    ctx.lineWidth = Math.max(1.5, r*.11*wind);
+    ctx.beginPath();
+    ctx.moveTo(px + Math.cos(ga)*r*.5, topoC + alt*.28);
+    ctx.lineTo(px + Math.cos(ga)*r*1.3, topoC + alt*.02);
+    ctx.stroke();
+  }
+  if(golpe){
+    ctx.strokeStyle = 'rgba(214,206,190,' + (golpe*.9) + ')';
+    ctx.lineWidth = Math.max(1, r*.3*golpe);
+    ctx.beginPath();
+    ctx.arc(px, py, r*2.2, c.angulo - 1.2 + (1-golpe)*1.7, c.angulo + .4 + (1-golpe)*1.7);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (golpe*.45) + ')';
+    ctx.lineWidth = Math.max(1, r*.1*golpe);
+    ctx.beginPath();
+    ctx.arc(px, py, r*2.2, c.angulo - .9 + (1-golpe)*1.7, c.angulo + .1 + (1-golpe)*1.7);
+    ctx.stroke();
+  }
+}
+
+/* --- a cripta alagada viva: brilho que corre na lâmina e goteiras pingando.
+   O cache dá a cor; isto dá o movimento que faz o olho ler ÁGUA. --- */
+const CRIPTA = {x1:15, y1:32, x2:28, y2:42};
+const GOTEIRAS = [[18.5,38.2],[24.5,36.6],[20.8,41.6],[26.3,40.1],[17.2,34.8]];
+/* o que a cripta carrega na superfície — posição de âncora, inclinação e escala */
+const BOIAM = [
+  {tipo:'caixao',  x:17.7, y:36.2, ang:-.32, esc:1},
+  {tipo:'caixao',  x:23.3, y:35.2, ang:.5,   esc:1},
+  {tipo:'caixao',  x:25.7, y:39.5, ang:-.12, esc:.92},
+  {tipo:'caixote', x:20,   y:35.5, ang:.25,  esc:1},
+  {tipo:'caixote', x:24,   y:38.5, ang:-.4,  esc:.85},
+  {tipo:'caixote', x:19.5, y:41.3, ang:.6,   esc:.9}
+];
+function desenharAguaCripta(ox, oy){
+  const x0 = ox + CRIPTA.x1*tam, y0 = oy + CRIPTA.y1*tam;
+  const larg = (CRIPTA.x2 - CRIPTA.x1 + 1)*tam, alt = (CRIPTA.y2 - CRIPTA.y1 + 1)*tam;
+  if(foraDaVista(x0 + larg/2, y0 + alt/2, Math.max(larg, alt))) return;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0, y0, larg, alt); ctx.clip();   // nada escapa para a margem
+
+  /* o que a água carrega: caixões e caixotes boiando, cada um no seu bailado
+     lento — sobe, desce, gira e deriva um palmo para cada lado */
+  BOIAM.forEach((o, i) => {
+    const f = tempo*.7 + i*1.7;                          // o bailado, no dobro da velocidade
+    const dx = Math.sin(f*.7)*.16, dy = Math.cos(f*.53 + 1.2)*.12;
+    const px = ox + (o.x + dx)*tam, py = oy + (o.y + dy)*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    const ang = o.ang + Math.sin(f*.6 + i)*.07;
+    const afunda = .5 + Math.sin(f*.9 + i*2.1)*.5;        // quanto está submerso agora
+    ctx.save();
+    ctx.translate(px, py);
+    /* o rastro que ele abre na água, respirando junto */
+    ctx.strokeStyle = 'rgba(160,206,200,' + (.14 + afunda*.18) + ')';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.74 + afunda*.1)*o.esc, tam*(.4 + afunda*.06)*o.esc, ang, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(160,206,200,' + (.05 + afunda*.07) + ')';
+    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.98 + afunda*.14)*o.esc, tam*(.55 + afunda*.08)*o.esc, ang, 0, TAU); ctx.stroke();
+    ctx.rotate(ang);
+    ctx.scale(o.esc, o.esc);
+    if(o.tipo === 'caixao'){
+      const w1 = tam*.26, w2 = tam*.34, w3 = tam*.18, L = tam*.62;
+      ctx.fillStyle = '#312417';
+      ctx.beginPath();
+      ctx.moveTo(-L, -w1); ctx.lineTo(-L*.25, -w2); ctx.lineTo(L, -w3);
+      ctx.lineTo(L, w3); ctx.lineTo(-L*.25, w2); ctx.lineTo(-L, w1);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(200,180,140,' + (.16 + afunda*.14) + ')';   // a luz na parte que emerge
+      ctx.beginPath();
+      ctx.moveTo(-L, -w1); ctx.lineTo(-L*.25, -w2); ctx.lineTo(L, -w3);
+      ctx.lineTo(L, -w3*.4); ctx.lineTo(-L*.25, -w2*.55); ctx.lineTo(-L, -w1*.5);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(8,5,3,.55)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(-L*.25, -w2); ctx.lineTo(-L*.25, w2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(L*.4, -w3*1.15); ctx.lineTo(L*.4, w3*1.15); ctx.stroke();
+      ctx.fillStyle = 'rgba(14,22,24,' + (.55 + afunda*.25) + ')';      // a ponta que a água come
+      ctx.beginPath();
+      ctx.moveTo(L*.55, -w3*1.2); ctx.lineTo(L + 1.5, -w3); ctx.lineTo(L + 1.5, w3); ctx.lineTo(L*.55, w3*1.2);
+      ctx.closePath(); ctx.fill();
+    } else {
+      const l = tam*.34;
+      ctx.fillStyle = '#4a3925';
+      ctx.fillRect(-l, -l*.62, l*2, l*1.24);
+      ctx.fillStyle = 'rgba(206,186,142,' + (.14 + afunda*.12) + ')';
+      ctx.fillRect(-l, -l*.62, l*2, l*.34);
+      ctx.strokeStyle = 'rgba(10,7,4,.5)'; ctx.lineWidth = 1.1;
+      ctx.strokeRect(-l, -l*.62, l*2, l*1.24);
+      ctx.beginPath(); ctx.moveTo(-l, 0); ctx.lineTo(l, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(14,22,24,' + (.4 + afunda*.25) + ')';
+      ctx.fillRect(-l, l*.28, l*2, l*.34);
+    }
+    ctx.restore();
+  });
+
+  /* as goteiras: anel que nasce, cresce e some — o pulso da cripta */
+  GOTEIRAS.forEach(([gx, gy], i) => {
+    const px = ox + gx*tam, py = oy + gy*tam;
+    for(let k=0; k<3; k++){
+      const p = ((tempo*.5 + i*.6 + k*.33) % 1);
+      const raio = tam*(.1 + p*.55), op = (1 - p)*.35;
+      if(op <= .01) continue;
+      ctx.strokeStyle = 'rgba(198,232,226,' + op + ')';
+      ctx.lineWidth = Math.max(.8, 1.8*(1-p));
+      ctx.beginPath(); ctx.ellipse(px, py, raio, raio*.42, 0, 0, TAU); ctx.stroke();
+    }
+    // a gota caindo, que fecha o ciclo
+    const q = (tempo*.5 + i*.6) % 1;
+    if(q > .72){
+      const t2 = (q - .72)/.28;
+      ctx.fillStyle = 'rgba(210,238,232,' + (.5*(1-t2)) + ')';
+      ctx.beginPath();
+      ctx.ellipse(px, py - tam*(1.1 - t2*1.1), tam*.035, tam*.075, 0, 0, TAU);
+      ctx.fill();
+    }
+  });
+  /* o brilho do que está aceso perto: a água devolve a luz das velas */
+  braseiros.forEach(b => {
+    if(b.x < CRIPTA.x1 - 2 || b.x > CRIPTA.x2 + 2 || b.y < CRIPTA.y1 - 2 || b.y > CRIPTA.y2 + 2) return;
+    const px = ox + b.x*tam, py = oy + (b.y + .8)*tam;
+    const tremula = .6 + Math.sin(tempo*6 + b.fase)*.4;
+    const g = ctx.createLinearGradient(px, py, px, py + tam*2.4);
+    g.addColorStop(0, 'rgba(255,196,120,' + (.16*tremula) + ')');
+    g.addColorStop(1, 'rgba(255,196,120,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.ellipse(px, py + tam*1.1, tam*.42, tam*1.2, 0, 0, TAU);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+/* --- coadjuvantes: o velório na capela, com os rezadores recortados --- */
+const COADJ_FUN = [
+  {img:'rezador-4', x:8.2,  y:9.5,  esc:1.12},              // de pé, diante do esquife
+  {img:'rezador-4', x:11.1, y:9.9,  esc:1.06, flip:true},
+  {img:'rezador-2', x:6.2,  y:9.3,  esc:.9},                // ajoelhados nos bancos
+  {img:'rezador-1', x:5.1,  y:12.7, esc:.85},
+  {img:'rezador-3', x:13.3, y:12.4, esc:.9,  flip:true},
+  {img:'rezador-2', x:14.3, y:9.5,  esc:.85, flip:true}
+];
+function desenharCoadjuvantesFun(ox, oy){
+  COADJ_FUN.forEach((c2, i) => {
+    const im = funImg(c2.img);
+    if(!im.complete || !im.naturalWidth) return;
+    const px = ox + c2.x*tam, py = oy + c2.y*tam;
+    if(foraDaVista(px, py, tam*2.5)) return;
+    const q = Math.floor((tempo + i*.7)*8)/8;               // 8 quadros/s, como os informantes
+    const alt = tam*1.35*(c2.esc || 1);
+    const lar = im.naturalWidth*(alt/im.naturalHeight);
+    const gira = Math.sin(q*1.8 + i)*.03;                   // o balanço miúdo de quem reza
+    const sopro = 1 + Math.sin(q*2.6 + i*2)*.018;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.06, lar*.38, tam*.1, 0, 0, TAU); ctx.fill();
+    ctx.save();
+    ctx.translate(px, py + tam*.08);
+    ctx.rotate(gira);
+    ctx.scale((c2.flip ? -1 : 1)*(2 - sopro), sopro);
+    ctx.drawImage(im, -lar/2, -alt, lar, alt);
+    ctx.restore();
+  });
+}
+
+/* === PINTURA DO CENÁRIO DO PISO 3 (gancho pintarCache) ==================
+   Mesma receita da fase 2: perspectiva 3/4 (paredes com FACE de tijolo onde
+   olham para o sul, TOPO de pedra bruta no resto), sombra em degradê no chão
+   sob cada face, e todo móvel com superfície iluminada + face sombreada.
+   Dividida em quatro passes; a ordem importa (estruturas por cima do chão). */
+
+/* -- passe 1: paredes 3/4, sombras e lajes do chão (o esqueleto do relevo) -- */
+function pintarFunParedes(cmx, T){
+  const rndDe = (x,y) => hash(x*3.7, y*9.1);
+  const dentro3 = (x,y) => x>=0 && y>=0 && x<FUN.LARG && y<FUN.ALT;
+  const aberto = v => v === CHAO || v === CHAO2 || v === FOSSO || v === PONTE;
+  const ehParede = (x,y) => dentro3(x,y) && mapa[y*FUN.LARG + x] === PAREDE;
+  const ehAberto = (x,y) => dentro3(x,y) && aberto(mapa[y*FUN.LARG + x]);
+  const ehFosso  = (x,y) => dentro3(x,y) && mapa[y*FUN.LARG + x] === FOSSO;
+
+  /* ---- paredes em perspectiva 3/4, na pedra fria do funeral: onde a parede
+     olha para o sul (chão, ponte ou a água parada abaixo) desenha a FACE
+     frontal de tijolos úmidos; o resto é o TOPO do muro, pedra bruta ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(!ehParede(x,y)) continue;
+    if(!(ehAberto(x,y+1) || ehAberto(x,y-1) || ehAberto(x+1,y) || ehAberto(x-1,y)
+      || ehAberto(x+1,y+1) || ehAberto(x-1,y+1) || ehAberto(x+1,y-1) || ehAberto(x-1,y-1))) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x, y);
+
+    if(ehAberto(x, y+1)){
+      /* FACE frontal: três fiadas de tijolo cinza-azulado, úmidas */
+      cmx.fillStyle = '#4a4f63';
+      cmx.fillRect(px2, py2, T, T);
+      cmx.fillStyle = 'rgba(200,215,255,.12)';                 // luz fria pegando o alto da face
+      cmx.fillRect(px2, py2, T, T*.34);
+      cmx.fillStyle = 'rgba(6,8,16,.24)';                      // sombra na base
+      cmx.fillRect(px2, py2 + T*.66, T, T*.34);
+      // fiadas com juntas desencontradas
+      cmx.strokeStyle = 'rgba(10,12,22,.65)'; cmx.lineWidth = 1.8;
+      for(let f=1; f<3; f++){
+        cmx.beginPath(); cmx.moveTo(px2, py2 + f*T/3); cmx.lineTo(px2+T, py2 + f*T/3); cmx.stroke();
+      }
+      for(let f=0; f<3; f++){
+        const off = ((x + f) % 2)*T/4;
+        for(let j=0; j<3; j++){
+          const jx = px2 + off + j*T/2;
+          if(jx > px2 + 1 && jx < px2 + T - 1){
+            cmx.beginPath(); cmx.moveTo(jx, py2 + f*T/3); cmx.lineTo(jx, py2 + (f+1)*T/3); cmx.stroke();
+          }
+        }
+      }
+      // tijolo trocado aqui e ali (um mais pálido, um mais fundo)
+      if(h > .55){
+        cmx.fillStyle = h > .8 ? 'rgba(175,195,235,.14)' : 'rgba(4,6,12,.26)';
+        cmx.fillRect(px2 + ((h*4)|0)%2 * T/2, py2 + (((h*7)|0)%3)*T/3 + 1, T/2, T/3 - 2);
+      }
+      // escorrido de umidade descendo a face, aqui e ali
+      if(h > .62 && h < .78){
+        cmx.fillStyle = 'rgba(120,150,190,.10)';
+        cmx.fillRect(px2 + T*(.2 + h*.5), py2, T*.07, T*.86);
+      }
+      // rodapé de cantaria clara encostando no chão
+      cmx.fillStyle = '#7e8496';
+      cmx.fillRect(px2, py2 + T - T*.14, T, T*.14);
+      cmx.strokeStyle = 'rgba(12,14,24,.55)'; cmx.lineWidth = 1.3;
+      cmx.strokeRect(px2 + 1, py2 + T - T*.14, T*.5 - 1, T*.14);
+      cmx.strokeRect(px2 + T*.5, py2 + T - T*.14, T*.5 - 1, T*.14);
+      cmx.fillStyle = 'rgba(225,235,255,.22)';
+      cmx.fillRect(px2, py2 + T - T*.14, T, 1.6);
+    } else {
+      /* TOPO do muro: pedra bruta escura com pedregulhos arredondados */
+      cmx.fillStyle = '#23262f';
+      cmx.fillRect(px2, py2, T, T);
+      cmx.strokeStyle = 'rgba(6,8,14,.6)'; cmx.lineWidth = 1.5;
+      for(let k=0; k<3; k++){
+        const bx = px2 + T*(.2 + rndDe(x*3+k, y)*.6), by = py2 + T*(.2 + rndDe(x, y*3+k)*.6);
+        const br = T*(.14 + rndDe(x+k, y+k)*.12);
+        cmx.fillStyle = 'rgba(74,82,104,' + (.25 + rndDe(x-k, y)*.3) + ')';
+        cmx.beginPath(); cmx.ellipse(bx, by, br, br*.8, rndDe(x,y+k)*2, 0, TAU); cmx.fill();
+        cmx.stroke();
+      }
+      // beirada de cantaria quando o topo encosta em espaço aberto
+      cmx.fillStyle = '#7e8496';
+      if(ehAberto(x, y-1)) cmx.fillRect(px2, py2, T, T*.12);
+      if(ehAberto(x-1, y)) cmx.fillRect(px2, py2, T*.12, T);
+      if(ehAberto(x+1, y)) cmx.fillRect(px2 + T - T*.12, py2, T*.12, T);
+    }
+  }
+
+  /* sombra que a face projeta no chão (ou na água parada) logo abaixo — o relevo */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(!ehAberto(x,y) || !ehParede(x, y-1)) continue;
+    const g2 = cmx.createLinearGradient(0, y*T, 0, y*T + T*.5);
+    g2.addColorStop(0, 'rgba(0,0,0,.38)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+    cmx.fillStyle = g2;
+    cmx.fillRect(x*T, y*T, T, T*.5);
+  }
+
+  /* ---- lajões do CHAO: manchas de tom frio, lascas de canto e rachaduras ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(mapa[y*FUN.LARG + x] !== CHAO) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+7, y+3);
+    // manchas de tom (lajes que não são irmãs)
+    if(h > .55){
+      cmx.fillStyle = h > .8 ? 'rgba(225,232,250,.06)' : 'rgba(6,8,16,.10)';
+      cmx.fillRect(px2+2, py2+2, T-4, T-4);
+    }
+    // lasca no canto
+    if(h > .72){
+      cmx.fillStyle = 'rgba(6,8,16,.35)';
+      const c1 = [[px2,py2],[px2+T,py2],[px2,py2+T],[px2+T,py2+T]][(h*4)|0 % 4] || [px2,py2];
+      cmx.beginPath();
+      cmx.moveTo(c1[0], c1[1]);
+      cmx.lineTo(c1[0] + (c1[0]===px2? T*.22 : -T*.22), c1[1]);
+      cmx.lineTo(c1[0], c1[1] + (c1[1]===py2? T*.22 : -T*.22));
+      cmx.closePath(); cmx.fill();
+    }
+    // rachadura atravessando a laje
+    if(h > .9){
+      cmx.strokeStyle = 'rgba(6,8,16,.45)'; cmx.lineWidth = 1.6;
+      cmx.beginPath();
+      cmx.moveTo(px2 + T*.15, py2 + T*(.2 + h*.3));
+      cmx.lineTo(px2 + T*.5, py2 + T*.55);
+      cmx.lineTo(px2 + T*.62, py2 + T*.9);
+      cmx.stroke();
+    }
+  }
+
+  /* ---- CHAO2 = pedra molhada (mosaico da capela, terra da cova, escada de
+     chegada): juntas mais finas e um brilho úmido que anda de laje em laje ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(mapa[y*FUN.LARG + x] !== CHAO2) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+11, y+5);
+    // juntas finas
+    cmx.strokeStyle = 'rgba(10,12,22,.35)'; cmx.lineWidth = .9;
+    cmx.strokeRect(px2 + .5, py2 + .5, T - 1, T - 1);
+    // brilho úmido em manchas irregulares
+    if(h > .35){
+      cmx.fillStyle = 'rgba(160,190,230,.05)';
+      cmx.beginPath();
+      cmx.ellipse(px2 + T*(.25 + h*.5), py2 + T*(.3 + rndDe(x+3,y+9)*.4),
+                  T*(.22 + h*.2), T*(.14 + h*.14), h*2, 0, TAU);
+      cmx.fill();
+    }
+    // um reflexo fino onde a água escorreu
+    if(h > .82){
+      cmx.fillStyle = 'rgba(190,215,250,.08)';
+      cmx.fillRect(px2 + T*.18, py2 + T*(.5 + h*.3), T*.55, 1.4);
+    }
+  }
+
+  /* ---- musgo/limo à beira d'água: chão e ponte encostados no FOSSO ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    const t2 = mapa[y*FUN.LARG + x];
+    if(t2 !== CHAO && t2 !== PONTE) continue;
+    if(!(ehFosso(x,y+1) || ehFosso(x,y-1) || ehFosso(x+1,y) || ehFosso(x-1,y))) continue;
+    const px2 = x*T, py2 = y*T, b = T*.16;
+    cmx.fillStyle = 'rgba(90,120,80,.18)';
+    if(ehFosso(x, y+1)) cmx.fillRect(px2, py2 + T - b, T, b);
+    if(ehFosso(x, y-1)) cmx.fillRect(px2, py2, T, b);
+    if(ehFosso(x-1, y)) cmx.fillRect(px2, py2, b, T);
+    if(ehFosso(x+1, y)) cmx.fillRect(px2 + T - b, py2, b, T);
+    // tufos de limo salpicados na beirada
+    const h = rndDe(x+5, y+13);
+    if(h > .5){
+      cmx.fillStyle = 'rgba(90,120,80,.22)';
+      cmx.beginPath();
+      cmx.arc(px2 + T*(.2 + h*.6), py2 + T*(ehFosso(x,y+1) ? .82 : .18), T*.07, 0, TAU);
+      cmx.fill();
+    }
+  }
+}
+
+/* -- passe 2: capela do velório + sala de preparação -- */
+function pintarFunCapelaPrep(cmx, T){
+  const rnd = (x,y) => hash(x*5.3, y*11.7);
+
+  /* ================= CAPELA DE VELÓRIO =================
+     o mosaico circular: rosácea fúnebre em anéis de pedra fria, gasta */
+  const MX = FUN.MOSAICO.x*T, MY = FUN.MOSAICO.y*T, MR = FUN.MOSAICO.raio*T;
+  cmx.save();
+  cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.clip();
+  // anéis concêntricos alternados
+  const aros = [1, .82, .64, .46, .30];
+  for(let i=0; i<aros.length; i++){
+    cmx.fillStyle = (i%2 === 0) ? '#565c72' : '#6a7188';
+    cmx.beginPath(); cmx.arc(MX, MY, MR*aros[i], 0, TAU); cmx.fill();
+  }
+  cmx.fillStyle = '#4e5468';
+  cmx.beginPath(); cmx.arc(MX, MY, MR*.30, 0, TAU); cmx.fill();
+  // juntas circulares entre os anéis
+  cmx.strokeStyle = 'rgba(28,32,44,.6)'; cmx.lineWidth = 1.6;
+  aros.forEach(a => { cmx.beginPath(); cmx.arc(MX, MY, MR*a, 0, TAU); cmx.stroke(); });
+  // juntas radiais finas, desencontradas por anel
+  cmx.strokeStyle = 'rgba(28,32,44,.45)'; cmx.lineWidth = 1.2;
+  const raias = [24, 18, 12, 8];
+  for(let b=0; b<4; b++){
+    const r0 = MR*aros[b+1], r1 = MR*aros[b], n = raias[b], off = b*.35;
+    for(let k=0; k<n; k++){
+      const a = off + k*TAU/n;
+      cmx.beginPath();
+      cmx.moveTo(MX + Math.cos(a)*r0, MY + Math.sin(a)*r0);
+      cmx.lineTo(MX + Math.cos(a)*r1, MY + Math.sin(a)*r1);
+      cmx.stroke();
+    }
+  }
+  // a estrela de 8 pontas no círculo central
+  cmx.fillStyle = '#8a92aa';
+  cmx.beginPath();
+  for(let k=0; k<16; k++){
+    const a = -Math.PI/2 + k*TAU/16, r = (k%2 === 0) ? MR*.26 : MR*.105;
+    const sx = MX + Math.cos(a)*r, sy = MY + Math.sin(a)*r;
+    k === 0 ? cmx.moveTo(sx, sy) : cmx.lineTo(sx, sy);
+  }
+  cmx.closePath(); cmx.fill();
+  cmx.strokeStyle = 'rgba(30,34,48,.55)'; cmx.lineWidth = 1.2; cmx.stroke();
+  cmx.fillStyle = '#565c72';
+  cmx.beginPath(); cmx.arc(MX, MY, MR*.045, 0, TAU); cmx.fill();
+  // desgaste: manchas, lascas e duas rachaduras velhas
+  for(let ty=7; ty<=14; ty++) for(let tx=6; tx<=13; tx++){
+    const h = rnd(tx, ty);
+    if(h > .58){
+      cmx.fillStyle = 'rgba(12,14,22,' + (.07 + h*.09) + ')';
+      cmx.beginPath();
+      cmx.ellipse((tx + .2 + h*.6)*T, (ty + .2 + rnd(ty,tx)*.6)*T, T*(.16 + h*.14), T*(.10 + h*.08), h*3, 0, TAU);
+      cmx.fill();
+    }
+    if(h > .87){
+      cmx.fillStyle = 'rgba(205,210,225,.10)';
+      cmx.beginPath();
+      cmx.moveTo((tx+.3)*T, (ty+.5)*T); cmx.lineTo((tx+.55)*T, (ty+.35)*T); cmx.lineTo((tx+.6)*T, (ty+.6)*T);
+      cmx.closePath(); cmx.fill();
+    }
+  }
+  cmx.strokeStyle = 'rgba(16,18,28,.5)'; cmx.lineWidth = 1.6;
+  cmx.beginPath();
+  cmx.moveTo(MX - MR*.9, MY + MR*.25);
+  cmx.lineTo(MX - MR*.45, MY + MR*.42); cmx.lineTo(MX - MR*.28, MY + MR*.74);
+  cmx.stroke();
+  cmx.beginPath();
+  cmx.moveTo(MX + MR*.55, MY - MR*.78);
+  cmx.lineTo(MX + MR*.7, MY - MR*.4); cmx.lineTo(MX + MR*.94, MY - MR*.22);
+  cmx.stroke();
+  cmx.restore();
+  // aro externo de cantaria fechando o círculo
+  cmx.strokeStyle = 'rgba(120,128,152,.5)'; cmx.lineWidth = 2.2;
+  cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.stroke();
+
+  /* ---- o esquife do velório, no centro do mosaico ---- */
+  {
+    const ex = MX, ey = MY, w = T*2.35, face = T*.5;
+    // sombra elíptica no chão
+    cmx.fillStyle = 'rgba(0,0,0,.38)';
+    cmx.beginPath(); cmx.ellipse(ex + T*.06, ey + T*.72, w*.56, T*.16, 0, 0, TAU); cmx.fill();
+    // face frontal da mesa alta: pano fúnebre caindo, em dobras
+    cmx.fillStyle = '#343048';
+    cmx.fillRect(ex - w/2, ey + T*.15, w, face);
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.fillRect(ex - w/2, ey + T*.15, w, 3);
+    cmx.strokeStyle = 'rgba(14,12,24,.55)'; cmx.lineWidth = 1.4;
+    for(let k=1; k<6; k++){
+      const fx = ex - w/2 + k*w/6;
+      cmx.beginPath(); cmx.moveTo(fx, ey + T*.19); cmx.quadraticCurveTo(fx + T*.04, ey + T*.42, fx - T*.03, ey + T*.63); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(150,150,190,.14)';                    // bainha do pano
+    cmx.fillRect(ex - w/2, ey + T*.15 + face - 3, w, 3);
+    // tampo iluminado
+    cmx.fillStyle = '#79809a';
+    cmx.fillRect(ex - w/2, ey - T*.5, w, T*.65);
+    cmx.fillStyle = 'rgba(215,222,240,.18)';
+    cmx.fillRect(ex - w/2, ey - T*.5, w, 3.5);
+    cmx.strokeStyle = 'rgba(20,22,34,.6)'; cmx.lineWidth = 1.6;
+    cmx.strokeRect(ex - w/2 + 1, ey - T*.5 + 1, w - 2, T*.65 - 2);
+    // o caixão aberto, deitado no tampo (cabeceira a oeste)
+    const cy2 = ey - T*.45, x0 = ex - T*1.02, x1 = ex - T*.4, x2 = ex + T*1.02;
+    const perfil = (m) => {
+      cmx.beginPath();
+      cmx.moveTo(x0, cy2 - T*.20*m); cmx.lineTo(x1, cy2 - T*.31*m); cmx.lineTo(x2, cy2 - T*.14*m);
+      cmx.lineTo(x2, cy2 + T*.14*m); cmx.lineTo(x1, cy2 + T*.31*m); cmx.lineTo(x0, cy2 + T*.20*m);
+      cmx.closePath();
+    };
+    cmx.fillStyle = 'rgba(0,0,0,.28)';                          // sombra do caixão no tampo
+    cmx.beginPath(); cmx.ellipse(ex + T*.04, cy2 + T*.3, T*1.02, T*.13, 0, 0, TAU); cmx.fill();
+    perfil(1);
+    cmx.fillStyle = '#5a4a3a'; cmx.fill();
+    cmx.strokeStyle = 'rgba(20,14,10,.7)'; cmx.lineWidth = 1.8; cmx.stroke();
+    perfil(.66);
+    cmx.fillStyle = '#3a3448'; cmx.fill();                      // o forro de dentro
+    // brilho frio na borda de madeira, do lado da luz
+    cmx.strokeStyle = 'rgba(190,200,225,.30)'; cmx.lineWidth = 1.4;
+    cmx.beginPath(); cmx.moveTo(x0, cy2 - T*.20); cmx.lineTo(x1, cy2 - T*.31); cmx.lineTo(x2, cy2 - T*.14); cmx.stroke();
+    cmx.fillStyle = 'rgba(255,190,110,.14)';                    // reflexo pontual das velas
+    cmx.beginPath(); cmx.ellipse(x1, cy2 - T*.28, T*.10, T*.03, -.15, 0, TAU); cmx.fill();
+    // a mortalha clara cobrindo o corpo
+    cmx.fillStyle = '#c9c4b8';
+    cmx.beginPath(); cmx.ellipse(ex - T*.62, cy2, T*.13, T*.14, 0, 0, TAU); cmx.fill();   // a cabeça
+    cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2, T*.66, T*.15, 0, 0, TAU); cmx.fill();   // o corpo
+    cmx.beginPath(); cmx.ellipse(ex + T*.72, cy2, T*.12, T*.10, 0, 0, TAU); cmx.fill();   // os pés
+    cmx.strokeStyle = 'rgba(120,116,104,.55)'; cmx.lineWidth = 1.2;                       // as dobras
+    for(let k=0; k<3; k++){
+      const dx = ex - T*.28 + k*T*.36;
+      cmx.beginPath(); cmx.moveTo(dx, cy2 - T*.11); cmx.quadraticCurveTo(dx + T*.06, cy2, dx - T*.02, cy2 + T*.11); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(50,48,66,.22)';                       // a mortalha na sombra do rebordo
+    cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2 + T*.07, T*.66, T*.08, 0, 0, TAU); cmx.fill();
+  }
+
+  /* ---- fileiras de bancos de madeira, de frente para o esquife ---- */
+  const banco = (bx, by, virado) => {         // virado: +1 encara o leste, -1 o oeste
+    const px = bx*T, py = by*T, w = T*.56, alt = T*1.5, fh = T*.24, enc = T*.15;
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.beginPath(); cmx.ellipse(px + T*.05, py + alt + T*.03, w*.64, T*.11, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#2a231b';                                  // os pés
+    cmx.fillRect(px - w/2 + 1, py + alt - T*.1, T*.1, T*.12);
+    cmx.fillRect(px + w/2 - T*.1 - 1, py + alt - T*.1, T*.1, T*.12);
+    cmx.fillStyle = '#584a3a';                                  // o tampo, iluminado
+    cmx.fillRect(px - w/2, py, w, alt - fh);
+    cmx.fillStyle = 'rgba(205,212,230,.10)';
+    cmx.fillRect(px - w/2, py, w, 3);
+    cmx.strokeStyle = 'rgba(24,18,12,.4)'; cmx.lineWidth = 1.2; // os veios
+    cmx.beginPath(); cmx.moveTo(px - w*.16, py + 2); cmx.lineTo(px - w*.16, py + alt - fh - 2); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px + w*.2, py + 2); cmx.lineTo(px + w*.2, py + alt - fh - 2); cmx.stroke();
+    cmx.fillStyle = '#332b21';                                  // a face frontal (o topo do encosto ao sul)
+    cmx.fillRect(px - w/2, py + alt - fh, w, fh);
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.fillRect(px - w/2, py + alt - fh, w, 2);
+    const ex2 = (virado > 0) ? px - w/2 : px + w/2 - enc;       // o encosto, de costas para a parede
+    cmx.fillStyle = '#4e4234';
+    cmx.fillRect(ex2, py - T*.05, enc, alt - fh + T*.05);
+    cmx.fillStyle = 'rgba(210,216,232,.13)';
+    cmx.fillRect(ex2, py - T*.05, enc, 2.5);
+    cmx.fillStyle = 'rgba(0,0,0,.2)';                           // a sombra do encosto no assento
+    cmx.fillRect((virado > 0) ? ex2 + enc : ex2 - T*.07, py, T*.07, alt - fh);
+  };
+  [6.8, 9.2, 11.9].forEach(fy => {
+    banco(3.85, fy, 1);  banco(5.35, fy, 1);                    // flanco oeste encara o leste
+    banco(14.05, fy, -1); banco(15.5, fy, -1);                  // flanco leste encara o oeste
+  });
+
+  /* ---- castiçais altos nos cantos do mosaico (sem chama: as velas esperam) ---- */
+  const castical = (cx2, cy2) => {
+    const px = cx2*T, py = cy2*T;
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.05, T*.16, T*.055, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#3c3850';                                  // a base
+    cmx.beginPath(); cmx.ellipse(px, py, T*.13, T*.05, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#434060';                                  // a haste
+    cmx.fillRect(px - T*.03, py - T*.62, T*.06, T*.62);
+    cmx.fillStyle = 'rgba(190,200,225,.28)';
+    cmx.fillRect(px - T*.03, py - T*.62, 1.6, T*.62);
+    cmx.fillStyle = '#4a4660';                                  // o prato
+    cmx.beginPath(); cmx.ellipse(px, py - T*.62, T*.10, T*.038, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,190,110,.30)';                    // o reflexo âmbar no metal
+    cmx.beginPath(); cmx.ellipse(px - T*.04, py - T*.63, T*.025, T*.012, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#d8d2c0';                                  // a vela apagada
+    cmx.fillRect(px - T*.035, py - T*.86, T*.07, T*.24);
+    cmx.beginPath(); cmx.ellipse(px + T*.045, py - T*.72, T*.02, T*.05, .3, 0, TAU); cmx.fill();   // pingos de cera
+    cmx.beginPath(); cmx.ellipse(px - T*.05, py - T*.78, T*.016, T*.04, -.3, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#2a2530';                                  // o pavio morto
+    cmx.fillRect(px - 1, py - T*.9, 2, 4);
+  };
+  castical(7.7, 8.35); castical(11.3, 8.35);
+  castical(7.7, 12.75); castical(11.3, 12.75);
+
+  /* ---- pias de água benta junto às entradas da capela ---- */
+  const pia = (cx2, cy2) => {
+    const px = cx2*T, py = cy2*T;
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.04, T*.2, T*.07, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#565c72';                                  // a coluna
+    cmx.fillRect(px - T*.07, py - T*.34, T*.14, T*.36);
+    cmx.fillStyle = 'rgba(0,0,0,.25)';
+    cmx.fillRect(px + T*.02, py - T*.34, T*.05, T*.36);
+    cmx.fillStyle = '#6a7188';                                  // a bacia
+    cmx.beginPath(); cmx.ellipse(px, py - T*.38, T*.19, T*.08, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(24,28,40,.6)'; cmx.lineWidth = 1.3;
+    cmx.beginPath(); cmx.ellipse(px, py - T*.38, T*.19, T*.08, 0, 0, TAU); cmx.stroke();
+    cmx.fillStyle = '#232a3c';                                  // a água parada
+    cmx.beginPath(); cmx.ellipse(px, py - T*.38, T*.14, T*.055, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(150,190,230,.30)'; cmx.lineWidth = 1;
+    cmx.beginPath(); cmx.ellipse(px - T*.03, py - T*.39, T*.06, T*.02, 0, 0, TAU); cmx.stroke();
+  };
+  pia(16.3, 8.1);                                               // junto à porta da preparação
+  pia(7.1, 15.7);                                               // junto à descida do salão
+
+  /* ================= SALA DE PREPARAÇÃO ================= */
+  /* ---- as duas mesas de pedra mortuárias ---- */
+  const mesaMort = (cx2, cy2, corpo) => {
+    const px = cx2*T, py = cy2*T, w = T*2.2, d = T*.78, fh = T*.4;
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(px + T*.05, py + d/2 + fh + T*.04, w*.55, T*.13, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#3f4454';                                  // a face frontal
+    cmx.fillRect(px - w/2, py + d/2, w, fh);
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.fillRect(px - w/2, py + d/2 + fh - 3, w, 3);
+    cmx.strokeStyle = 'rgba(16,18,28,.55)'; cmx.lineWidth = 1.4; // juntas da cantaria
+    cmx.beginPath(); cmx.moveTo(px - w*.17, py + d/2); cmx.lineTo(px - w*.17, py + d/2 + fh); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px + w*.17, py + d/2); cmx.lineTo(px + w*.17, py + d/2 + fh); cmx.stroke();
+    cmx.fillStyle = '#7a8098';                                  // o tampo, laje fria iluminada
+    cmx.fillRect(px - w/2, py - d/2, w, d);
+    cmx.fillStyle = 'rgba(220,228,245,.16)';
+    cmx.fillRect(px - w/2, py - d/2, w, 3);
+    cmx.strokeStyle = 'rgba(18,22,32,.6)'; cmx.lineWidth = 1.6;
+    cmx.strokeRect(px - w/2 + 1, py - d/2 + 1, w - 2, d - 2);
+    cmx.strokeStyle = 'rgba(18,22,32,.75)'; cmx.lineWidth = 2.2; // a canaleta de escoamento
+    cmx.strokeRect(px - w/2 + T*.13, py - d/2 + T*.11, w - T*.26, d - T*.22);
+    cmx.fillStyle = '#12161f';                                  // o furo do escoamento
+    cmx.beginPath(); cmx.arc(px + w/2 - T*.2, py + d/2 - T*.13, T*.05, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(18,22,30,.5)';                        // e o escorrido na face
+    cmx.fillRect(px + w/2 - T*.23, py + d/2, T*.06, fh*.8);
+    if(corpo){
+      cmx.fillStyle = '#c9c4b8';                                // a mortalha sobre alguém
+      cmx.beginPath(); cmx.ellipse(px - w*.31, py, T*.12, T*.13, 0, 0, TAU); cmx.fill();
+      cmx.beginPath(); cmx.ellipse(px + T*.06, py, w*.33, T*.14, 0, 0, TAU); cmx.fill();
+      cmx.beginPath(); cmx.ellipse(px + w*.36, py, T*.11, T*.09, 0, 0, TAU); cmx.fill();
+      cmx.strokeStyle = 'rgba(120,116,104,.55)'; cmx.lineWidth = 1.2;
+      for(let k=0; k<3; k++){
+        const dx = px - T*.25 + k*T*.33;
+        cmx.beginPath(); cmx.moveTo(dx, py - T*.1); cmx.quadraticCurveTo(dx + T*.05, py, dx - T*.02, py + T*.1); cmx.stroke();
+      }
+      cmx.fillStyle = 'rgba(60,64,88,.2)';
+      cmx.beginPath(); cmx.ellipse(px + T*.06, py + T*.06, w*.33, T*.07, 0, 0, TAU); cmx.fill();
+    } else {
+      for(let k=0; k<4; k++){                                   // as manchas de quem já passou por ela
+        const h = rnd(cx2*7 + k, cy2*3);
+        cmx.fillStyle = (k === 1) ? 'rgba(52,16,22,.45)' : 'rgba(14,13,24,' + (.32 + h*.2) + ')';
+        cmx.beginPath();
+        cmx.ellipse(px - w*.3 + h*w*.6, py - d*.2 + rnd(k,cy2)*d*.4, T*(.09 + h*.11), T*(.04 + h*.04), h*3, 0, TAU);
+        cmx.fill();
+      }
+    }
+  };
+  mesaMort(21.4, 8.4, false);   // o corpo em preparo é pintado no passe 5, com a cabeça recortada
+  mesaMort(24.9, 10.6, false);
+
+  /* ---- prateleiras na parede norte: o enxoval do ofício ---- */
+  const pratY = [4.34, 4.74];
+  pratY.forEach(sy => {
+    cmx.fillStyle = '#4a4030';
+    cmx.fillRect(19.15*T, sy*T, 7.7*T, T*.09);
+    cmx.fillStyle = 'rgba(210,216,232,.14)';
+    cmx.fillRect(19.15*T, sy*T, 7.7*T, 1.6);
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.fillRect(19.15*T, (sy + .09)*T, 7.7*T, 2);
+  });
+  for(let n=0; n<2; n++){
+    const sy = pratY[n];
+    for(let k=0; k<14; k++){
+      const ix2 = 19.5 + k*.53;
+      if(Math.abs(ix2 - 21) < .38 || Math.abs(ix2 - 24) < .38) continue;   // as correntes penduradas passam aqui
+      const h = rnd(k*3 + n, 17 + n), px = ix2*T, base = sy*T;
+      const tipo = (((k/2)|0)%2)*2 + ((h*2)|0);                 // vizinhos nunca repetem o padrão
+      if(tipo === 0){                                           // frasco de vidro
+        cmx.fillStyle = ['#7f95a8','#6d8898','#8aa0b2'][(h*3)|0];
+        cmx.fillRect(px - T*.05, base - T*.2, T*.1, T*.2);
+        cmx.fillStyle = '#55606c';
+        cmx.fillRect(px - T*.025, base - T*.26, T*.05, T*.06);
+        cmx.fillStyle = 'rgba(230,240,250,.4)';
+        cmx.fillRect(px - T*.04, base - T*.18, T*.025, T*.14);
+      } else if(tipo === 1){                                    // bacia de cobre emborcada
+        cmx.fillStyle = '#8a5f3c';
+        cmx.beginPath(); cmx.ellipse(px, base - T*.07, T*.12, T*.07, 0, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(255,200,130,.3)';
+        cmx.beginPath(); cmx.ellipse(px - T*.04, base - T*.1, T*.04, T*.02, 0, 0, TAU); cmx.fill();
+      } else if(tipo === 2){                                    // panos dobrados
+        cmx.fillStyle = '#9a95a5'; cmx.fillRect(px - T*.11, base - T*.08, T*.22, T*.08);
+        cmx.fillStyle = '#7d7888'; cmx.fillRect(px - T*.09, base - T*.14, T*.18, T*.06);
+        cmx.strokeStyle = 'rgba(40,38,52,.5)'; cmx.lineWidth = 1;
+        cmx.beginPath(); cmx.moveTo(px - T*.11, base - T*.08); cmx.lineTo(px + T*.11, base - T*.08); cmx.stroke();
+      } else {                                                  // a tesoura do amortalhador
+        cmx.strokeStyle = '#a8b0bc'; cmx.lineWidth = 1.4;
+        cmx.beginPath(); cmx.moveTo(px - T*.07, base - T*.03); cmx.lineTo(px + T*.06, base - T*.16); cmx.stroke();
+        cmx.beginPath(); cmx.moveTo(px + T*.06, base - T*.03); cmx.lineTo(px - T*.07, base - T*.16); cmx.stroke();
+        cmx.beginPath(); cmx.arc(px - T*.075, base - T*.025, T*.02, 0, TAU); cmx.stroke();
+        cmx.beginPath(); cmx.arc(px + T*.065, base - T*.025, T*.02, 0, TAU); cmx.stroke();
+      }
+    }
+  }
+  /* trapos pendurados na beira da prateleira de baixo */
+  [[20.3, .9], [25.7, 1.1]].forEach(([tx, esc]) => {
+    const px = tx*T, ty = 4.83*T, ca = T*.34*esc;
+    cmx.fillStyle = '#8d8896';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.09, ty);
+    cmx.lineTo(px + T*.09, ty);
+    cmx.lineTo(px + T*.11, ty + ca*.7);
+    cmx.lineTo(px + T*.04, ty + ca*.55);
+    cmx.lineTo(px + T*.01, ty + ca);
+    cmx.lineTo(px - T*.06, ty + ca*.65);
+    cmx.lineTo(px - T*.11, ty + ca*.85);
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = 'rgba(60,56,74,.6)'; cmx.lineWidth = 1;
+    cmx.beginPath(); cmx.moveTo(px - T*.02, ty); cmx.lineTo(px - T*.03, ty + ca*.8); cmx.stroke();
+  });
+
+  /* ---- baldes e a bacia grande, largados no chão ---- */
+  const balde = (cx2, cy2) => {
+    const px = cx2*T, py = cy2*T;
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.14, T*.18, T*.06, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#4c5262';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.15, py - T*.16); cmx.lineTo(px + T*.15, py - T*.16);
+    cmx.lineTo(px + T*.11, py + T*.13); cmx.lineTo(px - T*.11, py + T*.13);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(18,22,30,.5)';                        // os arcos de ferro
+    cmx.fillRect(px - T*.145, py - T*.1, T*.29, 2);
+    cmx.fillRect(px - T*.12, py + T*.04, T*.24, 2);
+    cmx.fillStyle = 'rgba(205,212,230,.14)';
+    cmx.fillRect(px - T*.13, py - T*.15, T*.05, T*.26);
+    cmx.strokeStyle = '#6a7188'; cmx.lineWidth = 1.4;           // a alça
+    cmx.beginPath(); cmx.arc(px, py - T*.15, T*.13, Math.PI, TAU); cmx.stroke();
+    cmx.fillStyle = '#232a3c';                                  // a boca
+    cmx.beginPath(); cmx.ellipse(px, py - T*.16, T*.15, T*.05, 0, 0, TAU); cmx.fill();
+  };
+  balde(19.8, 12.3); balde(26.4, 12.5);
+  {                                                             // a bacia grande de lavar os mortos
+    const px = 22.7*T, py = 12.4*T;
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.08, T*.52, T*.18, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#8a5f3c';                                  // o cobre
+    cmx.beginPath(); cmx.ellipse(px, py, T*.5, T*.2, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,200,130,.22)';
+    cmx.beginPath(); cmx.ellipse(px - T*.18, py - T*.06, T*.13, T*.04, .2, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#262e3e';                                  // a água já usada
+    cmx.beginPath(); cmx.ellipse(px, py, T*.4, T*.145, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(90,40,40,.28)';
+    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.02, T*.18, T*.06, .4, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(150,190,230,.25)'; cmx.lineWidth = 1;
+    cmx.beginPath(); cmx.ellipse(px - T*.08, py - T*.03, T*.1, T*.03, 0, 0, TAU); cmx.stroke();
+  }
+}
+
+/* -- passe 3: oficina de caixões + depósito + colombário -- */
+function pintarFunOficinaColombario(cmx, T){
+  const W = FUN.LARG, H = FUN.ALT;
+  const rnd = (x,y) => hash(x*5.31 + 17.3, y*7.77 + 5.1);
+  const anda3 = v => v === CHAO || v === CHAO2 || v === PONTE;
+  const chaoEm = (x,y) => x>=0 && y>=0 && x<W && y<H && anda3(mapa[y*W+x]);
+  const paredeEm = (x,y) => x>=0 && y>=0 && x<W && y<H && mapa[y*W+x] === PAREDE;
+  const sombraCh = (cx, cy, rx, ry, a) => {            // sombra elíptica no chão
+    cmx.fillStyle = 'rgba(0,0,0,' + a + ')';
+    cmx.beginPath(); cmx.ellipse(cx*T, cy*T, rx*T, ry*T, 0, 0, TAU); cmx.fill();
+  };
+
+  /* ================= OFICINA DE CAIXÕES (x3..11, y31..35) =================
+     A leitura do cômodo: bancada junto à parede, caixões em três estados de
+     obra (fundo em ripas, meio montado sobre cavaletes, pronto de pé) e
+     serragem clara espalhada — a marca de trabalho recente. */
+
+  /* serragem no chão, por baixo dos móveis */
+  [[4.3,32.7],[5.9,33.2],[7.5,32.5],[6.4,34.9],[9.1,33.5],[10.3,35.1],[4.7,34.2],[8.2,33.9]]
+  .forEach(([sx,sy]) => {
+    const h = rnd(sx*3.1, sy*2.7);
+    cmx.fillStyle = 'rgba(198,184,150,' + (.14 + h*.1) + ')';
+    cmx.beginPath();
+    cmx.ellipse(sx*T, sy*T, T*(.28 + h*.3), T*(.13 + h*.12), h*3.1, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(216,200,162,.5)';
+    for(let k=0; k<6; k++){
+      const g1 = rnd(sx*7 + k, sy*9 - k), g2 = rnd(sy*5 + k, sx*4 + k);
+      cmx.fillRect(sx*T + (g1 - .5)*T*.8, sy*T + (g2 - .5)*T*.34, 1.5, 1.5);
+    }
+  });
+
+  /* bancada de carpinteiro encostada na parede norte (a oeste da porta) */
+  {
+    const x0 = 3.15*T, x1 = 5.9*T, yT0 = 30.95*T, tampoH = T*.58, faceH = T*.44;
+    sombraCh(4.53, 32.05, 1.42, .12, .3);
+    // face frontal sombreada, em tábuas
+    cmx.fillStyle = '#3f3629'; cmx.fillRect(x0, yT0 + tampoH, x1 - x0, faceH);
+    cmx.fillStyle = 'rgba(0,0,0,.3)'; cmx.fillRect(x0, yT0 + tampoH, x1 - x0, T*.06);
+    cmx.strokeStyle = 'rgba(14,10,6,.6)'; cmx.lineWidth = 1.4;
+    for(let k=1; k<4; k++){
+      const jx = x0 + k*(x1 - x0)/4;
+      cmx.beginPath(); cmx.moveTo(jx, yT0 + tampoH); cmx.lineTo(jx, yT0 + tampoH + faceH); cmx.stroke();
+    }
+    cmx.fillStyle = '#332b20';                          // pés
+    cmx.fillRect(x0 + T*.08, yT0 + tampoH + faceH - T*.06, T*.16, T*.1);
+    cmx.fillRect(x1 - T*.24, yT0 + tampoH + faceH - T*.06, T*.16, T*.1);
+    // tampo de madeira clara, iluminado
+    cmx.fillStyle = '#7d6f52'; cmx.fillRect(x0, yT0, x1 - x0, tampoH);
+    cmx.fillStyle = 'rgba(235,240,250,.14)'; cmx.fillRect(x0, yT0, x1 - x0, 2.2);
+    // veios da madeira
+    cmx.strokeStyle = 'rgba(58,46,30,.4)'; cmx.lineWidth = 1.1;
+    for(let k=0; k<3; k++){
+      const vy = yT0 + tampoH*(.28 + k*.24);
+      cmx.beginPath(); cmx.moveTo(x0 + 2, vy);
+      cmx.quadraticCurveTo((x0 + x1)/2, vy + (k%2 ? 2.4 : -2.4), x1 - 2, vy);
+      cmx.stroke();
+    }
+    [[.22,.4],[.62,.62],[.85,.3]].forEach(([fx,fy]) => { // nós
+      cmx.strokeStyle = 'rgba(58,46,30,.5)';
+      cmx.beginPath(); cmx.ellipse(x0 + (x1-x0)*fx, yT0 + tampoH*fy, T*.05, T*.028, .4, 0, TAU); cmx.stroke();
+    });
+    // marcas de serra: feixes de riscos paralelos no tampo
+    [[.3,.34],[.52,.7],[.76,.45]].forEach(([fx,fy]) => {
+      cmx.strokeStyle = 'rgba(40,30,18,.45)'; cmx.lineWidth = 1;
+      for(let k=0; k<4; k++){
+        const mx = x0 + (x1-x0)*fx + k*2.6;
+        cmx.beginPath(); cmx.moveTo(mx, yT0 + tampoH*fy - T*.07);
+        cmx.lineTo(mx - T*.05, yT0 + tampoH*fy + T*.07); cmx.stroke();
+      }
+    });
+    // a morsa de ferro na ponta oeste
+    cmx.fillStyle = '#39404c'; cmx.fillRect(x0 + T*.12, yT0 - T*.1, T*.3, T*.16);
+    cmx.fillStyle = '#262b34'; cmx.fillRect(x0 + T*.2, yT0 - T*.2, T*.14, T*.12);
+    cmx.fillStyle = 'rgba(214,222,238,.2)'; cmx.fillRect(x0 + T*.12, yT0 - T*.1, T*.3, 1.4);
+    // uma ripa clara atravessada sobre o tampo, recém-serrada
+    cmx.save();
+    cmx.translate(x0 + (x1-x0)*.6, yT0 + tampoH*.42); cmx.rotate(-.12);
+    cmx.fillStyle = '#8a7a58'; cmx.fillRect(-T*.8, -T*.07, T*1.6, T*.14);
+    cmx.fillStyle = 'rgba(0,0,0,.22)'; cmx.fillRect(-T*.8, T*.03, T*1.6, T*.04);
+    cmx.restore();
+  }
+
+  /* ferramentas penduradas na face da parede norte, a leste da porta */
+  const pPino = (px, py) => {
+    cmx.fillStyle = '#20242e'; cmx.beginPath(); cmx.arc(px, py, T*.03, 0, TAU); cmx.fill();
+  };
+  { // serrote
+    const px = 8.25*T, py = 30.18*T;
+    pPino(px, py);
+    cmx.fillStyle = '#1f1b14'; cmx.fillRect(px - T*.05, py + T*.02, T*.1, T*.15);
+    cmx.fillStyle = '#59606e';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.09, py + T*.17); cmx.lineTo(px + T*.09, py + T*.17);
+    cmx.lineTo(px + T*.03, py + T*.68); cmx.lineTo(px - T*.05, py + T*.68);
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = 'rgba(10,8,6,.6)'; cmx.lineWidth = 1;   // os dentes
+    cmx.beginPath();
+    for(let k=0; k<6; k++){
+      cmx.moveTo(px + T*.09 - k*T*.012, py + T*(.21 + k*.08));
+      cmx.lineTo(px + T*.115 - k*T*.012, py + T*(.25 + k*.08));
+    }
+    cmx.stroke();
+  }
+  { // martelo
+    const px = 8.9*T, py = 30.18*T;
+    pPino(px, py);
+    cmx.fillStyle = '#2a241a'; cmx.fillRect(px - T*.035, py + T*.06, T*.07, T*.5);
+    cmx.fillStyle = '#454c58'; cmx.fillRect(px - T*.16, py + T*.1, T*.32, T*.13);
+    cmx.fillStyle = 'rgba(210,220,235,.2)'; cmx.fillRect(px - T*.16, py + T*.1, T*.32, T*.035);
+  }
+  { // formão
+    const px = 9.45*T, py = 30.2*T;
+    pPino(px, py);
+    cmx.fillStyle = '#2a241a'; cmx.fillRect(px - T*.045, py + T*.05, T*.09, T*.22);
+    cmx.fillStyle = '#59606e';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.035, py + T*.27); cmx.lineTo(px + T*.035, py + T*.27);
+    cmx.lineTo(px + T*.02, py + T*.55); cmx.lineTo(px - T*.02, py + T*.55);
+    cmx.closePath(); cmx.fill();
+  }
+  { // compasso de carpinteiro
+    const px = 9.85*T, py = 30.18*T;
+    pPino(px, py);
+    cmx.strokeStyle = '#454c58'; cmx.lineWidth = Math.max(1.6, T*.05);
+    cmx.beginPath(); cmx.moveTo(px, py + T*.08); cmx.lineTo(px - T*.13, py + T*.6); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px, py + T*.08); cmx.lineTo(px + T*.13, py + T*.6); cmx.stroke();
+    cmx.fillStyle = '#20242e'; cmx.beginPath(); cmx.arc(px, py + T*.1, T*.045, 0, TAU); cmx.fill();
+  }
+
+  /* caixão PRONTO, de pé, encostado na parede (canto nordeste) */
+  {
+    sombraCh(10.5, 32.32, .42, .11, .35);
+    cmx.save(); cmx.translate(10.45*T, 32.28*T); cmx.rotate(-.05);
+    const casco = [[-.17,-2.06],[.17,-2.06],[.4,-1.44],[.25,0],[-.25,0],[-.4,-1.44]];
+    const gC = cmx.createLinearGradient(-T*.4, 0, T*.4, 0);
+    gC.addColorStop(0, '#5e5240'); gC.addColorStop(.55, '#4e4234'); gC.addColorStop(1, '#352c21');
+    cmx.fillStyle = gC;
+    cmx.beginPath();
+    casco.forEach(([fx,fy],i) => i ? cmx.lineTo(fx*T, fy*T) : cmx.moveTo(fx*T, fy*T));
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = '#191510'; cmx.lineWidth = 1.6; cmx.stroke();
+    // o friso da tampa
+    cmx.strokeStyle = 'rgba(20,14,8,.55)'; cmx.lineWidth = 1.2;
+    cmx.beginPath();
+    [[-.11,-1.94],[.11,-1.94],[.3,-1.44],[.18,-.1],[-.18,-.1],[-.3,-1.44]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, fy*T) : cmx.moveTo(fx*T, fy*T));
+    cmx.closePath(); cmx.stroke();
+    // a cruz entalhada, num brilho frio
+    cmx.fillStyle = 'rgba(214,222,238,.14)';
+    cmx.fillRect(-T*.025, -T*1.7, T*.05, T*.9);
+    cmx.fillRect(-T*.14, -T*1.5, T*.28, T*.05);
+    cmx.restore();
+  }
+
+  /* caixão MEIO MONTADO, deitado sobre dois cavaletes */
+  const pCavalete = (tx, ty) => {
+    const px = tx*T, py = ty*T;
+    sombraCh(tx, ty + .04, .28, .07, .3);
+    cmx.strokeStyle = '#3a3226'; cmx.lineWidth = Math.max(2, T*.08); cmx.lineCap = 'round';
+    cmx.beginPath(); cmx.moveTo(px - T*.2, py); cmx.lineTo(px, py - T*.5); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px + T*.2, py); cmx.lineTo(px, py - T*.5); cmx.stroke();
+    cmx.lineCap = 'butt';
+    cmx.strokeStyle = 'rgba(10,8,6,.5)'; cmx.lineWidth = Math.max(1.2, T*.04);
+    cmx.beginPath(); cmx.moveTo(px - T*.11, py - T*.22); cmx.lineTo(px + T*.11, py - T*.22); cmx.stroke();
+    cmx.fillStyle = '#4e4234'; cmx.fillRect(px - T*.15, py - T*.56, T*.3, T*.09);
+  };
+  pCavalete(7.6, 35.0); pCavalete(9.0, 35.0);
+  {
+    const cy = 34.35;
+    sombraCh(8.3, 35.08, .95, .1, .25);
+    // casco por fora (afunilado no pé, ombro largo)
+    cmx.fillStyle = '#5a4a3a';
+    cmx.beginPath();
+    [[7.2,-.18],[8.55,-.3],[9.35,-.2],[9.35,.2],[8.55,.3],[7.2,.18]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, (cy+fy)*T) : cmx.moveTo(fx*T, (cy+fy)*T));
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = '#171310'; cmx.lineWidth = 1.6; cmx.stroke();
+    // o vão aberto, ainda sem tampa
+    cmx.fillStyle = '#211b14';
+    cmx.beginPath();
+    [[7.32,-.1],[8.55,-.2],[9.23,-.12],[9.23,.12],[8.55,.2],[7.32,.1]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, (cy+fy)*T) : cmx.moveTo(fx*T, (cy+fy)*T));
+    cmx.closePath(); cmx.fill();
+    // costelas da estrutura à vista
+    cmx.strokeStyle = 'rgba(138,122,88,.5)'; cmx.lineWidth = 1.2;
+    [7.65,8.1,8.55,8.95].forEach(rx => {
+      cmx.beginPath(); cmx.moveTo(rx*T, (cy - .16)*T); cmx.lineTo(rx*T, (cy + .16)*T); cmx.stroke();
+    });
+    // luz fria na borda norte
+    cmx.strokeStyle = 'rgba(228,233,246,.16)'; cmx.lineWidth = 1.4;
+    cmx.beginPath();
+    cmx.moveTo(7.22*T, (cy - .17)*T); cmx.lineTo(8.55*T, (cy - .29)*T); cmx.lineTo(9.33*T, (cy - .19)*T);
+    cmx.stroke();
+  }
+
+  /* só o FUNDO EM RIPAS, deitado no chão — o começo de um caixão */
+  {
+    cmx.save(); cmx.translate(4.7*T, 34.9*T); cmx.rotate(.16);
+    cmx.fillStyle = '#26211a';
+    cmx.beginPath();
+    [[-.2,-.72],[.2,-.72],[.3,-.4],[.19,.7],[-.19,.7],[-.3,-.4]].forEach(([fx,fy],i) =>
+      i ? cmx.lineTo(fx*T, fy*T) : cmx.moveTo(fx*T, fy*T));
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = '#141110'; cmx.lineWidth = 1.4; cmx.stroke();
+    // as ripas atravessadas, com os vãos escuros entre elas
+    [[-.58,.4],[-.3,.56],[-.02,.5],[.26,.44],[.54,.36]].forEach(([ry,lar]) => {
+      cmx.fillStyle = '#5a4a3a';
+      cmx.fillRect(-lar*T/2, (ry - .09)*T, lar*T, T*.18);
+      cmx.fillStyle = 'rgba(228,233,246,.1)';
+      cmx.fillRect(-lar*T/2, (ry - .09)*T, lar*T, 1.2);
+    });
+    cmx.restore();
+  }
+
+  /* ==================== DEPÓSITO (x3..11, y37..41) ====================
+     Material esperando a vez: pilhas de tábuas, caixas de pregos, cordas. */
+
+  const pPilha = (x0, x1, yBase, nCam) => {
+    const faceH = nCam*.15, topoH = .26, yF = (yBase - faceH)*T;
+    sombraCh((x0 + x1)/2, yBase + .05, (x1 - x0)*.52, .11, .32);
+    for(let k=0; k<nCam; k++){          // a face: tábuas empilhadas
+      const ty = yF + k*.15*T;
+      cmx.fillStyle = k%2 ? '#463b2c' : '#4e4234';
+      cmx.fillRect(x0*T, ty, (x1 - x0)*T, .15*T);
+      cmx.fillStyle = 'rgba(233,238,248,.07)'; cmx.fillRect(x0*T, ty, (x1 - x0)*T, 1.4);
+      cmx.fillStyle = 'rgba(0,0,0,.3)'; cmx.fillRect(x0*T, ty + .15*T - 1.4, (x1 - x0)*T, 1.4);
+      cmx.fillStyle = '#8a7a58';        // o topo serrado das tábuas, na cabeceira
+      cmx.fillRect(x1*T - T*.07, ty + 1, T*.07, .15*T - 2);
+    }
+    // superfície de cima, iluminada, tábuas ao comprido
+    cmx.fillStyle = '#6c5d43'; cmx.fillRect(x0*T, yF - topoH*T, (x1 - x0)*T, topoH*T);
+    cmx.fillStyle = 'rgba(235,240,250,.12)'; cmx.fillRect(x0*T, yF - topoH*T, (x1 - x0)*T, 2);
+    cmx.strokeStyle = 'rgba(40,30,18,.5)'; cmx.lineWidth = 1.1;
+    for(let k=1; k<3; k++){
+      cmx.beginPath(); cmx.moveTo(x0*T, yF - topoH*T + k*topoH*T/3);
+      cmx.lineTo(x1*T, yF - topoH*T + k*topoH*T/3); cmx.stroke();
+    }
+    // uma tábua solta, torta, por cima da pilha
+    const hx = rnd(x0, yBase);
+    cmx.save();
+    cmx.translate((x0 + (x1 - x0)*(.3 + hx*.4))*T, (yBase - faceH - topoH - .02)*T);
+    cmx.rotate((hx - .5)*.16);
+    cmx.fillStyle = '#7a6a4c'; cmx.fillRect(-(x1 - x0)*.4*T, -T*.06, (x1 - x0)*.8*T, T*.12);
+    cmx.fillStyle = 'rgba(0,0,0,.25)'; cmx.fillRect(-(x1 - x0)*.4*T, T*.02, (x1 - x0)*.8*T, T*.04);
+    cmx.restore();
+  };
+  pPilha(6.3, 9.6, 38.6, 4);
+  pPilha(4.6, 7.0, 40.8, 3);
+
+  /* caixas de pregos abertas */
+  const pCaixaPregos = (tx, ty) => {
+    const px = tx*T, py = ty*T, l = T*.46, a = T*.34;
+    sombraCh(tx, ty + .1, .28, .07, .3);
+    cmx.fillStyle = '#4e4234'; cmx.fillRect(px - l/2, py - a/2, l, a);
+    cmx.fillStyle = '#1d1812'; cmx.fillRect(px - l/2 + 2.2, py - a/2 + 2.2, l - 4.4, a - 4.4);
+    cmx.strokeStyle = 'rgba(233,238,248,.14)'; cmx.lineWidth = 1.2;
+    cmx.strokeRect(px - l/2, py - a/2, l, a);
+    cmx.strokeStyle = '#8b93a4'; cmx.lineWidth = 1.1;   // os pregos, espalhados
+    for(let k=0; k<7; k++){
+      const g1 = rnd(tx*9 + k, ty*7), g2 = rnd(ty*8 + k, tx*6);
+      const nx = px - l/2 + 3 + g1*(l - 6), ny = py - a/2 + 3 + g2*(a - 6);
+      cmx.beginPath(); cmx.moveTo(nx, ny); cmx.lineTo(nx + T*.07, ny + (g1 - .5)*T*.05); cmx.stroke();
+    }
+  };
+  pCaixaPregos(10.2, 39.1); pCaixaPregos(9.55, 39.6);
+
+  /* rolos de corda pendurados na face da divisória */
+  [[4.4,36.52],[9.2,36.48]].forEach(([tx,ty]) => {
+    const px = tx*T, py = ty*T;
+    cmx.fillStyle = '#20242e'; cmx.beginPath(); cmx.arc(px, py - T*.28, T*.035, 0, TAU); cmx.fill();
+    cmx.strokeStyle = '#2b241a'; cmx.lineWidth = 1.4;
+    cmx.beginPath(); cmx.moveTo(px, py - T*.28); cmx.lineTo(px, py - T*.16); cmx.stroke();
+    cmx.strokeStyle = '#66573c'; cmx.lineWidth = Math.max(2.4, T*.1);
+    cmx.beginPath(); cmx.arc(px, py, T*.16, 0, TAU); cmx.stroke();
+    cmx.strokeStyle = 'rgba(20,14,8,.5)'; cmx.lineWidth = 1;
+    for(let k=0; k<5; k++){
+      cmx.beginPath(); cmx.arc(px, py, T*(.1 + k*.032), -.6, .9); cmx.stroke();
+    }
+    cmx.strokeStyle = '#66573c'; cmx.lineWidth = Math.max(1.4, T*.045);
+    cmx.beginPath(); cmx.moveTo(px + T*.1, py + T*.1);   // a ponta solta
+    cmx.quadraticCurveTo(px + T*.16, py + T*.3, px + T*.08, py + T*.42); cmx.stroke();
+  });
+
+  /* poeira e fiapos de teia nos cantos do depósito */
+  [[3.3,37.35,1],[10.7,37.35,-1],[3.3,40.75,1],[10.75,40.8,-1]].forEach(([tx,ty,dir]) => {
+    const px = tx*T, py = ty*T;
+    cmx.strokeStyle = 'rgba(205,210,226,.13)'; cmx.lineWidth = 1;
+    for(let k=0; k<3; k++){
+      cmx.beginPath();
+      cmx.moveTo(px - dir*T*.3, py - T*.28 + k*T*.05);
+      cmx.quadraticCurveTo(px + dir*T*.05, py - T*.1 + k*T*.08, px + dir*T*.28, py + T*.16 + k*T*.05);
+      cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(160,166,186,.07)';
+    cmx.beginPath(); cmx.ellipse(px, py + T*.1, T*.3, T*.12, 0, 0, TAU); cmx.fill();
+  });
+
+  /* ========== COLOMBÁRIO-LABIRINTO: os nichos funerários (y>=44) ==========
+     Em cada face de parede visível dentro do colombário, duas arcadas
+     escavadas com prateleira de pedra; dentro, urna, crânio, ossos ou o
+     vazio — variando por hash, sem repetir vizinhos. */
+  for(let y=44; y<=53; y++) for(let x=3; x<=33; x++){
+    if(!paredeEm(x,y) || !chaoEm(x,y+1)) continue;
+    const px = x*T, py = y*T;
+    const offLinha = (hash(2.13, y*1.71)*4)|0;          // baralha os conteúdos por linha
+    for(let k=0; k<2; k++){
+      const nx = px + T*(.27 + k*.46);
+      const topo = py + T*.16, altN = T*.5, r = T*.16, omb = topo + r;
+      const tracarArco = () => {
+        cmx.beginPath();
+        cmx.moveTo(nx - r, topo + altN);
+        cmx.lineTo(nx - r, omb);
+        cmx.arc(nx, omb, r, Math.PI, 0);
+        cmx.lineTo(nx + r, topo + altN);
+        cmx.closePath();
+      };
+      // prateleira de pedra sob o arco
+      cmx.fillStyle = '#797e93';
+      cmx.fillRect(nx - r - T*.05, topo + altN, r*2 + T*.1, T*.085);
+      cmx.fillStyle = 'rgba(236,240,250,.25)';
+      cmx.fillRect(nx - r - T*.05, topo + altN, r*2 + T*.1, 1.4);
+      cmx.fillStyle = 'rgba(0,0,0,.4)';
+      cmx.fillRect(nx - r - T*.05, topo + altN + T*.085, r*2 + T*.1, T*.05);
+      // o vão escavado
+      cmx.fillStyle = '#141721';
+      tracarArco(); cmx.fill();
+      // conteúdo, guardado dentro do arco
+      const v = (x*2 + k + offLinha) % 4;
+      cmx.save(); tracarArco(); cmx.clip();
+      const chaoN = topo + altN;
+      // a sombra funda que desce do alto do vão (antes do conteúdo, para não apagá-lo)
+      const gN = cmx.createLinearGradient(0, topo, 0, topo + altN*.7);
+      gN.addColorStop(0, 'rgba(0,0,0,.55)'); gN.addColorStop(1, 'rgba(0,0,0,0)');
+      cmx.fillStyle = gN; cmx.fillRect(nx - r, topo, r*2, altN*.7);
+      if(v === 0){          // a urna
+        cmx.fillStyle = '#a29ab2';
+        cmx.beginPath();
+        cmx.moveTo(nx - T*.055, chaoN - T*.29);
+        cmx.quadraticCurveTo(nx - T*.13, chaoN - T*.16, nx - T*.08, chaoN);
+        cmx.lineTo(nx + T*.08, chaoN);
+        cmx.quadraticCurveTo(nx + T*.13, chaoN - T*.16, nx + T*.055, chaoN - T*.29);
+        cmx.closePath(); cmx.fill();
+        cmx.fillStyle = '#847c98'; cmx.fillRect(nx - T*.065, chaoN - T*.33, T*.13, T*.045);
+        cmx.fillStyle = 'rgba(238,242,252,.45)'; cmx.fillRect(nx - T*.065, chaoN - T*.33, T*.13, 1.2);
+        cmx.fillStyle = 'rgba(238,242,252,.28)'; cmx.fillRect(nx - T*.07, chaoN - T*.24, T*.035, T*.2);
+        cmx.strokeStyle = 'rgba(30,28,44,.5)'; cmx.lineWidth = .9;   // o friso do bojo
+        cmx.beginPath(); cmx.moveTo(nx - T*.1, chaoN - T*.14); cmx.lineTo(nx + T*.1, chaoN - T*.14); cmx.stroke();
+      } else if(v === 1){   // o crânio
+        cmx.fillStyle = '#b3ac9c';
+        cmx.beginPath(); cmx.arc(nx, chaoN - T*.14, T*.085, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - T*.055, chaoN - T*.1, T*.11, T*.08);
+        cmx.fillStyle = '#141721';
+        cmx.beginPath(); cmx.arc(nx - T*.035, chaoN - T*.15, T*.024, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(nx + T*.035, chaoN - T*.15, T*.024, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - T*.008, chaoN - T*.1, T*.016, T*.03);
+        cmx.strokeStyle = 'rgba(20,16,12,.5)'; cmx.lineWidth = .9;
+        cmx.beginPath(); cmx.moveTo(nx - T*.05, chaoN - T*.04); cmx.lineTo(nx + T*.05, chaoN - T*.04); cmx.stroke();
+      } else if(v === 2){   // os ossos cruzados
+        cmx.strokeStyle = '#a49d8c'; cmx.lineWidth = Math.max(1.6, T*.045); cmx.lineCap = 'round';
+        cmx.beginPath(); cmx.moveTo(nx - T*.1, chaoN - T*.05); cmx.lineTo(nx + T*.1, chaoN - T*.11); cmx.stroke();
+        cmx.beginPath(); cmx.moveTo(nx - T*.09, chaoN - T*.13); cmx.lineTo(nx + T*.09, chaoN - T*.05); cmx.stroke();
+        cmx.lineCap = 'butt';
+        cmx.fillStyle = '#a49d8c';
+        cmx.beginPath(); cmx.arc(nx - T*.1, chaoN - T*.05, T*.026, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(nx + T*.1, chaoN - T*.11, T*.026, 0, TAU); cmx.fill();
+      }                     // v === 3: vazio — resta a sombra
+      cmx.restore();
+      // aduela do arco e pedra angular
+      cmx.strokeStyle = 'rgba(160,166,190,.4)'; cmx.lineWidth = 1.5;
+      cmx.beginPath(); cmx.arc(nx, omb, r + .8, Math.PI, 0); cmx.stroke();
+      cmx.fillStyle = 'rgba(170,176,198,.35)';
+      cmx.fillRect(nx - T*.035, topo - T*.035, T*.07, T*.075);
+    }
+  }
+
+  /* placas de pedra caídas (nomes gastos, ilegíveis) e flores secas */
+  for(let y=45; y<=53; y++) for(let x=3; x<=33; x++){
+    if(!chaoEm(x,y)) continue;
+    const h = rnd(x*1.7, y*2.3);
+    const px = (x + .18 + rnd(x,y)*.62)*T, py = (y + .3 + rnd(y,x)*.5)*T;
+    if(h > .9){             // a placa que caiu de algum nicho
+      cmx.save(); cmx.translate(px, py); cmx.rotate((rnd(x*3, y)*2 - 1)*.5);
+      cmx.fillStyle = 'rgba(0,0,0,.28)';
+      cmx.beginPath(); cmx.ellipse(T*.02, T*.06, T*.3, T*.14, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = '#767d93'; cmx.fillRect(-T*.26, -T*.17, T*.52, T*.34);
+      cmx.fillStyle = 'rgba(238,242,252,.2)'; cmx.fillRect(-T*.26, -T*.17, T*.52, 1.6);
+      cmx.strokeStyle = 'rgba(16,18,26,.6)'; cmx.lineWidth = 1.2;
+      cmx.strokeRect(-T*.26, -T*.17, T*.52, T*.34);
+      cmx.strokeStyle = 'rgba(24,27,38,.55)'; cmx.lineWidth = 1;   // o nome que o tempo comeu
+      for(let k=0; k<3; k++){
+        const c1 = rnd(x*5 + k, y*4), c2 = rnd(y*6 + k, x*3);
+        cmx.beginPath();
+        cmx.moveTo(-T*.18, -T*.08 + k*T*.09);
+        cmx.lineTo(-T*.18 + T*(.14 + c1*.2), -T*.08 + k*T*.09 + (c2 - .5)*2);
+        cmx.stroke();
+      }
+      cmx.fillStyle = 'rgba(16,18,26,.4)';                          // canto lascado
+      cmx.beginPath(); cmx.moveTo(T*.26, -T*.17); cmx.lineTo(T*.17, -T*.17);
+      cmx.lineTo(T*.26, -T*.08); cmx.closePath(); cmx.fill();
+      cmx.restore();
+    } else if(h < .09){     // flores secas caídas
+      cmx.save(); cmx.translate(px, py); cmx.rotate(rnd(y*7, x*2)*TAU);
+      for(let k=0; k<3; k++){
+        const a = (k - 1)*.55 + rnd(x + k, y)*.3;
+        cmx.strokeStyle = '#5f5138'; cmx.lineWidth = 1.1;
+        cmx.beginPath(); cmx.moveTo(0, 0);
+        cmx.quadraticCurveTo(Math.cos(a)*T*.1, Math.sin(a)*T*.1 - T*.06,
+                             Math.cos(a)*T*.2, Math.sin(a)*T*.2 - T*.04);
+        cmx.stroke();
+        cmx.fillStyle = k%2 ? '#7c4a3e' : '#8a6a46';
+        cmx.beginPath(); cmx.arc(Math.cos(a)*T*.2, Math.sin(a)*T*.2 - T*.04, T*.035, 0, TAU); cmx.fill();
+      }
+      cmx.fillStyle = 'rgba(124,88,70,.6)';                         // pétalas soltas
+      cmx.fillRect(T*.1, T*.06, 2, 2); cmx.fillRect(-T*.14, T*.02, 2, 2);
+      cmx.restore();
+    }
+  }
+}
+
+/* -- passe 4: cripta alagada + salão + cova grande + quarto do Coveiro -- */
+function pintarFunCriptaSalao(cmx, T){
+  const rnd = (x,y) => hash(x*5.3, y*7.7);
+  const tf = (x,y) => (x>=0 && y>=0 && x<FUN.LARG && y<FUN.ALT) ? mapa[y*FUN.LARG + x] : PAREDE;
+
+  /* ================= 1. CRIPTA ALAGADA (x15..28, y32..42) =================
+     água parada pútrida por cima do tile de FOSSO, caixões meio afundados,
+     bisel na pedra das margens e as passarelas de tábua em alto-relevo */
+  const CR = {x1:15, y1:32, x2:28, y2:42};
+  const naAgua = (x,y) => x>=CR.x1 && x<=CR.x2 && y>=CR.y1 && y<=CR.y2 && tf(x,y) === FOSSO;
+
+  // um só gradiente radial para a lâmina d'água toda: verde-petróleo, sem azul
+  const cxA = (CR.x1 + CR.x2 + 1)*.5*T, cyA = (CR.y1 + CR.y2 + 1)*.5*T;
+  const gAgua = cmx.createRadialGradient(cxA, cyA, T*.6, cxA, cyA, (CR.x2 - CR.x1 + 1)*T*.62);
+  gAgua.addColorStop(0, '#2e4c4a'); gAgua.addColorStop(.55, '#22393b'); gAgua.addColorStop(1, '#16272b');
+  for(let y=CR.y1; y<=CR.y2; y++) for(let x=CR.x1; x<=CR.x2; x++){
+    if(!naAgua(x,y)) continue;
+    const px = x*T, py = y*T, h = rnd(x,y);
+    cmx.fillStyle = gAgua; cmx.fillRect(px, py, T, T);
+    // limo boiando em manchas
+    if(h > .58){
+      cmx.fillStyle = 'rgba(46,72,58,' + (.05 + h*.08) + ')';
+      cmx.beginPath();
+      cmx.ellipse(px + T*h, py + T*(1 - h*.7), T*(.3 + h*.25), T*(.15 + h*.12), h*3, 0, TAU);
+      cmx.fill();
+    }
+    // o céu de pedra refletido: manchas frias e largas
+    if(h > .42){
+      cmx.fillStyle = 'rgba(126,164,168,' + (.05 + h*.07) + ')';
+      cmx.beginPath();
+      cmx.ellipse(px + T*(1-h), py + T*h, T*(.35 + h*.2), T*.1, 0, 0, TAU);
+      cmx.fill();
+    }
+    // onde a pedra mergulha: a quina clara e o paredão molhado descendo
+    const ac = tf(x, y-1);
+    if(ac !== FOSSO && ac !== PONTE){
+      cmx.fillStyle = 'rgba(150,165,175,.35)'; cmx.fillRect(px, py, T, 2.2);
+      const gQ = cmx.createLinearGradient(0, py, 0, py + T*.5);
+      gQ.addColorStop(0, 'rgba(52,66,72,.6)'); gQ.addColorStop(1, 'rgba(52,66,72,0)');
+      cmx.fillStyle = gQ; cmx.fillRect(px, py + 2.2, T, T*.5);
+      if(h > .5){                                        // escorrido de limo na pedra
+        cmx.fillStyle = 'rgba(46,72,58,.28)';
+        cmx.fillRect(px + T*(.15 + h*.5), py + 2, T*.1, T*(.2 + h*.22));
+      }
+    }
+  }
+
+  // bisel escuro na aresta da pedra que cai para a água (a receita da cisterna)
+  for(let y=CR.y1-1; y<=CR.y2+1; y++) for(let x=CR.x1-1; x<=CR.x2+1; x++){
+    const v = tf(x,y);
+    if(v !== CHAO && v !== CHAO2) continue;
+    const px = x*T, py = y*T, bz = T*.18;
+    if(naAgua(x, y+1)){
+      cmx.fillStyle = 'rgba(205,220,225,.12)';
+      cmx.fillRect(px, py + T - bz - 1.6, T, 1.6);       // a quina pega luz antes de cair
+      cmx.fillStyle = 'rgba(9,16,19,.6)';
+      cmx.fillRect(px, py + T - bz, T, bz);
+      /* a orla: espuma suja e limo acumulado onde a água bate na pedra */
+      cmx.fillStyle = 'rgba(196,214,196,.22)';
+      cmx.fillRect(px, py + T, T, 2.4);
+      for(let k=0; k<3; k++){
+        const hk = rnd(x*11 + k, y*13);
+        cmx.fillStyle = 'rgba(150,178,150,' + (.10 + hk*.16) + ')';
+        cmx.beginPath();
+        cmx.ellipse(px + T*(.15 + k*.34 + hk*.1), py + T + 2 + hk*2, T*(.09 + hk*.07), 1.8 + hk*1.4, 0, 0, TAU);
+        cmx.fill();
+      }
+    }
+    cmx.fillStyle = 'rgba(9,16,19,.55)';
+    if(naAgua(x+1, y)) cmx.fillRect(px + T - bz*.7, py, bz*.7, T);
+    if(naAgua(x-1, y)) cmx.fillRect(px, py, bz*.7, T);
+  }
+
+  // goteiras: círculos concêntricos discretos onde o teto pinga
+  [[18.5,38.2],[24.5,36.6],[20.8,41.6]].forEach(([x,y]) => {
+    const px = x*T, py = y*T;
+    cmx.strokeStyle = 'rgba(150,195,185,.15)'; cmx.lineWidth = 1.4;
+    for(let k=0; k<3; k++){
+      cmx.beginPath(); cmx.ellipse(px, py, T*(.13 + k*.16), T*(.08 + k*.11), 0, 0, TAU); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(190,220,210,.2)';
+    cmx.beginPath(); cmx.arc(px, py, 1.5, 0, TAU); cmx.fill();
+  });
+
+  // os caixões que boiam são desenhados vivos em desenharAguaCripta (eles se mexem)
+
+  /* passarelas PONTE em alto-relevo: tábuas no sentido do vão, pregos,
+     tábua faltando aqui e ali e a face lateral escura caindo para a água */
+  for(let y=CR.y1; y<=CR.y2; y++) for(let x=CR.x1; x<=CR.x2; x++){
+    if(tf(x,y) !== PONTE) continue;
+    const px = x*T, py = y*T, fB = hash(x*1.7, y*2.9);
+    const vert = tf(x, y-1) === PONTE || tf(x, y+1) === PONTE;
+    cmx.fillStyle = '#0a1214'; cmx.fillRect(px, py, T, T);   // a água nas frestas
+    const nB = 4, wB = T/nB;
+    for(let k=0; k<nB; k++){
+      const falta = fB > .78 && k === ((fB*13)|0) % nB;
+      const v2 = .66 + hash(vert ? x*7 + k : x*3, vert ? y*3 : y*7 + k)*.5;
+      const cor = 'rgb(' + Math.round(112*v2) + ',' + Math.round(94*v2) + ',' + Math.round(66*v2) + ')';
+      if(vert){
+        const bx = px + k*wB;
+        if(falta){                                       // a tábua que faltou: buraco escuro
+          cmx.fillStyle = cor;
+          cmx.fillRect(bx + 1, py, wB - 2, T*.2); cmx.fillRect(bx + 1, py + T*.78, wB - 2, T*.22);
+          cmx.fillStyle = 'rgba(5,9,10,.9)'; cmx.fillRect(bx + 1, py + T*.2, wB - 2, T*.58);
+          cmx.fillStyle = 'rgba(226,206,170,.18)';       // as pontas lascadas
+          cmx.fillRect(bx + 1, py + T*.18, wB - 2, 1.5);
+          cmx.fillRect(bx + 1, py + T*.78, wB - 2, 1.5);
+          continue;
+        }
+        cmx.fillStyle = cor; cmx.fillRect(bx + 1, py, wB - 2, T);
+        cmx.fillStyle = 'rgba(255,240,210,.07)'; cmx.fillRect(bx + 1, py, 1.6, T);
+        cmx.fillStyle = 'rgba(10,6,4,.25)'; cmx.fillRect(bx + wB - 2.4, py, 1.4, T);
+        if(hash(x + k, y*11) > .55){                     // veio da madeira
+          cmx.strokeStyle = 'rgba(30,20,12,.35)'; cmx.lineWidth = 1;
+          cmx.beginPath(); cmx.moveTo(bx + wB*.5, py + T*.12); cmx.lineTo(bx + wB*.4, py + T*.82); cmx.stroke();
+        }
+        cmx.fillStyle = '#191410';                       // pregos nas travessas
+        cmx.beginPath(); cmx.arc(bx + wB*.5, py + T*.14, 1.4, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(bx + wB*.5, py + T*.86, 1.4, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(230,235,240,.3)';
+        cmx.fillRect(bx + wB*.5 - .6, py + T*.14 - .6, 1, 1);
+      } else {
+        const by = py + k*wB;
+        if(falta){
+          cmx.fillStyle = cor;
+          cmx.fillRect(px, by + 1, T*.2, wB - 2); cmx.fillRect(px + T*.78, by + 1, T*.22, wB - 2);
+          cmx.fillStyle = 'rgba(5,9,10,.9)'; cmx.fillRect(px + T*.2, by + 1, T*.58, wB - 2);
+          cmx.fillStyle = 'rgba(226,206,170,.18)';
+          cmx.fillRect(px + T*.18, by + 1, 1.5, wB - 2);
+          cmx.fillRect(px + T*.78, by + 1, 1.5, wB - 2);
+          continue;
+        }
+        cmx.fillStyle = cor; cmx.fillRect(px, by + 1, T, wB - 2);
+        cmx.fillStyle = 'rgba(255,240,210,.07)'; cmx.fillRect(px, by + 1, T, 1.6);
+        cmx.fillStyle = 'rgba(10,6,4,.25)'; cmx.fillRect(px, by + wB - 2.4, T, 1.4);
+        cmx.fillStyle = '#191410';
+        cmx.beginPath(); cmx.arc(px + T*.14, by + wB*.5, 1.4, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(px + T*.86, by + wB*.5, 1.4, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(230,235,240,.3)';
+        cmx.fillRect(px + T*.14 - .6, by + wB*.5 - .6, 1, 1);
+      }
+    }
+    // vigas de borda quando a passarela pende sobre a água
+    cmx.fillStyle = '#2e2114';
+    if(vert){
+      if(naAgua(x-1, y)){
+        cmx.fillRect(px, py, 3.4, T);
+        cmx.fillStyle = 'rgba(216,190,140,.3)'; cmx.fillRect(px + .8, py, 1.2, T);
+        cmx.fillStyle = '#2e2114';
+      }
+      if(naAgua(x+1, y)){
+        cmx.fillRect(px + T - 3.4, py, 3.4, T);
+        cmx.fillStyle = 'rgba(216,190,140,.3)'; cmx.fillRect(px + T - 2.2, py, 1.2, T);
+      }
+    } else if(naAgua(x, y-1)){
+      cmx.fillRect(px, py, T, 3.4);
+      cmx.fillStyle = 'rgba(216,190,140,.3)'; cmx.fillRect(px, py + .8, T, 1.2);
+    }
+    // face lateral escura na borda sul de cada trecho: o alto-relevo do estrado
+    if(naAgua(x, y+1)){
+      const fh = T*.22;
+      cmx.fillStyle = '#191108'; cmx.fillRect(px, py + T - fh, T, fh);
+      cmx.strokeStyle = 'rgba(0,0,0,.5)'; cmx.lineWidth = 1;
+      for(let k=1; k<nB; k++){
+        cmx.beginPath(); cmx.moveTo(px + k*wB, py + T - fh); cmx.lineTo(px + k*wB, py + T); cmx.stroke();
+      }
+      cmx.fillStyle = 'rgba(226,206,170,.14)'; cmx.fillRect(px, py + T - fh, T, 1.6);
+      cmx.fillStyle = 'rgba(6,10,11,.5)'; cmx.fillRect(px, py + T, T, 3);   // o reflexo na água
+    }
+  }
+
+  // véu de névoa clara em manchas, por cima de tudo na cripta
+  [[17.5,34.5],[25.8,37.5],[20.5,39.6],[23.5,34.1]].forEach(([x,y], i) => {
+    const px = x*T, py = y*T, r = T*(1.6 + (i%2)*.7);
+    const gN = cmx.createRadialGradient(px, py, 0, px, py, r);
+    gN.addColorStop(0, 'rgba(168,188,182,.09)'); gN.addColorStop(1, 'rgba(168,188,182,0)');
+    cmx.fillStyle = gN; cmx.beginPath(); cmx.arc(px, py, r, 0, TAU); cmx.fill();
+  });
+
+  /* ================= 2. SALÃO CENTRAL (x5..41, y20..23) =================
+     o caminho processional: lajes gastas no eixo e os dois sulcos
+     paralelos do arrasto de caixão, de ponta a ponta */
+  for(let y=21; y<=22; y++) for(let x=5; x<=41; x++){
+    if(tf(x,y) !== CHAO) continue;
+    const h = rnd(x + 11, y + 5);
+    cmx.fillStyle = 'rgba(14,13,20,' + (.12 + h*.10) + ')';
+    cmx.fillRect(x*T + 1, y*T + 1, T - 2, T - 2);
+    if(h > .7){                                          // laje polida pelo uso
+      cmx.fillStyle = 'rgba(205,212,228,.05)';
+      cmx.fillRect(x*T + 3, y*T + T*.55, T - 6, T*.3);
+    }
+  }
+  [21.72, 22.28].forEach((yl, si) => {
+    cmx.strokeStyle = 'rgba(8,7,12,.5)'; cmx.lineWidth = 2.6;
+    cmx.beginPath();
+    for(let x=5; x<=41; x++){
+      const yy = (yl + (hash(x*2.3, 31 + si*7) - .5)*.1)*T;
+      if(x === 5) cmx.moveTo((x + .15)*T, yy); else cmx.lineTo((x + .5)*T, yy);
+    }
+    cmx.stroke();
+    cmx.strokeStyle = 'rgba(205,215,230,.08)'; cmx.lineWidth = 1.4;   // a quina de baixo do sulco
+    cmx.beginPath();
+    for(let x=5; x<=41; x++){
+      const yy = (yl + (hash(x*2.3, 31 + si*7) - .5)*.1)*T + 2.2;
+      if(x === 5) cmx.moveTo((x + .15)*T, yy); else cmx.lineTo((x + .5)*T, yy);
+    }
+    cmx.stroke();
+  });
+  // goteiras do salão: poças pequenas com o anel da água caindo
+  [[9.4,20.6],[17.6,23.35],[27.5,20.5],[33.6,23.4]].forEach(([x,y]) => {
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(10,13,18,.55)';
+    cmx.beginPath(); cmx.ellipse(px, py, T*.24, T*.13, .3, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(170,190,205,.16)'; cmx.lineWidth = 1.3;
+    cmx.beginPath(); cmx.ellipse(px, py, T*.24, T*.13, .3, 0, TAU); cmx.stroke();
+    cmx.beginPath(); cmx.ellipse(px, py, T*.1, T*.055, .3, 0, TAU); cmx.stroke();
+  });
+
+  /* ============ 3. COVA GRANDE: a arena do Coveiro (x30..43, y4..16) ============
+     terra revolvida sobre a pedra, covas abertas com o monte de terra ao lado,
+     lápides tortas e o sulco circular de quem cava andando em roda */
+  for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
+    if(tf(x,y) !== CHAO2) continue;
+    const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
+    if(h > .3){                                          // terra revolvida em manchas miúdas
+      for(let k=0; k<3; k++){
+        const hx = hash(x*7 + k, y*5), hy = hash(x*5, y*7 + k);
+        cmx.fillStyle = 'rgba(58,51,46,' + (.14 + hx*.26) + ')';
+        cmx.beginPath();
+        cmx.ellipse(px + T*hx, py + T*hy, T*(.12 + hy*.18), T*(.08 + hx*.13), hx*5, 0, TAU);
+        cmx.fill();
+      }
+    }
+    if(h > .62){                                         // torrões escuros
+      cmx.fillStyle = 'rgba(24,20,16,.45)';
+      cmx.beginPath(); cmx.arc(px + T*(1 - h)*.9 + 2, py + T*h*.9, 1.4 + h*2, 0, TAU); cmx.fill();
+    }
+    if(h > .84){                                         // um risco de pá na terra
+      cmx.strokeStyle = 'rgba(20,17,14,.4)'; cmx.lineWidth = 1.6;
+      cmx.beginPath();
+      cmx.moveTo(px + T*.2, py + T*(h - .3)); cmx.lineTo(px + T*.85, py + T*(h - .22));
+      cmx.stroke();
+    }
+  }
+  // o sulco circular no centro da arena, com as pegadas em roda
+  const ccx = 37.2*T, ccy = 10.4*T, rC = T*2.05;
+  cmx.strokeStyle = 'rgba(14,12,16,.3)'; cmx.lineWidth = T*.16;
+  cmx.beginPath(); cmx.ellipse(ccx, ccy, rC, rC*.72, 0, 0, TAU); cmx.stroke();
+  cmx.strokeStyle = 'rgba(190,180,155,.1)'; cmx.lineWidth = 2;
+  cmx.beginPath(); cmx.ellipse(ccx, ccy, rC + T*.1, rC*.72 + T*.1, 0, .3, 5.6); cmx.stroke();
+  for(let k=0; k<10; k++){
+    const a = k*TAU/10 + .25, fx = ccx + Math.cos(a)*rC, fy = ccy + Math.sin(a)*rC*.72;
+    cmx.fillStyle = 'rgba(16,13,11,.4)';
+    cmx.beginPath(); cmx.ellipse(fx, fy, T*.09, T*.05, a + Math.PI/2, 0, TAU); cmx.fill();
+    cmx.beginPath();
+    cmx.ellipse(fx + Math.cos(a + .5)*T*.16, fy + Math.sin(a + .5)*T*.12, T*.09, T*.05, a + Math.PI/2, 0, TAU);
+    cmx.fill();
+  }
+  // covas abertas: o buraco fundo e a pá de terra ao lado, com face iluminada
+  const pCova = (x, y, ang, lado) => {
+    const px = x*T, py = y*T, w = T*1.55, hh = T*.8;
+    cmx.save(); cmx.translate(px, py); cmx.rotate(ang);
+    cmx.fillStyle = 'rgba(90,80,66,.5)';                 // o rebordo de terra remexida
+    cmx.fillRect(-w/2 - 3, -hh/2 - 3, w + 6, hh + 6);
+    cmx.fillStyle = 'rgba(198,186,158,.22)';             // a quina norte do buraco pega luz
+    cmx.fillRect(-w/2 - 2, -hh/2 - 2.6, w + 4, 2);
+    const gC = cmx.createLinearGradient(0, -hh/2, 0, hh/2);
+    gC.addColorStop(0, '#0d0e10'); gC.addColorStop(.55, '#1c1712'); gC.addColorStop(1, '#2a2219');
+    cmx.fillStyle = gC; cmx.fillRect(-w/2, -hh/2, w, hh);
+    /* paredes internas de terra: as laterais aparam o preto chapado */
+    cmx.fillStyle = 'rgba(110,94,72,.28)';
+    cmx.fillRect(-w/2, -hh/2, 3.2, hh); cmx.fillRect(w/2 - 3.2, -hh/2, 3.2, hh);
+    cmx.fillStyle = 'rgba(96,82,62,.2)';                 // veios de raiz e pedra na terra
+    for(let k=0; k<4; k++){
+      const hk = hash(x*7 + k, y*3 + k);
+      cmx.fillRect(-w/2 + 4 + hk*(w - 14), -hh/2 + 3 + hash(x + k, y*9 + k)*(hh - 8), 2 + hk*4, 1.6);
+    }
+    cmx.fillStyle = 'rgba(138,124,102,.5)';              // a parede interna que pega luz
+    cmx.fillRect(-w/2, hh/2 - 4.4, w, 4.4);
+    cmx.fillStyle = 'rgba(0,0,0,.35)'; cmx.fillRect(-w/2, -hh/2, w, 3);
+    cmx.restore();
+    const mx = px + lado*(w/2 + T*.5), my = py + T*.05;  // o monte de terra
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(mx + T*.06, my + T*.17, T*.46, T*.17, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#544838';
+    cmx.beginPath(); cmx.ellipse(mx, my, T*.4, T*.28, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(200,185,150,.28)';             // a face do monte que a luz alcança
+    cmx.beginPath(); cmx.ellipse(mx - T*.09, my - T*.1, T*.26, T*.14, -.4, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(16,12,10,.4)';                 // o pé do monte, na sombra
+    cmx.beginPath(); cmx.ellipse(mx + T*.06, my + T*.14, T*.3, T*.1, .2, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(20,16,12,.5)';
+    for(let k=0; k<5; k++){
+      const hk = hash(x*9 + k, y*4 + k);
+      cmx.beginPath();
+      cmx.arc(mx + (hk - .5)*T*.7, my + (hash(x + k, y*7) - .5)*T*.4, 1.6 + hk*1.8, 0, TAU);
+      cmx.fill();
+    }
+  };
+  pCova(33.5, 6.3, -.07, 1);
+  pCova(39.8, 7.9, .05, -1);
+  pCova(33.8, 12.8, .09, 1);
+  pCova(41.2, 13.6, -.04, 1);
+  // lápides toscas, tortas, com o pé enterrado na terra
+  const pLapide = (x, y, ang) => {
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.4)';                    // a sombra no chão
+    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.34, T*.34, T*.11, 0, 0, TAU); cmx.fill();
+    cmx.save(); cmx.translate(px, py + T*.3); cmx.rotate(ang);
+    const w = T*.44, hL = T*.78;
+    cmx.fillStyle = '#565c6e';
+    cmx.beginPath();
+    cmx.moveTo(-w/2, 0); cmx.lineTo(-w/2, -hL + w/2);
+    cmx.arc(0, -hL + w/2, w/2, Math.PI, 0);
+    cmx.lineTo(w/2, 0); cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(10,8,14,.35)';                 // o flanco na sombra
+    cmx.fillRect(w/2 - w*.22, -hL + w/2, w*.22, hL - w/2);
+    cmx.strokeStyle = 'rgba(215,225,240,.3)'; cmx.lineWidth = 2;   // o topo pega luz
+    cmx.beginPath(); cmx.arc(0, -hL + w/2, w/2 - 1, Math.PI*1.05, Math.PI*1.8); cmx.stroke();
+    cmx.strokeStyle = 'rgba(14,12,18,.5)'; cmx.lineWidth = 1.4;    // gravação tosca
+    cmx.beginPath(); cmx.moveTo(-w*.24, -hL*.52); cmx.lineTo(w*.2, -hL*.52); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(-w*.2, -hL*.36); cmx.lineTo(w*.14, -hL*.36); cmx.stroke();
+    cmx.fillStyle = '#3a332e';                           // a terra segurando o pé
+    cmx.beginPath(); cmx.ellipse(0, 0, w*.62, T*.09, 0, 0, TAU); cmx.fill();
+    cmx.restore();
+  };
+  pLapide(35.2, 5.2, -.14);
+  pLapide(41.8, 10.6, .11);
+
+  /* ============ 4. ESCADA DE CHEGADA (x36..43, y48..54) ============
+     degraus largos subindo do piso 2: linha de sombra no alto de cada
+     fiada, rodapé claro na quina e o fundo do vão mais escuro */
+  for(let y=48; y<=54; y++) for(let x=36; x<=43; x++){
+    if(tf(x,y) !== CHAO2) continue;
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(4,5,9,' + ((y - 48)*.035) + ')';   // desce para o escuro
+    cmx.fillRect(px, py, T, T);
+    const gD = cmx.createLinearGradient(0, py, 0, py + T*.42);
+    gD.addColorStop(0, 'rgba(0,0,0,.34)'); gD.addColorStop(1, 'rgba(0,0,0,0)');
+    cmx.fillStyle = gD; cmx.fillRect(px, py, T, T*.42);
+    cmx.fillStyle = 'rgba(225,230,245,.13)';             // o rodapé claro da quina
+    cmx.fillRect(px, py + T - 2.4, T, 2.4);
+    if(x >= 38 && x <= 41){                              // o desgaste por onde todos pisam
+      cmx.fillStyle = 'rgba(0,0,0,.08)';
+      cmx.fillRect(px + 2, py + T*.3, T - 4, T*.45);
+    }
+  }
+
+  /* ============ 5. QUARTO DO COVEIRO (x38..43, y26..30) ============
+     tapete surrado, a pá encostada na parede com seus arranhões
+     e a terra que ele traz nas botas */
+  const rx = 38.75*T, ry = 27*T, rw = 4.6*T, rh = 2.55*T;
+  cmx.fillStyle = 'rgba(58,34,32,.85)'; cmx.fillRect(rx, ry, rw, rh);
+  cmx.fillStyle = 'rgba(110,62,50,.25)'; cmx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
+  cmx.strokeStyle = 'rgba(24,14,14,.5)'; cmx.lineWidth = 1;   // a trama do tecido
+  for(let k=1; k<8; k++){
+    cmx.beginPath(); cmx.moveTo(rx + k*rw/8, ry + 3); cmx.lineTo(rx + k*rw/8, ry + rh - 3); cmx.stroke();
+  }
+  cmx.strokeStyle = 'rgba(140,96,70,.5)'; cmx.lineWidth = 2;
+  cmx.strokeRect(rx + 3, ry + 3, rw - 6, rh - 6);
+  cmx.strokeStyle = 'rgba(30,16,16,.45)'; cmx.lineWidth = 1.4;
+  cmx.strokeRect(rx + 7, ry + 7, rw - 14, rh - 14);
+  for(let k=0; k<9; k++){                                // puídos e buracos
+    const h1 = hash(k*3.1, 11.7), h2 = hash(7.3, k*5.9);
+    if(h1 < .35) continue;
+    cmx.fillStyle = h1 > .75 ? 'rgba(10,8,10,.5)' : 'rgba(52,58,72,.35)';
+    cmx.beginPath();
+    cmx.ellipse(rx + h1*rw, ry + h2*rh, T*(.06 + h2*.1), T*(.04 + h1*.06), h1*3, 0, TAU);
+    cmx.fill();
+  }
+  cmx.strokeStyle = 'rgba(120,80,60,.4)'; cmx.lineWidth = 1.2;   // as franjas gastas
+  for(let k=0; k<10; k++){
+    const fy2 = ry + 4 + k*(rh - 8)/9;
+    cmx.beginPath(); cmx.moveTo(rx, fy2); cmx.lineTo(rx - 3.5, fy2 + 1.2); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(rx + rw, fy2); cmx.lineTo(rx + rw + 3.5, fy2 + 1.2); cmx.stroke();
+  }
+  // os arranhões da pá na parede, de encostar todo dia no mesmo lugar
+  cmx.strokeStyle = 'rgba(16,12,10,.4)'; cmx.lineWidth = 2;
+  for(let k=0; k<3; k++){
+    cmx.beginPath();
+    cmx.moveTo(42.15*T + k*4, 25.35*T); cmx.lineTo(42.3*T + k*4, 25.95*T);
+    cmx.stroke();
+  }
+  // a pá, encostada onde sempre esteve
+  cmx.fillStyle = 'rgba(0,0,0,.35)';
+  cmx.beginPath(); cmx.ellipse(42.55*T, 26.55*T, T*.3, T*.09, 0, 0, TAU); cmx.fill();
+  cmx.strokeStyle = '#6d5638'; cmx.lineWidth = Math.max(2.5, T*.07);
+  cmx.beginPath(); cmx.moveTo(42.2*T, 25.3*T); cmx.lineTo(42.55*T, 26.45*T); cmx.stroke();
+  cmx.strokeStyle = 'rgba(240,220,180,.25)'; cmx.lineWidth = 1.2;
+  cmx.beginPath(); cmx.moveTo(42.17*T, 25.32*T); cmx.lineTo(42.5*T, 26.4*T); cmx.stroke();
+  cmx.fillStyle = '#3f464f';
+  cmx.beginPath();
+  cmx.moveTo(42.4*T, 26.35*T); cmx.lineTo(42.75*T, 26.42*T);
+  cmx.lineTo(42.68*T, 26.72*T); cmx.lineTo(42.42*T, 26.66*T);
+  cmx.closePath(); cmx.fill();
+  cmx.fillStyle = 'rgba(200,215,230,.28)';
+  cmx.fillRect(42.42*T, 26.38*T, T*.22, 1.8);
+  // a terra caída no chão, do quarto até a porta
+  [[40.7,25.7],[41.2,26.2],[39.3,28.8],[42.2,29.2],[40.2,27]].forEach(([x,y]) => {
+    const h = hash(x*3.3, y*5.1);
+    cmx.fillStyle = 'rgba(58,51,46,' + (.35 + h*.3) + ')';
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, T*(.16 + h*.14), T*(.09 + h*.08), h*3, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(20,16,12,.5)';
+    for(let k=0; k<3; k++){
+      cmx.beginPath();
+      cmx.arc(x*T + (hash(x + k, y) - .5)*T*.5, y*T + (hash(x, y + k) - .5)*T*.3, 1.3, 0, TAU);
+      cmx.fill();
+    }
+  });
+}
+
+/* -- passe 5: os itens recortados da leva aprovada, assentados pelo pé -- */
+function pintarFunImagens(cmx, T){
+  const pImg = (nome, x, y, larg) => {
+    const im = funImg(nome);
+    if(!im.complete || !im.naturalWidth) return;
+    const w = larg*T, h = im.naturalHeight*(w/im.naturalWidth);
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.42, T*.16, 0, 0, TAU); cmx.fill();
+    cmx.drawImage(im, x*T - w/2, y*T - h + T*.12, w, h);
+  };
+  pImg('item-caixao-corrente', 15.3, 8.2, 1.25);   // capela: o caixão que ninguém abre
+  pImg('item-caixao-cinza', 25.4, 12.6, 2.1);      // preparação: tampa à espera
+  pImg('item-carroca', 35.3, 21.6, 2.1);           // salão: a carroça dos enterros
+  pImg('item-caixao-escuro', 13.2, 22.4, 2.0);     // salão: a caminho da cova
+  pImg('item-bancada-ferramentas', 10.3, 32.5, 1.5);
+  pImg('item-cocho', 4.2, 34.7, 1.4);              // oficina: molhar as tábuas
+  pImg('item-barris', 5.0, 40.9, 1.9);             // depósito
+  pImg('item-feno', 9.8, 38.5, 1.6);
+  pImg('item-potes', 3.9, 38.3, 1.2);
+  pImg('item-mesa', 39.6, 28.3, 1.8);              // quarto do Coveiro
+  pImg('item-banco', 41.7, 29.7, 1.1);
+  pImg('item-lamparina', 42.8, 26.7, .7);
+
+  /* o corpo em preparo na mesa da Lavadeira: pintado deitado, nu com o pano
+     de pudor, sujo de terra — a cabeça vem do recorte aprovado pelo dono */
+  const cad = funImg('cadaver-cabeca');
+  {
+    const cx = 21.4*T, cy = 8.34*T;
+    const meio = T*.09;
+    const pele = (x1, w2, h2, dy) => {
+      cmx.fillStyle = '#b9b2a6';
+      cmx.beginPath(); cmx.ellipse(cx + x1, cy + (dy||0), w2, h2, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(255,255,250,.14)';                 // a luz fria por cima
+      cmx.beginPath(); cmx.ellipse(cx + x1, cy - h2*.3 + (dy||0), w2*.85, h2*.45, 0, 0, TAU); cmx.fill();
+      cmx.fillStyle = 'rgba(60,58,76,.25)';                    // a sombra que escorre para a canaleta
+      cmx.beginPath(); cmx.ellipse(cx + x1, cy + h2*.55 + (dy||0), w2*.9, h2*.35, 0, 0, TAU); cmx.fill();
+    };
+    /* deitado com a cabeça a oeste: tronco, braços colados, pernas afinando */
+    pele(-T*.18, T*.34, T*.21);                                // o peito
+    pele(T*.12, T*.30, T*.185);                                // o ventre
+    pele(T*.62, T*.34, T*.13);                                 // as coxas
+    pele(T*.92, T*.24, T*.10);                                 // as canelas
+    cmx.fillStyle = '#a8a196';                                 // os pés
+    cmx.beginPath(); cmx.ellipse(cx + T*1.06, cy - T*.055, T*.06, T*.045, .3, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(cx + T*1.06, cy + T*.055, T*.06, T*.045, -.3, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#aca69b';                                 // os braços ao longo do corpo
+    cmx.beginPath(); cmx.ellipse(cx - T*.02, cy - T*.20, T*.42, T*.05, 0, 0, TAU); cmx.fill();
+    cmx.beginPath(); cmx.ellipse(cx - T*.02, cy + T*.20, T*.42, T*.05, 0, 0, TAU); cmx.fill();
+    /* o pano de pudor sobre o quadril */
+    cmx.fillStyle = '#ded8c8';
+    cmx.fillRect(cx + T*.32, cy - T*.20, T*.24, T*.40);
+    cmx.strokeStyle = 'rgba(120,114,100,.6)'; cmx.lineWidth = 1.2;
+    for(let k=0; k<3; k++){
+      const dx = cx + T*.36 + k*T*.07;
+      cmx.beginPath(); cmx.moveTo(dx, cy - T*.18); cmx.quadraticCurveTo(dx + T*.03, cy, dx - T*.01, cy + T*.18); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(255,255,250,.2)';
+    cmx.fillRect(cx + T*.32, cy - T*.20, T*.24, 2);
+    /* terra e livores: o morto chegou sujo do campo */
+    for(let k=0; k<7; k++){
+      const h = hash(k*3.1, k*7.7);
+      cmx.fillStyle = k % 3 === 2 ? 'rgba(98,80,114,.30)' : 'rgba(88,68,48,.38)';
+      cmx.beginPath();
+      cmx.ellipse(cx - T*.35 + h*T*1.35, cy + (hash(k*9.3, k*1.7) - .5)*T*.32,
+        T*(.03 + h*.05), T*(.02 + h*.03), h*3, 0, TAU);
+      cmx.fill();
+    }
+    /* a água suja escorrendo do corpo para o furo da canaleta */
+    cmx.strokeStyle = 'rgba(70,86,96,.4)'; cmx.lineWidth = 2;
+    cmx.beginPath(); cmx.moveTo(cx + T*.8, cy + T*.28);
+    cmx.quadraticCurveTo(cx + T*.95, cy + T*.34, cx + T*1.06, cy + T*.32); cmx.stroke();
+    /* a cabeça recortada, deitada a oeste, de barriga para cima */
+    if(cad.complete && cad.naturalWidth){
+      const ch = T*.5, cw = cad.naturalWidth*(ch/cad.naturalHeight);
+      cmx.save();
+      cmx.translate(cx - T*.62, cy + meio - T*.06);
+      cmx.rotate(-Math.PI/2);                                  // deitado, coroa para oeste
+      cmx.drawImage(cad, -cw/2, -ch/2, cw, ch);
+      cmx.restore();
+    }
+  }
+}
+
+function pintarFuneralCache(cmx, T){
+  pintarFunParedes(cmx, T);
+  pintarFunCriptaSalao(cmx, T);
+  pintarFunCapelaPrep(cmx, T);
+  pintarFunOficinaColombario(cmx, T);
+  pintarFunImagens(cmx, T);
+}
+
+const PISO_FUNERAL = {
+  id:'funeral', nome:'As Salas de Funeral',
+  bgm:'audio/fase2/trilha-fase2.mp3',   // tapa-buraco até a trilha fúnebre do usuário (F3-RF-22)
+  paleta:{
+    fundo:'#0a0c14',
+    chao:[88,92,108],      // pedra azulada e fria
+    chao2:[72,78,96],      // pedra molhada: escada, mosaico e a terra da cova
+    parede:[52,56,72],
+    luzAmbiente:'#6a7086'  // piso sombrio: a luz é recurso disputado
+  },
+  construir: construirFuneral,
+  pintarCache: pintarFuneralCache,
+  spawn:{x:40, y:52},
+  trapos:2,
+  intro:{
+    titulo:"As Salas de Funeral<em>piso 3</em>",
+    texto:"A escada da câmara de carnes termina num silêncio de pedra molhada. Aqui o castelo lava, vela e enterra os seus mortos — e alguém cava, dia e noite, no fundo da cova grande.<br><br>Atravesse a <b>cripta alagada</b>, reacenda as velas do caminho, ouça os três velantes — e desça à cova do <b>Coveiro</b> com o <b>Avental de Aço</b> no peito.",
+    botao:"Subir"
+  },
+  missao:{
+    titulo:'Sobreviver às Salas de Funeral',
+    tarefas:[
+      {id:'t-cripta', label:'Atravessar a cripta alagada'},
+      {id:'t-velas', label:'Reacender as velas do caminho', contador:5},
+      {id:'t-velantes', label:'Ouvir os velantes', contador:3},
+      {id:'t-chefe3', label:'Derrotar o Coveiro'}
+    ],
+    tarefaInformantes:'t-velantes',
+    tarefaChefe:'t-chefe3'
+  },
+  /* velantes placeholder: nomes e chaves do PRD (F3-RF-06); retrato e voz
+     gravada entram nas etapas 3 e 6 do /fase-nova */
+  informantes:[
+    { nome:'O Carpinteiro de Caixões', chave:'rastro', cor:'#a89b7c', escala:1.5,
+      retrato:'img/fase3/velante-carpinteiro.png',
+      voz:{pitch:.75, rate:.9, genero:'m'},
+      x:5.5, y:33.5,       // na oficina, entre os caixões em obra
+      falas:[
+        'Chegou inteiro? Fica parado aí que eu tiro a medida. É força do hábito, não leve a mal.',
+        'O Coveiro cava mais cova do que o castelo tem morto. Um dia sobra uma — e é a sua.',
+        'Quando ele some na terra, repare: deixa um rastro de terra revolvida. O chão conta onde ele vai sair.'
+      ], ganho:'Você vai ler o rastro: o ponto onde ele irrompe se anuncia mais cedo.' },
+    { nome:'A Lavadeira dos Mortos', chave:'lanterna', cor:'#9fb0c0', escala:1.5,
+      retrato:'img/fase3/velante-lavadeira.png',
+      voz:{pitch:1.2, rate:.95, genero:'f'},
+      x:25.5, y:7.5,       // na sala de preparação, junto às mesas
+      falas:[
+        'Fala baixo. Os que eu lavo não acordam mais — mas os lá de baixo têm o sono leve.',
+        'Eu lavei gente que desceu à cova grande em pé. Nenhum voltou para reclamar da água fria.',
+        'A lanterna dele só ilumina a frente. Pelas costas, ele tá morto.'
+      ], ganho:'Golpes pelas costas doem muito mais nele.' },
+    { nome:'O Sacristão', chave:'mergulhos', cor:'#8d86a8', escala:1.5,
+      retrato:'img/fase3/velante-sacristao.png',
+      voz:{pitch:.6, rate:.85, genero:'m'},
+      x:31.5, y:52.2,      // no fundo do colombário — o difícil de achar
+      falas:[
+        'Você me achou... Nem os sinos me acham aqui no fundo.',
+        'Eu rezo por todos que ele enterra. A lista não para de crescer.',
+        'Preste atenção nos mergulhos: depois de 2 mergulhos, ele tá morto de cansado.'
+      ], ganho:'Conte os mergulhos: no segundo, ele emerge exausto.' }
+  ],
+  /* O COVEIRO de verdade (F3-RF-15..19): pazada curta e o ciclo subterrâneo
+     cava -> rastro persegue -> irrompe em área -> atordoado se errar;
+     exausto após 2 mergulhos. Números oficiais do questionário. */
+  chefe:{
+    cfg:{
+      nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
+      retrato:'img/fase3/coveiro.png',
+      esperaT:1.1, aproximaT:1.6, velAproxima:2.4,
+      comboDist:2.4, comboIntervalo:.55, comboGolpes:1,
+      comboDano:[34], comboAlcance:[2.6],            // a pazada (o Avental derruba p/ 14 no aoIniciar)
+      cavaT:.55, persegueVel:3.4, persegueT:2.6,
+      irromperRaio:2.2, irromperAvisoT:1.0, irromperDano:36,
+      atordoadoT:2.2, mergulhosAteExausto:2, exaustoT:2.4,
+      tremorPasso:7,
+      sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2'},
+      entrada:['O Coveiro', 'a pá dele nunca descansa'],
+      abertura:{
+        falas:['Eu cavo, você deita! Aqui embaixo ninguém reclama!'],
+        voz:{pitch:.5, rate:.8, genero:'m'}   // clipe real entra na etapa 6 (coveiro-entrada.mp3)
+      }
+    },
+    fraquezas:{
+      costas:{chave:'lanterna', com:2.1, sem:1.2},
+      porEstado:{
+        exausto:{chave:'mergulhos', com:2.2, sem:1.25},
+        atordoado:{chave:'rastro', com:2.2, sem:1.25}
+      }
+    },
+    desenhar: desenharCoveiro
+  },
+  recompensa:{
+    id:'lanterna-mortos',
+    nome:'Lanterna dos Mortos',
+    img:null,
+    desc:'A luz que não apaga — revela o que não quer ser visto. A chave contra o Alquimista.'
+  },
+  textos:{
+    vitoria: () => ({
+      titulo:"O Coveiro cai<em>piso 3 concluído</em>",
+      texto:"A pá enfim descansa, atravessada na terra da cova que ele abriu para você. Atrás dos nichos do colombário, uma escada sobe para o laboratório do Alquimista.<br><br>Você tomou a <b>Lanterna dos Mortos</b>: a luz que não apaga — e que revela o que não quer ser visto.",
+      botao:"De novo",
+      placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>'
+        + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
+      mostrarBolsa:true
+    }),
+    derrota: () => ({
+      titulo:"A terra esfria<em>mas você respira</em>",
+      texto:"Os velantes te tiraram da cova antes da última pazada. Nada se perdeu: os segredos, a bolsa e o caminho continuam seus.<br><br>Use o que aprendeu: siga o rastro quando ele cavar, saia de cima da terra que se ergue — e bata quando ele emergir cansado.",
+      botao:"Levantar", placar:''
+    })
+  },
+
+  /* morte com progresso: reergue na soleira da cova grande (F3-RF-10) */
+  retomar(){
+    if(etapa !== 'livre' && etapa !== 'chefe') return false;
+    etapa = 'livre'; vivo = true; pausado = false; dialogo = null;
+    chefe = null; el('chefeBarra').classList.remove('on');
+    jog.hp = jog.hpMax;
+    jog.pocoes = Math.max(jog.pocoes, 2);
+    jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 2.5;   // a soleira, diante da passagem
+    jog.vx = jog.vy = 0; jog.invul = 1;
+    jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
+    camX = jog.x; camY = jog.y;
+    el('veu').classList.add('oculto');
+    atualizarHUD();
+    avisar('De pé outra vez', 'a cova espera');
+    return true;
+  },
+
+  aoIniciar(){
+    /* limpa o que é dos pisos anteriores, para nada vazar de um piso ao outro */
+    espinhos = []; trapos = []; facao = null; esparadrapos = [];
+    labaredas = []; paes = []; caldos = []; ratazanas = [];
+    ajudantes = []; portasInternas = [];
+    porta3 = {aberta:false, quebra:0};
+    vistos.clear();
+    criarVelasCaminho();
+    criarAguaBenta();
+    cirios = [];
+    /* as ameaças da fase (mecânicas da frente do motor) */
+    criarMaos([
+      {x:17.5, y:32.5}, {x:27.5, y:33},      // margens da cripta
+      {x:16.5, y:40.5},                       // margem sul
+      {x:8.5,  y:47.5}, {x:24.5, y:51.5},     // colombário
+      {x:33.5, y:22.5}                        // guarda o caminho da cova, longe da soleira
+    ]);
+    /* uma única zona de luz que morre: o cômodo do Sacristão, no fundo leste
+       do colombário — os vultos só se erguem lá (pedido do dono: fora da
+       carpintaria e do colombário oeste) */
+    criarZonasLuz([
+      {x:18, y:45, larg:16, alt:9, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3'}
+    ]);
+    criarVultos([
+      {x:22, y:48, zona:0}, {x:30, y:51, zona:0},
+      {x:25.5, y:51.5, zona:0}, {x:19.5, y:48.5, zona:0}
+    ]);
+    /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
+    const temMachado = inventario.some(i => i.id === 'machado-gladiador');
+    const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
+    jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
+    jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
+    /* o Avental de Aço amortece a pazada: 34 -> 14 (F3-RF-13) */
+    const temAvental = inventario.some(i => i.id === 'avental-acougueiro');
+    PISO_FUNERAL.chefe.cfg.comboDano = [temAvental ? 14 : 34];
+    if(temAvental) avisar('O Avental de Aço no peito', 'a pá dele vai doer bem menos');
+    etapa = 'livre';
+    avisar('As salas de funeral', 'o frio sobe do chão');
+  },
+  atualizar(dt){
+    const bg = el('btnGolpe');
+    bg.classList.add('on');
+    bg.classList.toggle('off', jog.recarga > 0);
+    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    /* a travessia da cripta conta quando o jogador pisa na margem sul */
+    if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
+    anunciarComodo();
+    atualizarMaos(dt);
+    atualizarZonasLuz(dt);
+    atualizarVultos(dt);
+    /* água benta: cura 15% e vira ração */
+    aguaBenta.forEach(a => {
+      if(a.pego || Math.hypot(a.x-jog.x, a.y-jog.y) > .6) return;
+      a.pego = true; jog.pocoes++;
+      const cura = Math.round(jog.hpMax*.15);
+      if(jog.hp < jog.hpMax){
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        flutuar(a.x, a.y-.6, '+' + cura, '#8fc48a');
+      }
+      sTrapo();
+      flutuar(a.x, a.y-.3, '+1 água benta', '#8fc48a');
+      for(let k=0;k<10;k++) faisca(a.x, a.y, '#9fd0ea', .09);
+      atualizarHUD();
+    });
+    /* círios: só valem na luta, repostos a cada tentativa */
+    if(etapa === 'chefe'){
+      cirios.forEach(c2 => {
+        if(c2.pego || jog.hp >= jog.hpMax) return;
+        if(Math.hypot(c2.x-jog.x, c2.y-jog.y) > .65) return;
+        c2.pego = true;
+        const cura = Math.round(jog.hpMax*.25);
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        sTrapo();
+        flutuar(c2.x, c2.y-.5, '+' + cura, '#8fc48a');
+        for(let k=0;k<16;k++) faisca(c2.x, c2.y, '#8fc48a', .11);
+        atualizarHUD();
+      });
+    }
+    /* atravessou a passagem aberta: a luta sela, e a música da cova toca */
+    if(etapa === 'livre' && porta3.aberta && jog.y < FUN.PORTA.y + .9
+       && jog.x > FUN.PORTA.x - 1 && jog.x < FUN.PORTA.x + FUN.PORTA.larg + 1){
+      criarChefe();
+      criarCirios();
+      tocarBgm('audio/fase2/portao-acougueiro.mp3', .16);   // tapa-buraco: trilha da cova pendente (F3-RF-22)
+      etapa = 'chefe';
+    }
+  },
+  /* a interação do piso: acender velas e abrir a cova (trava dupla F3-RF-09) */
+  interacao(){
+    if(etapa !== 'livre') return null;
+    for(const v of velasCaminho){
+      if(!v.acesa && Math.hypot(v.x-jog.x, v.y-jog.y) < 1.4)
+        return {tipo:'vela', rotulo:'ACENDER', icone:'✦', alvoVela:v};
+    }
+    if(!porta3.aberta
+       && Math.hypot(FUN.PORTA.x + 1.5 - jog.x, FUN.PORTA.y + 1 - jog.y) < 2.6)
+      return {tipo:'cova', rotulo:'ABRIR', icone:'⇧'};
+    return null;
+  },
+  agir(i){
+    if(i.tipo === 'vela'){ acenderVela(i.alvoVela); return; }
+    if(i.tipo !== 'cova') return;
+    const sabidos = informantes.filter(p => p.feito).length;
+    const acesas = velasCaminho.filter(v => v.acesa).length;
+    if(sabidos < informantes.length){
+      sPortaoTravado(); tremor = 4;
+      const falta = informantes.length - sabidos;
+      avisar('A cova não abre', falta === 1 ? 'falta ouvir 1 velante' : 'faltam ouvir ' + falta + ' velantes');
+      return;
+    }
+    if(acesas < velasCaminho.length){
+      sPortaoTravado(); tremor = 4;
+      avisar('A cova não abre', 'reacenda as velas do caminho (' + acesas + '/' + velasCaminho.length + ')');
+      return;
+    }
+    porta3.aberta = true;
+    for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
+    desenharCache();
+    sPortao(); tremor = 10;
+    avisar('A terra se abre', 'a cova grande espera');
+  },
+  desenharCenario(ox, oy){
+    desenharAguaCripta(ox, oy);
+    desenharCoadjuvantesFun(ox, oy);
+    desenharVelasCaminho(ox, oy);
+    desenharAguaBenta(ox, oy);
+    if(etapa === 'chefe') desenharCirios(ox, oy);
+    desenharZonasLuz(ox, oy);
+    desenharMaos(ox, oy);
+    desenharVultos(ox, oy);
+  },
+  /* atalho de teste (?piso=3&chefe=1): segredos ouvidos, passagem aberta,
+     jogador na soleira da cova — a luta começa no primeiro passo */
+  irAoChefe(){
+    informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
+    const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
+    if(cont) cont.textContent = informantes.length + '/' + informantes.length;
+    marcarTarefa(tid); marcarTarefa('t-cripta'); marcarTarefa('t-velas');
+    velasCaminho.forEach(v => { v.acesa = true; });
+    const vc = el('t-velas-cont'); if(vc) vc.textContent = velasCaminho.length + '/' + velasCaminho.length;
+    porta3.aberta = true;
+    for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
+    desenharCache();
+    jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 1.6;
+    jog.vx = jog.vy = 0; camX = jog.x; camY = jog.y;
+    atualizarHUD();
+    avisar('Atalho de teste', 'a cova grande está aberta');
+  },
+  falarLiberado(){ return etapa === 'livre'; },
+  acaoGolpe: golpeFase3,
+  pegarItem(item){
+    if(!ARMAS[item.id]) return;
+    jog.arma = item.id;
+    jog.dano = item.id === 'machado-gladiador' ? 13 : 10;
+    avisar('Na mão', item.nome);
+  },
+  /* camadas de ambiente por proximidade (F3-RF-24) */
+  ambientes:[
+    { url:'audio/fase3/sons/gota-eco-1.mp3', ganho:.3, raio:6, desvanece:6,
+      pontos:[[21,37]] },                                        // a cripta goteja
+    { url:'audio/fase3/sons/choro-velorio-1.mp3', ganho:.38, raio:5, desvanece:5,
+      pontos:[[9.5,10.5]] },                                     // o velório da capela
+    { url:'audio/fase3/sons/rezas-murmurio-1.mp3', ganho:.3, raio:5, desvanece:5,
+      pontos:[[6,8],[12.5,13]] },                                // os rezadores
+    { url:'audio/fase3/sons/serrote-1.mp3', ganho:.3, raio:4.5, desvanece:4,
+      pontos:[[6,33]] },                                         // a oficina serra
+    { url:'audio/fase3/sons/martelo-madeira-1.mp3', ganho:.26, raio:4, desvanece:4,
+      pontos:[[7.5,39]] },                                       // o depósito martela
+    { url:'audio/fase3/sons/sussurro-vulto-1.mp3', ganho:.2, raio:6, desvanece:5,
+      pontos:[[12,49],[26,49]] }                                 // o colombário sussurra
+  ],
+  desenharNoJogador(px, py, r, bal){
+    if(jog.arma) desenharArmaNaMao(px, py, r);
+  }
+};
+
 /* ---------- registro dos pisos ---------- */
-const PISOS = [PISO_CALABOUCO, PISO_COZINHAS];
+const PISOS = [PISO_CALABOUCO, PISO_COZINHAS, PISO_FUNERAL];
 let pisoAtual = 0;
 
 /* ---------- arranque ---------- */

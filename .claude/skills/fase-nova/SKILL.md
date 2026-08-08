@@ -59,7 +59,7 @@ Ao fim: escrever `faseN.prd` inteiro a partir do `fase-template.prd`, com **toda
 
 ## 2. Imagens do cenário (Pinterest) → revisão
 
-Buscar em **pt.pinterest.com** com a chave `"medieval rpg 2d" + tema` (ex.: `medieval rpg 2d cozinha`, `medieval rpg 2d cripta`).
+Buscar em **pt.pinterest.com** com a chave `tema + "rpg 2D medieval"` — o tema vem **primeiro** (ex.: `cozinha rpg 2D medieval`, `cripta rpg 2D medieval`, `rezador rpg 2D medieval`).
 
 **Raspar com Playwright** — o script `testes/pinterest.py` do repositório já faz tudo (o HTML cru vem sem imagens, carregadas por JS, e o endpoint `BaseSearchResource` devolve 403; por isso navegador de verdade):
 
@@ -68,11 +68,28 @@ python3 testes/pinterest.py "cozinha" --dest img/faseN --n 8
 python3 testes/pinterest.py "coveiro" --dest img/faseN --n 6 --prefixo npc
 ```
 
-Ele monta a chave `"medieval rpg 2d" + tema`, rola o feed para carregar mais pins, prefere a versão `/originals/` (com a servida como reserva), baixa com **curl** (o `urllib` do macOS falha com `CERTIFICATE_VERIFY_FAILED`) e descarta miniatura por dimensão (< 400 px de lado). Se o Chromium do Playwright faltar: `python3 -m playwright install chromium`.
+Ele monta a chave `<tema> rpg 2D medieval`, rola o feed para carregar mais pins, prefere a versão `/originals/` (com a servida como reserva), baixa com **curl** (o `urllib` do macOS falha com `CERTIFICATE_VERIFY_FAILED`) e descarta miniatura por dimensão (< 400 px de lado). Se o Chromium do Playwright faltar: `python3 -m playwright install chromium`.
 
 Buscar **um termo por família de objeto** do §3.1 do PRD (mobília, utensílios, obstáculo, porta, janela, itens de cura) e trazer 3–5 opções de cada.
 
-**PARE e peça revisão:** enviar as imagens com `SendUserFile` e perguntar quais entram. Só depois de aprovadas, recortar fundo:
+**Porta e janela são obrigatórias na leva**: baixar a arte da **porta interna** e da **janela** da fase e mandá-las para revisão **junto com as demais imagens** — o cenário vai precisar das duas (ver etapa 8) e descobrir isso depois da revisão significa outra rodada de espera.
+
+**Curadoria de estilo — descartar antes de mandar para revisão** (olhar cada download com `Read`):
+
+- **Ficam**: arte pintada 2D de jogo / concept art com traço definido e cores chapadas-pintadas — o estilo que o cenário incorpora bem (ex. da fase 3: `coveiro-b-1.jpg`, `caixao-3.jpg`, `carpinteiro-aj-2.jpg`).
+- **Caem**: renders foto-realistas ou 3D (parecem foto de maquete; o jogo não consegue incorporar — ex.: `carpinteiro-aj-4/5.jpg` da fase 3), pixel-art de resolução baixa que chega pixelada, e qualquer imagem com **marca d'água** de banco de imagens (ex.: `caixao-5.jpg`).
+- Na dúvida entre 2 candidatas, escolher a mais próxima do traço das já aprovadas nas fases anteriores.
+
+**PARE e peça revisão — um tema por vez, com o caminho de cada arquivo.** Nada de folha de contato única com tudo junto: para **cada tema** (mobília, porta, janela, obstáculo, cada personagem, o chefe…), mandar as candidatas daquele tema com `SendUserFile` e **listar na resposta o caminho completo de cada uma**, numerado, para o dono abrir e escolher:
+
+```
+Porta — escolha uma:
+1. /Users/.../img/faseN/porta-1.jpg
+2. /Users/.../img/faseN/porta-2.jpg
+3. /Users/.../img/faseN/porta-5.jpg
+```
+
+Esperar a escolha desse tema antes de mandar o próximo. Só depois de aprovadas, recortar fundo:
 
 ```bash
 uvx --with onnxruntime "rembg[cli]" i entrada.jpg saida.png     # arte/foto
@@ -84,19 +101,19 @@ uvx --with onnxruntime "rembg[cli]" i entrada.jpg saida.png     # arte/foto
 
 ## 3. Imagens dos personagens → revisão
 
-Mesmo script, chave `"medieval rpg 2d" + papel` (ex.: `medieval rpg 2d cozinheira`, `medieval rpg 2d coveiro`).
+Mesmo script, chave `papel + "rpg 2D medieval"` (ex.: `cozinheira rpg 2D medieval`, `coveiro rpg 2D medieval`).
 
 - Um recorte por informante, **PNG sem fundo**, corpo inteiro, de pé.
 - Conferir o recorte olhando o PNG (`Read`) antes de instalar: rembg corta braços e pernas quando o fundo é claro ou o membro se confunde com o cenário — se sair pela metade, escolher **outra figura** em vez de insistir.
-- **Coadjuvantes**: pesquisar as imagens deles com o MESMO mecanismo (`testes/pinterest.py`, chave `"medieval rpg 2d" + papel do grupo` — ex.: `carpideiras velório`, `lavadeiras medievais`); uma cena coletiva rende 4–5 recortes.
+- **Coadjuvantes**: pesquisar as imagens deles com o MESMO mecanismo (`testes/pinterest.py`, chave `papel do grupo + "rpg 2D medieval"` — ex.: `carpideiras velório`, `lavadeiras medievais`); uma cena coletiva rende 4–5 recortes.
 
-**PARE e peça revisão** com `SendUserFile` antes de seguir.
+**PARE e peça revisão** com `SendUserFile` antes de seguir — **um personagem por vez**, listando o caminho de cada candidata para o dono abrir (mesmo formato da etapa 2).
 
 ---
 
 ## 4. Imagem do chefão → revisão
 
-Mesmo script, chave `"medieval rpg 2d" + chefe` (ex.: `medieval rpg 2d butcher boss`).
+Mesmo script, chave `chefe + "rpg 2D medieval"` (ex.: `butcher boss rpg 2D medieval`).
 
 Requisitos herdados, inegociáveis:
 
@@ -105,7 +122,7 @@ Requisitos herdados, inegociáveis:
 - **`tremorPasso`** no `cfg`: o chão treme a cada pisada.
 - Retrato do chefe pode ser o próprio sprite recortado.
 
-**PARE e peça revisão.**
+**PARE e peça revisão** — mandar as candidatas do chefe com `SendUserFile` e listar o caminho de cada uma.
 
 ---
 
@@ -148,6 +165,21 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 
 ## 7. Espalhar as imagens pelo cenário
 
+> **PORTEIRA: o cenário é a ÚLTIMA coisa a ser construída.** As etapas 7 e 8
+> (espalhar imagens, alto-relevo, coadjuvantes) só podem começar quando **todos os
+> componentes da fase estiverem prontos**:
+>
+> 1. **Todas** as levas de imagens revisadas e escolhidas pelo usuário — cenário,
+>    personagens, coadjuvantes e chefão (etapas 2–4, incluindo levas extras);
+> 2. A máquina de estados do chefão fechada (etapa 5);
+> 3. **As vozes gravadas, normalizadas e instaladas (etapa 6)** — todas, não parte.
+>
+> Construir o cenário com componente pendente obriga a retrofitar tudo quando ele
+> chega (aconteceu na fase 3: os 4 passes de pintura foram feitos com a leva de
+> imagens ainda em revisão e os sprites tiveram de ser amarrados por cima depois).
+> Enquanto algo estiver pendente do usuário (revisão de imagens, gravação de voz),
+> a espera é dele — não adiantar o cenário para "ganhar tempo".
+
 - Fatiar folhas de itens em PNGs individuais (`img/faseN/itens/iRC.png`) e carregá-las sob demanda, repintando o cache uma vez quando a leva chega.
 - Pintar tudo no **cache do mapa** pelo gancho `pintarCache(cmx, T)` — custo zero por quadro. Só o que anima (água, fogo, portas, personagens) vai no `desenharCenario`.
 - **Não repetir a mesma imagem perto dela mesma**: variar por cômodo e manter distância mínima entre repetições; alternar entre 3+ variantes quando a peça se repete (foi assim que as paredes da adega ganharam nicho / prateleira / lanterna alternados).
@@ -163,6 +195,9 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 - A face projeta **sombra em degradê** no chão logo abaixo.
 - Móveis, balcões, parapeitos e pilares: superfície iluminada em cima + **face lateral sombreada** embaixo + sombra no chão.
 - Aparar arestas: remendo de chão sob estruturas sólidas, e o passe de paredes **ignora** os tiles delas, senão sobram cantos escuros nas bordas.
+- **O nome do cômodo na tela, na primeira entrada**: cada região do §3.1 anuncia o próprio nome com `avisar(nome, subtítulo)` quando o jogador pisa nela **pela primeira vez** (uma vez só na partida — guardar num conjunto de vistos, como o `vistoCripta` da fase 3). O subtítulo diz o que aquele cômodo cobra do jogador ("água parada — pise só nas passarelas"). Sem isso o piso vira um borrão de corredores: o jogador não sabe que chegou à capela, à oficina ou ao colombário.
+- **Janelas pelo cenário, sempre**: espalhar janelas (com a arte aprovada) pelas faces de parede das salas — a fase 2 tem gelosias por toda parte e uma grande na cozinha; fase sem janela parece porão por acidente.
+- **Portas internas com efeito de abertura, sempre**: cada passagem entre cômodos ganha porta (com a arte aprovada) que **abre quando o jogador passa**, como na fase 2. A porta abre **inteira, girando na dobradiça — NUNCA partida ao meio** com o jogador passando entre duas bandas (foi retrabalho na fase 2: a porta dupla teve de virar folha única).
 
 **Coadjuvantes:**
 
@@ -195,6 +230,7 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 - **Item do chefe** vai à bolsa com popup e serve contra o chefe seguinte.
 - **Atalhos de teste**: `?piso=N`, `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena) e `?piso=N&transicao=1` (cai na vitória do piso, para rever a subida ao seguinte). Implementar os três na fase nova.
 - Escala de personagem por `escala` no informante; vozes e som de batida do chefe pelo `cfg` (`sons`, `somBatida`, `tremorPasso`).
+- **Pose da arma empunhada** (`desenharArmaNaMao`, fechada na fase 3): em repouso o cabo fica em **diagonal ao lado do olhar** — cabeça da lâmina erguida na altura do ombro, base descendo, com dois punhos no cabo e **nenhum braço desenhado** ligando corpo e arma. O deslocamento acompanha o olhar (`px + lado*tam*.42`); inverter esse sinal faz a diagonal atravessar o torso e a arma parecer colada. Durante o golpe, o arco por ângulo de sempre.
 
 ---
 
