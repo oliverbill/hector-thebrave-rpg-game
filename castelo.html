@@ -6388,6 +6388,362 @@ function pintarFunParedes(cmx, T){
 
 /* -- passe 2: capela do velório + sala de preparação -- */
 function pintarFunCapelaPrep(cmx, T){
+  const rnd = (x,y) => hash(x*5.3, y*11.7);
+
+  /* ================= CAPELA DE VELÓRIO =================
+     o mosaico circular: rosácea fúnebre em anéis de pedra fria, gasta */
+  const MX = FUN.MOSAICO.x*T, MY = FUN.MOSAICO.y*T, MR = FUN.MOSAICO.raio*T;
+  cmx.save();
+  cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.clip();
+  // anéis concêntricos alternados
+  const aros = [1, .82, .64, .46, .30];
+  for(let i=0; i<aros.length; i++){
+    cmx.fillStyle = (i%2 === 0) ? '#565c72' : '#6a7188';
+    cmx.beginPath(); cmx.arc(MX, MY, MR*aros[i], 0, TAU); cmx.fill();
+  }
+  cmx.fillStyle = '#4e5468';
+  cmx.beginPath(); cmx.arc(MX, MY, MR*.30, 0, TAU); cmx.fill();
+  // juntas circulares entre os anéis
+  cmx.strokeStyle = 'rgba(28,32,44,.6)'; cmx.lineWidth = 1.6;
+  aros.forEach(a => { cmx.beginPath(); cmx.arc(MX, MY, MR*a, 0, TAU); cmx.stroke(); });
+  // juntas radiais finas, desencontradas por anel
+  cmx.strokeStyle = 'rgba(28,32,44,.45)'; cmx.lineWidth = 1.2;
+  const raias = [24, 18, 12, 8];
+  for(let b=0; b<4; b++){
+    const r0 = MR*aros[b+1], r1 = MR*aros[b], n = raias[b], off = b*.35;
+    for(let k=0; k<n; k++){
+      const a = off + k*TAU/n;
+      cmx.beginPath();
+      cmx.moveTo(MX + Math.cos(a)*r0, MY + Math.sin(a)*r0);
+      cmx.lineTo(MX + Math.cos(a)*r1, MY + Math.sin(a)*r1);
+      cmx.stroke();
+    }
+  }
+  // a estrela de 8 pontas no círculo central
+  cmx.fillStyle = '#8a92aa';
+  cmx.beginPath();
+  for(let k=0; k<16; k++){
+    const a = -Math.PI/2 + k*TAU/16, r = (k%2 === 0) ? MR*.26 : MR*.105;
+    const sx = MX + Math.cos(a)*r, sy = MY + Math.sin(a)*r;
+    k === 0 ? cmx.moveTo(sx, sy) : cmx.lineTo(sx, sy);
+  }
+  cmx.closePath(); cmx.fill();
+  cmx.strokeStyle = 'rgba(30,34,48,.55)'; cmx.lineWidth = 1.2; cmx.stroke();
+  cmx.fillStyle = '#565c72';
+  cmx.beginPath(); cmx.arc(MX, MY, MR*.045, 0, TAU); cmx.fill();
+  // desgaste: manchas, lascas e duas rachaduras velhas
+  for(let ty=7; ty<=14; ty++) for(let tx=6; tx<=13; tx++){
+    const h = rnd(tx, ty);
+    if(h > .58){
+      cmx.fillStyle = 'rgba(12,14,22,' + (.07 + h*.09) + ')';
+      cmx.beginPath();
+      cmx.ellipse((tx + .2 + h*.6)*T, (ty + .2 + rnd(ty,tx)*.6)*T, T*(.16 + h*.14), T*(.10 + h*.08), h*3, 0, TAU);
+      cmx.fill();
+    }
+    if(h > .87){
+      cmx.fillStyle = 'rgba(205,210,225,.10)';
+      cmx.beginPath();
+      cmx.moveTo((tx+.3)*T, (ty+.5)*T); cmx.lineTo((tx+.55)*T, (ty+.35)*T); cmx.lineTo((tx+.6)*T, (ty+.6)*T);
+      cmx.closePath(); cmx.fill();
+    }
+  }
+  cmx.strokeStyle = 'rgba(16,18,28,.5)'; cmx.lineWidth = 1.6;
+  cmx.beginPath();
+  cmx.moveTo(MX - MR*.9, MY + MR*.25);
+  cmx.lineTo(MX - MR*.45, MY + MR*.42); cmx.lineTo(MX - MR*.28, MY + MR*.74);
+  cmx.stroke();
+  cmx.beginPath();
+  cmx.moveTo(MX + MR*.55, MY - MR*.78);
+  cmx.lineTo(MX + MR*.7, MY - MR*.4); cmx.lineTo(MX + MR*.94, MY - MR*.22);
+  cmx.stroke();
+  cmx.restore();
+  // aro externo de cantaria fechando o círculo
+  cmx.strokeStyle = 'rgba(120,128,152,.5)'; cmx.lineWidth = 2.2;
+  cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.stroke();
+
+  /* ---- o esquife do velório, no centro do mosaico ---- */
+  {
+    const ex = MX, ey = MY, w = T*2.35, face = T*.5;
+    // sombra elíptica no chão
+    cmx.fillStyle = 'rgba(0,0,0,.38)';
+    cmx.beginPath(); cmx.ellipse(ex + T*.06, ey + T*.72, w*.56, T*.16, 0, 0, TAU); cmx.fill();
+    // face frontal da mesa alta: pano fúnebre caindo, em dobras
+    cmx.fillStyle = '#343048';
+    cmx.fillRect(ex - w/2, ey + T*.15, w, face);
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.fillRect(ex - w/2, ey + T*.15, w, 3);
+    cmx.strokeStyle = 'rgba(14,12,24,.55)'; cmx.lineWidth = 1.4;
+    for(let k=1; k<6; k++){
+      const fx = ex - w/2 + k*w/6;
+      cmx.beginPath(); cmx.moveTo(fx, ey + T*.19); cmx.quadraticCurveTo(fx + T*.04, ey + T*.42, fx - T*.03, ey + T*.63); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(150,150,190,.14)';                    // bainha do pano
+    cmx.fillRect(ex - w/2, ey + T*.15 + face - 3, w, 3);
+    // tampo iluminado
+    cmx.fillStyle = '#79809a';
+    cmx.fillRect(ex - w/2, ey - T*.5, w, T*.65);
+    cmx.fillStyle = 'rgba(215,222,240,.18)';
+    cmx.fillRect(ex - w/2, ey - T*.5, w, 3.5);
+    cmx.strokeStyle = 'rgba(20,22,34,.6)'; cmx.lineWidth = 1.6;
+    cmx.strokeRect(ex - w/2 + 1, ey - T*.5 + 1, w - 2, T*.65 - 2);
+    // o caixão aberto, deitado no tampo (cabeceira a oeste)
+    const cy2 = ey - T*.45, x0 = ex - T*1.02, x1 = ex - T*.4, x2 = ex + T*1.02;
+    const perfil = (m) => {
+      cmx.beginPath();
+      cmx.moveTo(x0, cy2 - T*.20*m); cmx.lineTo(x1, cy2 - T*.31*m); cmx.lineTo(x2, cy2 - T*.14*m);
+      cmx.lineTo(x2, cy2 + T*.14*m); cmx.lineTo(x1, cy2 + T*.31*m); cmx.lineTo(x0, cy2 + T*.20*m);
+      cmx.closePath();
+    };
+    cmx.fillStyle = 'rgba(0,0,0,.28)';                          // sombra do caixão no tampo
+    cmx.beginPath(); cmx.ellipse(ex + T*.04, cy2 + T*.3, T*1.02, T*.13, 0, 0, TAU); cmx.fill();
+    perfil(1);
+    cmx.fillStyle = '#5a4a3a'; cmx.fill();
+    cmx.strokeStyle = 'rgba(20,14,10,.7)'; cmx.lineWidth = 1.8; cmx.stroke();
+    perfil(.66);
+    cmx.fillStyle = '#3a3448'; cmx.fill();                      // o forro de dentro
+    // brilho frio na borda de madeira, do lado da luz
+    cmx.strokeStyle = 'rgba(190,200,225,.30)'; cmx.lineWidth = 1.4;
+    cmx.beginPath(); cmx.moveTo(x0, cy2 - T*.20); cmx.lineTo(x1, cy2 - T*.31); cmx.lineTo(x2, cy2 - T*.14); cmx.stroke();
+    cmx.fillStyle = 'rgba(255,190,110,.14)';                    // reflexo pontual das velas
+    cmx.beginPath(); cmx.ellipse(x1, cy2 - T*.28, T*.10, T*.03, -.15, 0, TAU); cmx.fill();
+    // a mortalha clara cobrindo o corpo
+    cmx.fillStyle = '#c9c4b8';
+    cmx.beginPath(); cmx.ellipse(ex - T*.62, cy2, T*.13, T*.14, 0, 0, TAU); cmx.fill();   // a cabeça
+    cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2, T*.66, T*.15, 0, 0, TAU); cmx.fill();   // o corpo
+    cmx.beginPath(); cmx.ellipse(ex + T*.72, cy2, T*.12, T*.10, 0, 0, TAU); cmx.fill();   // os pés
+    cmx.strokeStyle = 'rgba(120,116,104,.55)'; cmx.lineWidth = 1.2;                       // as dobras
+    for(let k=0; k<3; k++){
+      const dx = ex - T*.28 + k*T*.36;
+      cmx.beginPath(); cmx.moveTo(dx, cy2 - T*.11); cmx.quadraticCurveTo(dx + T*.06, cy2, dx - T*.02, cy2 + T*.11); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(50,48,66,.22)';                       // a mortalha na sombra do rebordo
+    cmx.beginPath(); cmx.ellipse(ex + T*.08, cy2 + T*.07, T*.66, T*.08, 0, 0, TAU); cmx.fill();
+  }
+
+  /* ---- fileiras de bancos de madeira, de frente para o esquife ---- */
+  const banco = (bx, by, virado) => {         // virado: +1 encara o leste, -1 o oeste
+    const px = bx*T, py = by*T, w = T*.56, alt = T*1.5, fh = T*.24, enc = T*.15;
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.beginPath(); cmx.ellipse(px + T*.05, py + alt + T*.03, w*.64, T*.11, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#2a231b';                                  // os pés
+    cmx.fillRect(px - w/2 + 1, py + alt - T*.1, T*.1, T*.12);
+    cmx.fillRect(px + w/2 - T*.1 - 1, py + alt - T*.1, T*.1, T*.12);
+    cmx.fillStyle = '#584a3a';                                  // o tampo, iluminado
+    cmx.fillRect(px - w/2, py, w, alt - fh);
+    cmx.fillStyle = 'rgba(205,212,230,.10)';
+    cmx.fillRect(px - w/2, py, w, 3);
+    cmx.strokeStyle = 'rgba(24,18,12,.4)'; cmx.lineWidth = 1.2; // os veios
+    cmx.beginPath(); cmx.moveTo(px - w*.16, py + 2); cmx.lineTo(px - w*.16, py + alt - fh - 2); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px + w*.2, py + 2); cmx.lineTo(px + w*.2, py + alt - fh - 2); cmx.stroke();
+    cmx.fillStyle = '#332b21';                                  // a face frontal (o topo do encosto ao sul)
+    cmx.fillRect(px - w/2, py + alt - fh, w, fh);
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.fillRect(px - w/2, py + alt - fh, w, 2);
+    const ex2 = (virado > 0) ? px - w/2 : px + w/2 - enc;       // o encosto, de costas para a parede
+    cmx.fillStyle = '#4e4234';
+    cmx.fillRect(ex2, py - T*.05, enc, alt - fh + T*.05);
+    cmx.fillStyle = 'rgba(210,216,232,.13)';
+    cmx.fillRect(ex2, py - T*.05, enc, 2.5);
+    cmx.fillStyle = 'rgba(0,0,0,.2)';                           // a sombra do encosto no assento
+    cmx.fillRect((virado > 0) ? ex2 + enc : ex2 - T*.07, py, T*.07, alt - fh);
+  };
+  [6.8, 9.2, 11.9].forEach(fy => {
+    banco(3.85, fy, 1);  banco(5.35, fy, 1);                    // flanco oeste encara o leste
+    banco(14.05, fy, -1); banco(15.5, fy, -1);                  // flanco leste encara o oeste
+  });
+
+  /* ---- castiçais altos nos cantos do mosaico (sem chama: as velas esperam) ---- */
+  const castical = (cx2, cy2) => {
+    const px = cx2*T, py = cy2*T;
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.05, T*.16, T*.055, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#3c3850';                                  // a base
+    cmx.beginPath(); cmx.ellipse(px, py, T*.13, T*.05, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#434060';                                  // a haste
+    cmx.fillRect(px - T*.03, py - T*.62, T*.06, T*.62);
+    cmx.fillStyle = 'rgba(190,200,225,.28)';
+    cmx.fillRect(px - T*.03, py - T*.62, 1.6, T*.62);
+    cmx.fillStyle = '#4a4660';                                  // o prato
+    cmx.beginPath(); cmx.ellipse(px, py - T*.62, T*.10, T*.038, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,190,110,.30)';                    // o reflexo âmbar no metal
+    cmx.beginPath(); cmx.ellipse(px - T*.04, py - T*.63, T*.025, T*.012, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#d8d2c0';                                  // a vela apagada
+    cmx.fillRect(px - T*.035, py - T*.86, T*.07, T*.24);
+    cmx.beginPath(); cmx.ellipse(px + T*.045, py - T*.72, T*.02, T*.05, .3, 0, TAU); cmx.fill();   // pingos de cera
+    cmx.beginPath(); cmx.ellipse(px - T*.05, py - T*.78, T*.016, T*.04, -.3, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#2a2530';                                  // o pavio morto
+    cmx.fillRect(px - 1, py - T*.9, 2, 4);
+  };
+  castical(7.7, 8.35); castical(11.3, 8.35);
+  castical(7.7, 12.75); castical(11.3, 12.75);
+
+  /* ---- pias de água benta junto às entradas da capela ---- */
+  const pia = (cx2, cy2) => {
+    const px = cx2*T, py = cy2*T;
+    cmx.fillStyle = 'rgba(0,0,0,.30)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.04, T*.2, T*.07, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#565c72';                                  // a coluna
+    cmx.fillRect(px - T*.07, py - T*.34, T*.14, T*.36);
+    cmx.fillStyle = 'rgba(0,0,0,.25)';
+    cmx.fillRect(px + T*.02, py - T*.34, T*.05, T*.36);
+    cmx.fillStyle = '#6a7188';                                  // a bacia
+    cmx.beginPath(); cmx.ellipse(px, py - T*.38, T*.19, T*.08, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(24,28,40,.6)'; cmx.lineWidth = 1.3;
+    cmx.beginPath(); cmx.ellipse(px, py - T*.38, T*.19, T*.08, 0, 0, TAU); cmx.stroke();
+    cmx.fillStyle = '#232a3c';                                  // a água parada
+    cmx.beginPath(); cmx.ellipse(px, py - T*.38, T*.14, T*.055, 0, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(150,190,230,.30)'; cmx.lineWidth = 1;
+    cmx.beginPath(); cmx.ellipse(px - T*.03, py - T*.39, T*.06, T*.02, 0, 0, TAU); cmx.stroke();
+  };
+  pia(16.3, 8.1);                                               // junto à porta da preparação
+  pia(7.1, 15.7);                                               // junto à descida do salão
+
+  /* ================= SALA DE PREPARAÇÃO ================= */
+  /* ---- as duas mesas de pedra mortuárias ---- */
+  const mesaMort = (cx2, cy2, corpo) => {
+    const px = cx2*T, py = cy2*T, w = T*2.2, d = T*.78, fh = T*.4;
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(px + T*.05, py + d/2 + fh + T*.04, w*.55, T*.13, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#3f4454';                                  // a face frontal
+    cmx.fillRect(px - w/2, py + d/2, w, fh);
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.fillRect(px - w/2, py + d/2 + fh - 3, w, 3);
+    cmx.strokeStyle = 'rgba(16,18,28,.55)'; cmx.lineWidth = 1.4; // juntas da cantaria
+    cmx.beginPath(); cmx.moveTo(px - w*.17, py + d/2); cmx.lineTo(px - w*.17, py + d/2 + fh); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(px + w*.17, py + d/2); cmx.lineTo(px + w*.17, py + d/2 + fh); cmx.stroke();
+    cmx.fillStyle = '#7a8098';                                  // o tampo, laje fria iluminada
+    cmx.fillRect(px - w/2, py - d/2, w, d);
+    cmx.fillStyle = 'rgba(220,228,245,.16)';
+    cmx.fillRect(px - w/2, py - d/2, w, 3);
+    cmx.strokeStyle = 'rgba(18,22,32,.6)'; cmx.lineWidth = 1.6;
+    cmx.strokeRect(px - w/2 + 1, py - d/2 + 1, w - 2, d - 2);
+    cmx.strokeStyle = 'rgba(18,22,32,.75)'; cmx.lineWidth = 2.2; // a canaleta de escoamento
+    cmx.strokeRect(px - w/2 + T*.13, py - d/2 + T*.11, w - T*.26, d - T*.22);
+    cmx.fillStyle = '#12161f';                                  // o furo do escoamento
+    cmx.beginPath(); cmx.arc(px + w/2 - T*.2, py + d/2 - T*.13, T*.05, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(18,22,30,.5)';                        // e o escorrido na face
+    cmx.fillRect(px + w/2 - T*.23, py + d/2, T*.06, fh*.8);
+    if(corpo){
+      cmx.fillStyle = '#c9c4b8';                                // a mortalha sobre alguém
+      cmx.beginPath(); cmx.ellipse(px - w*.31, py, T*.12, T*.13, 0, 0, TAU); cmx.fill();
+      cmx.beginPath(); cmx.ellipse(px + T*.06, py, w*.33, T*.14, 0, 0, TAU); cmx.fill();
+      cmx.beginPath(); cmx.ellipse(px + w*.36, py, T*.11, T*.09, 0, 0, TAU); cmx.fill();
+      cmx.strokeStyle = 'rgba(120,116,104,.55)'; cmx.lineWidth = 1.2;
+      for(let k=0; k<3; k++){
+        const dx = px - T*.25 + k*T*.33;
+        cmx.beginPath(); cmx.moveTo(dx, py - T*.1); cmx.quadraticCurveTo(dx + T*.05, py, dx - T*.02, py + T*.1); cmx.stroke();
+      }
+      cmx.fillStyle = 'rgba(60,64,88,.2)';
+      cmx.beginPath(); cmx.ellipse(px + T*.06, py + T*.06, w*.33, T*.07, 0, 0, TAU); cmx.fill();
+    } else {
+      for(let k=0; k<4; k++){                                   // as manchas de quem já passou por ela
+        const h = rnd(cx2*7 + k, cy2*3);
+        cmx.fillStyle = (k === 1) ? 'rgba(52,16,22,.45)' : 'rgba(14,13,24,' + (.32 + h*.2) + ')';
+        cmx.beginPath();
+        cmx.ellipse(px - w*.3 + h*w*.6, py - d*.2 + rnd(k,cy2)*d*.4, T*(.09 + h*.11), T*(.04 + h*.04), h*3, 0, TAU);
+        cmx.fill();
+      }
+    }
+  };
+  mesaMort(21.4, 8.4, true);
+  mesaMort(24.9, 10.6, false);
+
+  /* ---- prateleiras na parede norte: o enxoval do ofício ---- */
+  const pratY = [4.34, 4.74];
+  pratY.forEach(sy => {
+    cmx.fillStyle = '#4a4030';
+    cmx.fillRect(19.15*T, sy*T, 7.7*T, T*.09);
+    cmx.fillStyle = 'rgba(210,216,232,.14)';
+    cmx.fillRect(19.15*T, sy*T, 7.7*T, 1.6);
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.fillRect(19.15*T, (sy + .09)*T, 7.7*T, 2);
+  });
+  for(let n=0; n<2; n++){
+    const sy = pratY[n];
+    for(let k=0; k<14; k++){
+      const ix2 = 19.5 + k*.53;
+      if(Math.abs(ix2 - 21) < .38 || Math.abs(ix2 - 24) < .38) continue;   // as correntes penduradas passam aqui
+      const h = rnd(k*3 + n, 17 + n), px = ix2*T, base = sy*T;
+      const tipo = (((k/2)|0)%2)*2 + ((h*2)|0);                 // vizinhos nunca repetem o padrão
+      if(tipo === 0){                                           // frasco de vidro
+        cmx.fillStyle = ['#7f95a8','#6d8898','#8aa0b2'][(h*3)|0];
+        cmx.fillRect(px - T*.05, base - T*.2, T*.1, T*.2);
+        cmx.fillStyle = '#55606c';
+        cmx.fillRect(px - T*.025, base - T*.26, T*.05, T*.06);
+        cmx.fillStyle = 'rgba(230,240,250,.4)';
+        cmx.fillRect(px - T*.04, base - T*.18, T*.025, T*.14);
+      } else if(tipo === 1){                                    // bacia de cobre emborcada
+        cmx.fillStyle = '#8a5f3c';
+        cmx.beginPath(); cmx.ellipse(px, base - T*.07, T*.12, T*.07, 0, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(255,200,130,.3)';
+        cmx.beginPath(); cmx.ellipse(px - T*.04, base - T*.1, T*.04, T*.02, 0, 0, TAU); cmx.fill();
+      } else if(tipo === 2){                                    // panos dobrados
+        cmx.fillStyle = '#9a95a5'; cmx.fillRect(px - T*.11, base - T*.08, T*.22, T*.08);
+        cmx.fillStyle = '#7d7888'; cmx.fillRect(px - T*.09, base - T*.14, T*.18, T*.06);
+        cmx.strokeStyle = 'rgba(40,38,52,.5)'; cmx.lineWidth = 1;
+        cmx.beginPath(); cmx.moveTo(px - T*.11, base - T*.08); cmx.lineTo(px + T*.11, base - T*.08); cmx.stroke();
+      } else {                                                  // a tesoura do amortalhador
+        cmx.strokeStyle = '#a8b0bc'; cmx.lineWidth = 1.4;
+        cmx.beginPath(); cmx.moveTo(px - T*.07, base - T*.03); cmx.lineTo(px + T*.06, base - T*.16); cmx.stroke();
+        cmx.beginPath(); cmx.moveTo(px + T*.06, base - T*.03); cmx.lineTo(px - T*.07, base - T*.16); cmx.stroke();
+        cmx.beginPath(); cmx.arc(px - T*.075, base - T*.025, T*.02, 0, TAU); cmx.stroke();
+        cmx.beginPath(); cmx.arc(px + T*.065, base - T*.025, T*.02, 0, TAU); cmx.stroke();
+      }
+    }
+  }
+  /* trapos pendurados na beira da prateleira de baixo */
+  [[20.3, .9], [25.7, 1.1]].forEach(([tx, esc]) => {
+    const px = tx*T, ty = 4.83*T, ca = T*.34*esc;
+    cmx.fillStyle = '#8d8896';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.09, ty);
+    cmx.lineTo(px + T*.09, ty);
+    cmx.lineTo(px + T*.11, ty + ca*.7);
+    cmx.lineTo(px + T*.04, ty + ca*.55);
+    cmx.lineTo(px + T*.01, ty + ca);
+    cmx.lineTo(px - T*.06, ty + ca*.65);
+    cmx.lineTo(px - T*.11, ty + ca*.85);
+    cmx.closePath(); cmx.fill();
+    cmx.strokeStyle = 'rgba(60,56,74,.6)'; cmx.lineWidth = 1;
+    cmx.beginPath(); cmx.moveTo(px - T*.02, ty); cmx.lineTo(px - T*.03, ty + ca*.8); cmx.stroke();
+  });
+
+  /* ---- baldes e a bacia grande, largados no chão ---- */
+  const balde = (cx2, cy2) => {
+    const px = cx2*T, py = cy2*T;
+    cmx.fillStyle = 'rgba(0,0,0,.3)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.14, T*.18, T*.06, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#4c5262';
+    cmx.beginPath();
+    cmx.moveTo(px - T*.15, py - T*.16); cmx.lineTo(px + T*.15, py - T*.16);
+    cmx.lineTo(px + T*.11, py + T*.13); cmx.lineTo(px - T*.11, py + T*.13);
+    cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(18,22,30,.5)';                        // os arcos de ferro
+    cmx.fillRect(px - T*.145, py - T*.1, T*.29, 2);
+    cmx.fillRect(px - T*.12, py + T*.04, T*.24, 2);
+    cmx.fillStyle = 'rgba(205,212,230,.14)';
+    cmx.fillRect(px - T*.13, py - T*.15, T*.05, T*.26);
+    cmx.strokeStyle = '#6a7188'; cmx.lineWidth = 1.4;           // a alça
+    cmx.beginPath(); cmx.arc(px, py - T*.15, T*.13, Math.PI, TAU); cmx.stroke();
+    cmx.fillStyle = '#232a3c';                                  // a boca
+    cmx.beginPath(); cmx.ellipse(px, py - T*.16, T*.15, T*.05, 0, 0, TAU); cmx.fill();
+  };
+  balde(19.8, 12.3); balde(26.4, 12.5);
+  {                                                             // a bacia grande de lavar os mortos
+    const px = 22.7*T, py = 12.4*T;
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(px + 2, py + T*.08, T*.52, T*.18, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#8a5f3c';                                  // o cobre
+    cmx.beginPath(); cmx.ellipse(px, py, T*.5, T*.2, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(255,200,130,.22)';
+    cmx.beginPath(); cmx.ellipse(px - T*.18, py - T*.06, T*.13, T*.04, .2, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#262e3e';                                  // a água já usada
+    cmx.beginPath(); cmx.ellipse(px, py, T*.4, T*.145, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(90,40,40,.28)';
+    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.02, T*.18, T*.06, .4, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(150,190,230,.25)'; cmx.lineWidth = 1;
+    cmx.beginPath(); cmx.ellipse(px - T*.08, py - T*.03, T*.1, T*.03, 0, 0, TAU); cmx.stroke();
+  }
 }
 
 /* -- passe 3: oficina de caixões + depósito + colombário -- */
