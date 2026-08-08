@@ -6138,7 +6138,7 @@ function construirFuneral(){
   dec.push({tipo:'caixote', x:9.5, y:40.5}); dec.push({tipo:'caixote', x:3.8, y:40.6});
   dec.push({tipo:'teia', x:3.4, y:37.4, flip:false});
   // cripta alagada: caixões boiando na água parada
-  [[20,35.5],[25.5,34.5],[24,38.5],[19.5,41.8]].forEach(([x,y]) => dec.push({tipo:'caixote',x,y}));
+  // os caixotes da cripta boiam: entram como destroços vivos, não como decor parado
   dec.push({tipo:'poca', x:16, y:33.4}); dec.push({tipo:'poca', x:27, y:33.5});
   dec.push({tipo:'poca', x:17.5, y:41.5}); dec.push({tipo:'osso', x:15.5, y:42.3});
   // colombário: os nichos guardam o que sobrou
@@ -6421,6 +6421,15 @@ function desenharCoveiro(c, ox, oy){
    O cache dá a cor; isto dá o movimento que faz o olho ler ÁGUA. --- */
 const CRIPTA = {x1:15, y1:32, x2:28, y2:42};
 const GOTEIRAS = [[18.5,38.2],[24.5,36.6],[20.8,41.6],[26.3,40.1],[17.2,34.8]];
+/* o que a cripta carrega na superfície — posição de âncora, inclinação e escala */
+const BOIAM = [
+  {tipo:'caixao',  x:17.7, y:36.2, ang:-.32, esc:1},
+  {tipo:'caixao',  x:23.3, y:35.2, ang:.5,   esc:1},
+  {tipo:'caixao',  x:25.7, y:39.5, ang:-.12, esc:.92},
+  {tipo:'caixote', x:20,   y:35.5, ang:.25,  esc:1},
+  {tipo:'caixote', x:24,   y:38.5, ang:-.4,  esc:.85},
+  {tipo:'caixote', x:19.5, y:41.3, ang:.6,   esc:.9}
+];
 function desenharAguaCripta(ox, oy){
   const x0 = ox + CRIPTA.x1*tam, y0 = oy + CRIPTA.y1*tam;
   const larg = (CRIPTA.x2 - CRIPTA.x1 + 1)*tam, alt = (CRIPTA.y2 - CRIPTA.y1 + 1)*tam;
@@ -6428,34 +6437,59 @@ function desenharAguaCripta(ox, oy){
   ctx.save();
   ctx.beginPath(); ctx.rect(x0, y0, larg, alt); ctx.clip();   // nada escapa para a margem
 
-  /* faixas de brilho arrastando devagar: a superfície respira */
-  for(let k=0; k<7; k++){
-    const fase = tempo*.13 + k*.37;
-    const fy = y0 + ((fase % 1) * alt);
-    const fx = x0 + Math.sin(tempo*.5 + k*2.1)*tam*.9;
-    const g = ctx.createLinearGradient(0, fy - tam*.5, 0, fy + tam*.5);
-    g.addColorStop(0, 'rgba(150,200,196,0)');
-    g.addColorStop(.5, 'rgba(150,200,196,' + (.05 + Math.abs(Math.sin(tempo*.4 + k))*.05) + ')');
-    g.addColorStop(1, 'rgba(150,200,196,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(fx, fy - tam*.5, larg, tam);
-  }
-  /* rugas curtas que aparecem e somem, espalhadas pela lâmina */
-  ctx.strokeStyle = 'rgba(190,226,220,.22)';
-  for(let k=0; k<22; k++){
-    const hx = hash(k*3.3, 7.1), hy = hash(k*5.9, 2.3);
-    const rx = x0 + hx*larg, ry = y0 + hy*alt;
-    const p = (tempo*.35 + hx*3 + hy*5) % 1;
-    const op = Math.sin(p*Math.PI);
-    if(op <= .05) continue;
-    ctx.globalAlpha = op*.5;
-    ctx.lineWidth = 1 + op;
-    ctx.beginPath();
-    ctx.moveTo(rx - tam*.22, ry);
-    ctx.quadraticCurveTo(rx, ry - tam*.06*op, rx + tam*.22, ry);
-    ctx.stroke();
-  }
-  ctx.globalAlpha = 1;
+  /* o que a água carrega: caixões e caixotes boiando, cada um no seu bailado
+     lento — sobe, desce, gira e deriva um palmo para cada lado */
+  BOIAM.forEach((o, i) => {
+    const f = tempo*.35 + i*1.7;
+    const dx = Math.sin(f*.7)*.16, dy = Math.cos(f*.53 + 1.2)*.12;
+    const px = ox + (o.x + dx)*tam, py = oy + (o.y + dy)*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    const ang = o.ang + Math.sin(f*.6 + i)*.07;
+    const afunda = .5 + Math.sin(f*.9 + i*2.1)*.5;        // quanto está submerso agora
+    ctx.save();
+    ctx.translate(px, py);
+    /* o rastro que ele abre na água, respirando junto */
+    ctx.strokeStyle = 'rgba(160,206,200,' + (.14 + afunda*.18) + ')';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.74 + afunda*.1)*o.esc, tam*(.4 + afunda*.06)*o.esc, ang, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(160,206,200,' + (.05 + afunda*.07) + ')';
+    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.98 + afunda*.14)*o.esc, tam*(.55 + afunda*.08)*o.esc, ang, 0, TAU); ctx.stroke();
+    ctx.rotate(ang);
+    ctx.scale(o.esc, o.esc);
+    if(o.tipo === 'caixao'){
+      const w1 = tam*.26, w2 = tam*.34, w3 = tam*.18, L = tam*.62;
+      ctx.fillStyle = '#312417';
+      ctx.beginPath();
+      ctx.moveTo(-L, -w1); ctx.lineTo(-L*.25, -w2); ctx.lineTo(L, -w3);
+      ctx.lineTo(L, w3); ctx.lineTo(-L*.25, w2); ctx.lineTo(-L, w1);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(200,180,140,' + (.16 + afunda*.14) + ')';   // a luz na parte que emerge
+      ctx.beginPath();
+      ctx.moveTo(-L, -w1); ctx.lineTo(-L*.25, -w2); ctx.lineTo(L, -w3);
+      ctx.lineTo(L, -w3*.4); ctx.lineTo(-L*.25, -w2*.55); ctx.lineTo(-L, -w1*.5);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = 'rgba(8,5,3,.55)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(-L*.25, -w2); ctx.lineTo(-L*.25, w2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(L*.4, -w3*1.15); ctx.lineTo(L*.4, w3*1.15); ctx.stroke();
+      ctx.fillStyle = 'rgba(14,22,24,' + (.55 + afunda*.25) + ')';      // a ponta que a água come
+      ctx.beginPath();
+      ctx.moveTo(L*.55, -w3*1.2); ctx.lineTo(L + 1.5, -w3); ctx.lineTo(L + 1.5, w3); ctx.lineTo(L*.55, w3*1.2);
+      ctx.closePath(); ctx.fill();
+    } else {
+      const l = tam*.34;
+      ctx.fillStyle = '#4a3925';
+      ctx.fillRect(-l, -l*.62, l*2, l*1.24);
+      ctx.fillStyle = 'rgba(206,186,142,' + (.14 + afunda*.12) + ')';
+      ctx.fillRect(-l, -l*.62, l*2, l*.34);
+      ctx.strokeStyle = 'rgba(10,7,4,.5)'; ctx.lineWidth = 1.1;
+      ctx.strokeRect(-l, -l*.62, l*2, l*1.24);
+      ctx.beginPath(); ctx.moveTo(-l, 0); ctx.lineTo(l, 0); ctx.stroke();
+      ctx.fillStyle = 'rgba(14,22,24,' + (.4 + afunda*.25) + ')';
+      ctx.fillRect(-l, l*.28, l*2, l*.34);
+    }
+    ctx.restore();
+  });
+
   /* as goteiras: anel que nasce, cresce e some — o pulso da cripta */
   GOTEIRAS.forEach(([gx, gy], i) => {
     const px = ox + gx*tam, py = oy + gy*tam;
@@ -7564,42 +7598,7 @@ function pintarFunCriptaSalao(cmx, T){
     cmx.beginPath(); cmx.arc(px, py, 1.5, 0, TAU); cmx.fill();
   });
 
-  // caixões semi-submersos: a tampa quebrando a superfície, inclinada
-  const pCaixaoAgua = (x, y, ang) => {
-    const px = x*T, py = y*T;
-    cmx.save(); cmx.translate(px, py); cmx.rotate(ang);
-    // a ondulação clara que o caixão abre na água parada
-    cmx.strokeStyle = 'rgba(150,200,195,.34)'; cmx.lineWidth = 1.6;
-    cmx.beginPath(); cmx.ellipse(0, 0, T*.78, T*.42, 0, 0, TAU); cmx.stroke();
-    cmx.strokeStyle = 'rgba(150,200,195,.15)';
-    cmx.beginPath(); cmx.ellipse(0, 0, T*.96, T*.55, 0, 0, TAU); cmx.stroke();
-    // a tampa: hexágono de caixão em madeira escura
-    const w1 = T*.26, w2 = T*.34, w3 = T*.18, L = T*.62;
-    cmx.fillStyle = '#312417';
-    cmx.beginPath();
-    cmx.moveTo(-L, -w1); cmx.lineTo(-L*.25, -w2); cmx.lineTo(L, -w3);
-    cmx.lineTo(L, w3); cmx.lineTo(-L*.25, w2); cmx.lineTo(-L, w1);
-    cmx.closePath(); cmx.fill();
-    // o flanco que ainda sai da água pega a pouca luz que há
-    cmx.fillStyle = 'rgba(200,180,140,.24)';
-    cmx.beginPath();
-    cmx.moveTo(-L, -w1); cmx.lineTo(-L*.25, -w2); cmx.lineTo(L, -w3);
-    cmx.lineTo(L, -w3*.4); cmx.lineTo(-L*.25, -w2*.55); cmx.lineTo(-L, -w1*.5);
-    cmx.closePath(); cmx.fill();
-    // juntas das tábuas da tampa
-    cmx.strokeStyle = 'rgba(8,5,3,.55)'; cmx.lineWidth = 1.2;
-    cmx.beginPath(); cmx.moveTo(-L*.25, -w2); cmx.lineTo(-L*.25, w2); cmx.stroke();
-    cmx.beginPath(); cmx.moveTo(L*.4, -w3*1.15); cmx.lineTo(L*.4, w3*1.15); cmx.stroke();
-    // a ponta afundada: a água comendo a extremidade
-    cmx.fillStyle = 'rgba(14,22,24,.75)';
-    cmx.beginPath();
-    cmx.moveTo(L*.55, -w3*1.2); cmx.lineTo(L + 1.5, -w3); cmx.lineTo(L + 1.5, w3); cmx.lineTo(L*.55, w3*1.2);
-    cmx.closePath(); cmx.fill();
-    cmx.restore();
-  };
-  pCaixaoAgua(17.7, 36.2, -.32);
-  pCaixaoAgua(23.3, 35.2, .5);
-  pCaixaoAgua(25.7, 39.5, -.12);
+  // os caixões que boiam são desenhados vivos em desenharAguaCripta (eles se mexem)
 
   /* passarelas PONTE em alto-relevo: tábuas no sentido do vão, pregos,
      tábua faltando aqui e ali e a face lateral escura caindo para a água */
