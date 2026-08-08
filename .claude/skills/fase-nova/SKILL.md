@@ -154,6 +154,15 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 
 ## 7. Espalhar as imagens pelo cenário
 
+> **PORTEIRA: o cenário só começa com TODAS as imagens escolhidas.** As etapas 7 e 8
+> (espalhar imagens, alto-relevo, coadjuvantes) só podem começar depois que o usuário
+> revisou e escolheu **todas** as levas de imagens — cenário, personagens, coadjuvantes
+> e chefão (etapas 2–4, incluindo levas extras que surgirem). Construir o cenário com
+> revisão pendente obriga a retrofitar tudo quando as escolhas chegam (aconteceu na
+> fase 3: os 4 passes de pintura foram feitos com a leva ainda em revisão e os sprites
+> tiveram de ser amarrados por cima depois). Enquanto a revisão não fecha, adiantar as
+> etapas 5 e 6 (máquina de estados, vozes), que não dependem de imagem.
+
 - Fatiar folhas de itens em PNGs individuais (`img/faseN/itens/iRC.png`) e carregá-las sob demanda, repintando o cache uma vez quando a leva chega.
 - Pintar tudo no **cache do mapa** pelo gancho `pintarCache(cmx, T)` — custo zero por quadro. Só o que anima (água, fogo, portas, personagens) vai no `desenharCenario`.
 - **Não repetir a mesma imagem perto dela mesma**: variar por cômodo e manter distância mínima entre repetições; alternar entre 3+ variantes quando a peça se repete (foi assim que as paredes da adega ganharam nicho / prateleira / lanterna alternados).
