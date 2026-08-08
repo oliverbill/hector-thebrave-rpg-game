@@ -6595,34 +6595,61 @@ function desenharAguaBenta(ox, oy){
   });
 }
 /* --- círios da cova: a cura da arena (25%), repostos a cada tentativa --- */
+/* a cura da cova: duas águas bentas em cantos opostos, grandes e sem nada
+   em volta que atrapalhe a vista (pedido do dono) */
+const CANTOS_AGUA = [[31.6, 5.4], [42.0, 14.8]];
 function criarCirios(){
-  cirios = [
-    {x:31.5, y:5.4, pego:false},
-    {x:42.5, y:5.4, pego:false}
-  ];
+  cirios = CANTOS_AGUA.map(([x, y]) => ({x, y, pego:false}));
 }
 function desenharCirios(ox, oy){
   cirios.forEach(c2 => {
     if(c2.pego) return;
     const px = ox + c2.x*tam, py = oy + c2.y*tam;
-    const pulso = .5 + Math.sin(tempo*3.1 + c2.x)*.5;
-    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(.6 + pulso*.12)));
-    g.addColorStop(0, 'rgba(143,196,138,' + (.28 + pulso*.16) + ')');
-    g.addColorStop(1, 'rgba(143,196,138,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*(.6 + pulso*.12), 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(0,0,0,.35)';
-    ctx.beginPath(); ctx.ellipse(px, py + tam*.16, tam*.16, tam*.07, 0, 0, TAU); ctx.fill();
-    if(imgCirio.complete && imgCirio.naturalWidth > 0){
-      const altC = tam*.92, larC = imgCirio.naturalWidth*(altC/imgCirio.naturalHeight);
-      ctx.drawImage(imgCirio, px - larC/2, py + tam*.16 - altC, larC, altC);
-    } else {
-      ctx.fillStyle = '#efe9d8';
-      ctx.fillRect(px - tam*.08, py - tam*.36, tam*.16, tam*.5);
-      ctx.fillStyle = '#ffd27a';
-      ctx.beginPath(); ctx.ellipse(px, py - tam*.44, tam*.05, tam*.1, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,235,.9)';
-      ctx.beginPath(); ctx.ellipse(px, py - tam*.46, tam*.022, tam*.05, 0, 0, TAU); ctx.fill();
-    }
+    if(foraDaVista(px, py, tam*4)) return;
+    const pulso = .5 + Math.sin(tempo*2.4 + c2.x)*.5;
+    /* farol: um halo largo que respira, para achar a cura no meio da luta */
+    const g = ctx.createRadialGradient(px, py, 0, px, py, Math.max(1, tam*(1.7 + pulso*.5)));
+    g.addColorStop(0, 'rgba(150,215,235,' + (.30 + pulso*.16) + ')');
+    g.addColorStop(.5, 'rgba(120,190,225,' + (.12 + pulso*.08) + ')');
+    g.addColorStop(1, 'rgba(120,190,225,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(px, py, tam*(1.7 + pulso*.5), 0, TAU); ctx.fill();
+    /* o anel que sobe do chão, marcando o ponto de longe */
+    const sobe = (tempo*.6) % 1;
+    ctx.strokeStyle = 'rgba(190,235,250,' + ((1 - sobe)*.4) + ')';
+    ctx.lineWidth = Math.max(1.5, tam*.05);
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.2, tam*(.5 + sobe*.9), tam*(.18 + sobe*.34), 0, 0, TAU); ctx.stroke();
+
+    ctx.fillStyle = 'rgba(0,0,0,.42)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.3, tam*.5, tam*.19, 0, 0, TAU); ctx.fill();
+    /* a pia: pé de pedra, bacia lavrada e a água benta brilhando dentro */
+    ctx.fillStyle = '#5a6070';
+    ctx.beginPath();
+    ctx.moveTo(px - tam*.16, py + tam*.24);
+    ctx.lineTo(px + tam*.16, py + tam*.24);
+    ctx.lineTo(px + tam*.1, py - tam*.24);
+    ctx.lineTo(px - tam*.1, py - tam*.24);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(226,234,250,.18)';
+    ctx.fillRect(px - tam*.15, py - tam*.2, tam*.07, tam*.42);
+    ctx.fillStyle = '#7c8496';                                   // a bacia
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.3, tam*.42, tam*.19, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(236,244,255,.28)';
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.34, tam*.42, tam*.16, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2c6f8c';                                   // a água
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.32, tam*.32, tam*.13, 0, 0, TAU); ctx.fill();
+    const br = .5 + Math.sin(tempo*3.6 + c2.y)*.5;
+    ctx.fillStyle = 'rgba(180,238,255,' + (.35 + br*.35) + ')';  // o brilho da bênção
+    ctx.beginPath(); ctx.ellipse(px - tam*.07, py - tam*.35, tam*.14, tam*.055, -.3, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(240,250,255,.5)'; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.32, tam*.32, tam*.13, 0, 0, TAU); ctx.stroke();
+    /* a cruz de ferro fincada na borda: não se confunde com pedra do cenário */
+    ctx.strokeStyle = '#c9d4e4'; ctx.lineCap = 'round';
+    ctx.lineWidth = Math.max(2, tam*.06);
+    ctx.beginPath(); ctx.moveTo(px, py - tam*.46); ctx.lineTo(px, py - tam*.84); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px - tam*.13, py - tam*.72); ctx.lineTo(px + tam*.13, py - tam*.72); ctx.stroke();
+    ctx.fillStyle = 'rgba(210,245,255,' + (.3 + br*.4) + ')';
+    ctx.beginPath(); ctx.arc(px, py - tam*.84, tam*.05, 0, TAU); ctx.fill();
   });
 }
 
@@ -8228,6 +8255,7 @@ function pintarFunCriptaSalao(cmx, T){
   /* ============ 3. COVA GRANDE: a arena do Coveiro (x30..43, y4..16) ============
      terra revolvida sobre a pedra, covas abertas com o monte de terra ao lado,
      lápides tortas e o sulco circular de quem cava andando em roda */
+  const longeDaAgua = (x, y) => CANTOS_AGUA.every(([ax, ay]) => Math.hypot(x - ax, y - ay) > 2.6);
   for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
     if(tf(x,y) !== CHAO2) continue;
     const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
@@ -8319,10 +8347,8 @@ function pintarFunCriptaSalao(cmx, T){
       cmx.fill();
     }
   };
-  pCova(33.5, 6.3, -.07, 1);
-  pCova(39.8, 7.9, .05, -1);
-  pCova(33.8, 12.8, .09, 1);
-  pCova(41.2, 13.6, -.04, 1);
+  [[33.5,6.3,-.07,1],[39.8,7.9,.05,-1],[33.8,12.8,.09,1],[38.9,13.6,-.04,1]]
+    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,a,l]) => pCova(x, y, a, l));
   // lápides toscas, tortas, com o pé enterrado na terra
   const pLapide = (x, y, ang) => {
     const px = x*T, py = y*T;
@@ -8346,14 +8372,12 @@ function pintarFunCriptaSalao(cmx, T){
     cmx.beginPath(); cmx.ellipse(0, 0, w*.62, T*.09, 0, 0, TAU); cmx.fill();
     cmx.restore();
   };
-  pLapide(35.2, 5.2, -.14);
-  pLapide(41.8, 10.6, .11);
-  pLapide(31.4, 11.9, -.2);
-  pLapide(38.6, 4.8, .16);
-  pLapide(42.6, 15.2, -.09);
+  [[35.2,5.2,-.14],[41.8,10.6,.11],[31.4,11.9,-.2],[38.6,4.8,.16],[40.2,15.6,-.09]]
+    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,g]) => pLapide(x, y, g));
 
   /* a cova é um cemitério inteiro: cruzes fincadas, caveiras, caixões
-     empilhados e as oferendas de quem veio despedir-se */
+     empilhados e as oferendas de quem veio despedir-se — menos em volta das
+     duas águas bentas, que precisam ser vistas de longe no meio da luta */
   const pCruz = (x, y, alt2, ang) => {
     const px = x*T, py = y*T;
     cmx.fillStyle = 'rgba(0,0,0,.4)';
@@ -8374,7 +8398,7 @@ function pintarFunCriptaSalao(cmx, T){
   };
   [[32.4,7.6,.95,-.10],[36.1,13.4,1.1,.13],[40.2,6.4,.85,-.16],
    [33.8,15.4,1.0,.08],[42.2,12.1,.9,-.05],[30.9,4.9,.8,.18]]
-    .forEach(([x,y,a,g]) => pCruz(x, y, a, g));
+    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,a,g]) => pCruz(x, y, a, g));
 
   const pCaveira = (x, y, esc2) => {
     const px = x*T, py = y*T, r2 = T*.16*esc2;
@@ -8397,7 +8421,7 @@ function pintarFunCriptaSalao(cmx, T){
   };
   [[31.7,9.3,1],[34.6,10.8,.85],[39.4,15.6,1.1],[43.0,8.2,.9],
    [37.2,5.9,.8],[30.6,14.2,1.05],[41.1,4.6,.85]]
-    .forEach(([x,y,e]) => pCaveira(x, y, e));
+    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,e]) => pCaveira(x, y, e));
 
   const pCaixaoPilha = (x, y, n) => {          // caixões empilhados à espera de cova
     const px = x*T, py = y*T, w2 = T*1.5, h2 = T*.5;
@@ -8424,9 +8448,8 @@ function pintarFunCriptaSalao(cmx, T){
       cmx.restore();
     }
   };
-  pCaixaoPilha(31.9, 6.2, 3);
-  pCaixaoPilha(42.0, 14.2, 2);
-  pCaixaoPilha(36.4, 4.6, 2);
+  [[34.6,6.2,3],[39.5,15.0,2],[36.4,4.6,2]]
+    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,n]) => pCaixaoPilha(x, y, n));
 
   const pOferenda = (x, y, tipo) => {          // o que os vivos deixam para os mortos
     const px = x*T, py = y*T;
@@ -8462,7 +8485,7 @@ function pintarFunCriptaSalao(cmx, T){
   };
   [[33.0,6.0,1],[35.6,11.3,0],[40.6,9.1,2],[32.2,13.0,1],
    [38.0,15.0,0],[43.2,11.4,1],[37.4,7.2,2]]
-    .forEach(([x,y,t]) => pOferenda(x, y, t));
+    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,t]) => pOferenda(x, y, t));
 
   /* ============ 4. ESCADA DE CHEGADA (x36..43, y48..54) ============
      degraus largos subindo do piso 2: linha de sombra no alto de cada
