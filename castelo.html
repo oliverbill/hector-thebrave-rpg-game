@@ -5815,7 +5815,12 @@ function atualizarZonasLuz(dt){
     const ciclo = z.claroT + z.escuroT;
     const c = (tempo + z.fase) % ciclo;
     const escura = c >= z.claroT;
-    if(escura && !z.escura) tocarSfx('audio/fase3/sons/sopro-vela-1.mp3', .7);
+    /* o sopro só é ouvido por quem está perto da zona */
+    if(escura && !z.escura){
+      const px = Math.max(z.x, Math.min(jog.x, z.x + z.larg));
+      const py = Math.max(z.y, Math.min(jog.y, z.y + z.alt));
+      if(Math.hypot(jog.x - px, jog.y - py) < 9) tocarSfx('audio/fase3/sons/sopro-vela-1.mp3', .7);
+    }
     z.escura = escura;
     z.veu += ((escura ? 1 : 0) - z.veu)*Math.min(1, dt*2.2);
   });
@@ -5851,7 +5856,8 @@ function atualizarVultos(dt){
       case 'submerso':               // afundado e invulnerável, deriva de volta pra casa
         v.x += (v.hx - v.x)*Math.min(1, dt*.8);
         v.y += (v.hy - v.y)*Math.min(1, dt*.8);
-        if(escuro){
+        if(escuro && Math.hypot(jog.x - v.x, jog.y - v.y) < 7){
+          /* só se ergue (e grita) quando o jogador passa perto — o susto é pessoal */
           v.atraso -= dt;
           if(v.atraso <= 0){
             v.estado = 'ergue'; v.p = 0;
@@ -6212,6 +6218,35 @@ function desenharCirios(ox, oy){
   });
 }
 
+/* === PINTURA DO CENÁRIO DO PISO 3 (gancho pintarCache) ==================
+   Mesma receita da fase 2: perspectiva 3/4 (paredes com FACE de tijolo onde
+   olham para o sul, TOPO de pedra bruta no resto), sombra em degradê no chão
+   sob cada face, e todo móvel com superfície iluminada + face sombreada.
+   Dividida em quatro passes; a ordem importa (estruturas por cima do chão). */
+
+/* -- passe 1: paredes 3/4, sombras e lajes do chão (o esqueleto do relevo) -- */
+function pintarFunParedes(cmx, T){
+}
+
+/* -- passe 2: capela do velório + sala de preparação -- */
+function pintarFunCapelaPrep(cmx, T){
+}
+
+/* -- passe 3: oficina de caixões + depósito + colombário -- */
+function pintarFunOficinaColombario(cmx, T){
+}
+
+/* -- passe 4: cripta alagada + salão + cova grande + quarto do Coveiro -- */
+function pintarFunCriptaSalao(cmx, T){
+}
+
+function pintarFuneralCache(cmx, T){
+  pintarFunParedes(cmx, T);
+  pintarFunCriptaSalao(cmx, T);
+  pintarFunCapelaPrep(cmx, T);
+  pintarFunOficinaColombario(cmx, T);
+}
+
 const PISO_FUNERAL = {
   id:'funeral', nome:'As Salas de Funeral',
   bgm:'audio/fase2/trilha-fase2.mp3',   // tapa-buraco até a trilha fúnebre do usuário (F3-RF-22)
@@ -6223,6 +6258,7 @@ const PISO_FUNERAL = {
     luzAmbiente:'#6a7086'  // piso sombrio: a luz é recurso disputado
   },
   construir: construirFuneral,
+  pintarCache: pintarFuneralCache,
   spawn:{x:40, y:52},
   trapos:2,
   intro:{
