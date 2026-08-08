@@ -1941,6 +1941,17 @@ function desenharChefeSubterraneo(c, ox, oy){
   }
   ctx.fillStyle = 'rgba(214,196,160,.14)';
   ctx.beginPath(); ctx.ellipse(px, py - tam*.06, c.raio*tam*.5, c.raio*tam*.14, 0, 0, TAU); ctx.fill();
+  /* o segredo do rastro: quem soube ler a terra revolvida vê o ponto de saída
+     desde a perseguição, muito antes do aviso vermelho abrir (F3-RF-18) */
+  const fqR = piso.chefe && piso.chefe.fraquezas && piso.chefe.fraquezas.costas;
+  if(c.estado === 'persegue' && fqR && intel[fqR.chave]){
+    const pulso = .5 + Math.sin(tempo*5)*.5;
+    ctx.setLineDash([tam*.18, tam*.14]);
+    ctx.strokeStyle = 'rgba(226,180,120,' + (.22 + pulso*.26) + ')';
+    ctx.lineWidth = Math.max(1.5, tam*.05);
+    ctx.beginPath(); ctx.arc(px, py, f.irromperRaio*tam*.9, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]);
+  }
   if(c.estado === 'irrompe'){                   // círculo telegrafado piscando no chão
     const p = 1 - Math.max(0, c.t)/f.irromperAvisoT;
     const pisca = Math.abs(Math.sin(tempo*14));
@@ -8142,7 +8153,7 @@ const PISO_FUNERAL = {
   recompensa:{
     id:'lanterna-mortos',
     nome:'Lanterna dos Mortos',
-    img:null,
+    img:'img/fase3/lanterna-mortos.png',
     desc:'A luz que não apaga — revela o que não quer ser visto. A chave contra o Alquimista.'
   },
   textos:{
