@@ -2030,8 +2030,30 @@ function atualizarDesespero(c, f, dt){
       if(Math.random() < .35) terraRevolvida(jog.x + (Math.random()-.5)*2, jog.y + .3);
       if(c.t <= 0){
         c.estado = 'cospe'; c.t = .35;
-        const a = Math.random()*TAU;      // e o arremesso: para longe, sem escolher onde
-        jog.vx = Math.cos(a)*de.arremesso; jog.vy = Math.sin(a)*de.arremesso;
+        /* ele emerge no lugar e cospe o jogador do OUTRO LADO da terra: procura
+           em volta o ponto livre mais distante e o larga lá, não empurra */
+        const alcance = de.distancia || 9;
+        let melhor = null, melhorD = -1;
+        for(let k=0; k<24; k++){
+          const ang2 = k/24*TAU;
+          for(let dist = alcance; dist >= 3; dist -= .5){
+            const tx = c.x + Math.cos(ang2)*dist, ty = c.y + Math.sin(ang2)*dist;
+            const ar = de.area;                      // não cospe para fora da arena
+            if(ar && (tx < ar.x1 || tx > ar.x2 || ty < ar.y1 || ty > ar.y2)) continue;
+            if(solido(tx, ty) || solido(tx, ty - .4) || solido(tx, ty + .4)) continue;
+            if(dist > melhorD){ melhorD = dist; melhor = [tx, ty, ang2]; }
+            break;                                   // desta direção, o mais longe que dá
+          }
+        }
+        const a = melhor ? melhor[2] : Math.random()*TAU;
+        if(melhor){
+          for(let k=0;k<20;k++) terraRevolvida(jog.x + (Math.random()-.5)*1.4, jog.y);  // some daqui
+          jog.x = melhor[0]; jog.y = melhor[1];
+          for(let k=0;k<26;k++) terraRevolvida(jog.x + (Math.random()-.5)*2, jog.y + (Math.random()-.5)*.8);
+          camX = jog.x; camY = jog.y;                // a câmera vai junto, senão o jogador se perde
+        }
+        jog.vx = Math.cos(a)*de.arremesso*.35;       // e ainda rola um pouco ao cair
+        jog.vy = Math.sin(a)*de.arremesso*.35;
         /* comoPazada: cobra exatamente o que uma pazada custaria — nem mais */
         const dano = de.comoPazada ? Math.round(f.comboDano[0]*(de.pazadas || 1)) : de.danoArremesso;
         jog.invul = 0; machucar(dano, a);
@@ -8787,7 +8809,9 @@ const PISO_FUNERAL = {
          O susto é o preço; a conta é de uma pazada só, na hora do arremesso */
       desespero:{
         abaixoDe:.18, alcance:6.5, enterradoT:5,
-        danoPorSegundo:0, danoArremesso:0, comoPazada:true, pazadas:3, arremesso:26,
+        danoPorSegundo:0, danoArremesso:0, comoPazada:true, pazadas:3,
+        arremesso:26, distancia:9,                    // cospe o jogador do outro lado da cova
+        area:{x1:30.6, y1:4.6, x2:42.6, y2:15.6},     // sem passar da terra da arena
         aviso:['Ele te agarra', 'se você desce, desce comigo!']
       },
       cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
