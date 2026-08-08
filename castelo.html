@@ -1851,7 +1851,12 @@ function atualizarChefe(dt){
 
   switch(c.estado){
     case 'espera':
-      if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      /* quem chega ao alcance não espera a vez: o golpe sai na hora
+         (cfg.reageDeImediato) — parado, ele deixava bater à vontade */
+      if(f.reageDeImediato && d < f.comboDist){
+        c.estado = 'combo'; c.golpes = 0; c.t = .12;
+      }
+      else if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
       break;
 
     case 'aproxima': {
@@ -1883,7 +1888,11 @@ function atualizarChefe(dt){
 
     case 'exausto':
       c.vx *= .8; c.vy *= .8;
-      if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      /* levantou sem fôlego e o jogador ainda está colado? pá primeiro */
+      if(c.t <= 0){
+        if(f.reageDeImediato && d < f.comboDist){ c.estado = 'combo'; c.golpes = 0; c.t = .12; }
+        else { c.estado = 'aproxima'; c.t = f.aproximaT; }
+      }
       break;
 
     case 'preparo':
@@ -2089,6 +2098,7 @@ function golpear(alvo){
 }
 function machucar(dano, ang){
   if(jog.invul > 0 || !vivo) return;
+  if(!(dano > 0)) return;              // dano undefined/NaN tornava o jogador imortal
   jog.hp -= dano; jog.invul = .45; jog.flash = 1; tremor = 11;
   sDorJog();
   jorrarSangue(jog.x, jog.y, ang != null ? ang : -Math.PI/2 + (Math.random()-.5)*.8, 10);
@@ -8686,6 +8696,7 @@ const PISO_FUNERAL = {
       comboDano:[34, 34], comboAlcance:[3.0, 3.0],   // a pazada (o Avental derruba p/ 14 no aoIniciar)
       /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
       soVulneravelEm:['atordoado','exausto'],
+      reageDeImediato:true,                          // chegou perto, leva pazada
       cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
       irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
       atordoadoT:2.6, mergulhosAteExausto:2, exaustoT:2.8,
@@ -8785,7 +8796,11 @@ const PISO_FUNERAL = {
     jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
     /* o Avental de Aço amortece a pazada: 34 -> 14 (F3-RF-13) */
     const temAvental = inventario.some(i => i.id === 'avental-acougueiro');
-    PISO_FUNERAL.chefe.cfg.comboDano = [temAvental ? 14 : 34];
+    /* um valor por golpe do combo: a lista curta deixava o 2º talho com dano
+       undefined, a vida do jogador virava NaN e ele ficava imortal */
+    const pazada = temAvental ? 14 : 34;
+    PISO_FUNERAL.chefe.cfg.comboDano =
+      PISO_FUNERAL.chefe.cfg.comboAlcance.map(() => pazada);
     if(temAvental) avisar('O Avental de Aço no peito', 'a pá dele vai doer bem menos');
     etapa = 'livre';
     avisar('As salas de funeral', 'o frio sobe do chão');
@@ -8834,7 +8849,7 @@ const PISO_FUNERAL = {
        && jog.x > FUN.PORTA.x - 1 && jog.x < FUN.PORTA.x + FUN.PORTA.larg + 1){
       criarChefe();
       criarCirios();
-      tocarBgm('audio/fase3/trilha-cova.mp3', .18);        // a trilha da cova, do dono (F3-RF-22)
+      tocarBgm('audio/fase3/trilha-cova.mp3', .38);        // a trilha da cova, do dono (F3-RF-22)
       etapa = 'chefe';
     }
   },
