@@ -5774,6 +5774,15 @@ function desenharMaos(ox, oy){
     ctx.save();
     ctx.translate(px, py - r*.1 + bob);
     ctx.rotate(presa ? Math.sin(tempo*16)*.07 : Math.sin(m.fase*1.6)*.14);
+    if(imgMaoMorta.complete && imgMaoMorta.naturalWidth > 0){
+      /* o sprite aprovado: a mão rasgando a terra */
+      const altM = tam*1.02, larM = imgMaoMorta.naturalWidth*(altM/imgMaoMorta.naturalHeight);
+      if(m.flash > 0) ctx.filter = 'brightness(2.4)';
+      ctx.drawImage(imgMaoMorta, -larM/2, -altM + r*.62, larM, altM);
+      ctx.filter = 'none';
+      ctx.restore();
+      return;
+    }
     /* punho saindo do chão */
     ctx.strokeStyle = osso; ctx.lineCap = 'round';
     ctx.lineWidth = Math.max(2, r*.3);
@@ -5917,6 +5926,21 @@ function desenharVultos(ox, oy){
     ctx.beginPath(); ctx.ellipse(px, py + r*.75, r*.8*sobe, r*.26*sobe, 0, 0, TAU); ctx.fill();
     ctx.translate(px, py + flut - r*.3*sobe);
     ctx.scale(1, sobe);
+    if(imgVulto.complete && imgVulto.naturalWidth > 0){
+      /* o sprite aprovado: capuz de olhos acesos e garras-foice */
+      const altV = tam*1.7, larV = imgVulto.naturalWidth*(altV/imgVulto.naturalHeight);
+      ctx.rotate(Math.sin(v.fase*2.1)*.06);
+      if(v.flash > 0) ctx.filter = 'brightness(2.3) saturate(.3)';
+      ctx.globalAlpha *= .94;
+      ctx.drawImage(imgVulto, -larV/2, -altV*.62, larV, altV*.999);
+      ctx.filter = 'none';
+      const og2 = ctx.createRadialGradient(0, -r*.35, 0, 0, -r*.35, r*.6);
+      og2.addColorStop(0, 'rgba(190,220,190,.22)'); og2.addColorStop(1, 'rgba(190,220,190,0)');
+      ctx.fillStyle = og2;
+      ctx.beginPath(); ctx.arc(0, -r*.35, r*.6, 0, TAU); ctx.fill();
+      ctx.restore();
+      return;
+    }
     /* massa escura ondulante: cúpula com barra de ondas embaixo */
     ctx.fillStyle = v.flash > 0 ? '#5a5470' : '#161122';
     ctx.beginPath();
@@ -6126,21 +6150,32 @@ function desenharVelasCaminho(ox, oy){
     // castiçal
     ctx.fillStyle = 'rgba(0,0,0,.35)';
     ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.16, tam*.06, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#5a5264';
-    ctx.fillRect(px - tam*.05, py - tam*.1, tam*.1, tam*.22);
-    ctx.fillStyle = v.acesa ? '#e8e2d2' : '#8a8494';
-    ctx.fillRect(px - tam*.04, py - tam*.34, tam*.08, tam*.26);
+    const spr = imgCastical.complete && imgCastical.naturalWidth > 0;
+    if(spr){
+      const altC = tam*1.05, larC = imgCastical.naturalWidth*(altC/imgCastical.naturalHeight);
+      ctx.save();
+      if(!v.acesa) ctx.filter = 'grayscale(.7) brightness(.6)';
+      ctx.drawImage(imgCastical, px - larC/2, py + tam*.14 - altC, larC, altC);
+      ctx.filter = 'none';
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#5a5264';
+      ctx.fillRect(px - tam*.05, py - tam*.1, tam*.1, tam*.22);
+      ctx.fillStyle = v.acesa ? '#e8e2d2' : '#8a8494';
+      ctx.fillRect(px - tam*.04, py - tam*.34, tam*.08, tam*.26);
+    }
     if(v.acesa){
       const tr = .8 + Math.sin(tempo*9 + v.x)*.2;
+      const topoV = spr ? py + tam*.14 - tam*1.02 : py - tam*.4;
       ctx.fillStyle = '#ffd27a';
-      ctx.beginPath(); ctx.ellipse(px, py - tam*.4, tam*.045, tam*.09*tr, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px, topoV, tam*.045, tam*.09*tr, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,230,.85)';
-      ctx.beginPath(); ctx.ellipse(px, py - tam*.42, tam*.02, tam*.045, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(px, topoV - tam*.02, tam*.02, tam*.045, 0, 0, TAU); ctx.fill();
     } else {
       // fio de fumaça da vela morta
       ctx.strokeStyle = 'rgba(180,180,200,.25)'; ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(px, py - tam*.36);
+      ctx.moveTo(px, spr ? py + tam*.14 - tam*.98 : py - tam*.36);
       ctx.quadraticCurveTo(px + tam*.06, py - tam*.5, px - tam*.03, py - tam*.62);
       ctx.stroke();
     }
@@ -6209,12 +6244,186 @@ function desenharCirios(ox, oy){
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*(.6 + pulso*.12), 0, TAU); ctx.fill();
     ctx.fillStyle = 'rgba(0,0,0,.35)';
     ctx.beginPath(); ctx.ellipse(px, py + tam*.16, tam*.16, tam*.07, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#efe9d8';
-    ctx.fillRect(px - tam*.08, py - tam*.36, tam*.16, tam*.5);
-    ctx.fillStyle = '#ffd27a';
-    ctx.beginPath(); ctx.ellipse(px, py - tam*.44, tam*.05, tam*.1, 0, 0, TAU); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,235,.9)';
-    ctx.beginPath(); ctx.ellipse(px, py - tam*.46, tam*.022, tam*.05, 0, 0, TAU); ctx.fill();
+    if(imgCirio.complete && imgCirio.naturalWidth > 0){
+      const altC = tam*.92, larC = imgCirio.naturalWidth*(altC/imgCirio.naturalHeight);
+      ctx.drawImage(imgCirio, px - larC/2, py + tam*.16 - altC, larC, altC);
+    } else {
+      ctx.fillStyle = '#efe9d8';
+      ctx.fillRect(px - tam*.08, py - tam*.36, tam*.16, tam*.5);
+      ctx.fillStyle = '#ffd27a';
+      ctx.beginPath(); ctx.ellipse(px, py - tam*.44, tam*.05, tam*.1, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,235,.9)';
+      ctx.beginPath(); ctx.ellipse(px, py - tam*.46, tam*.022, tam*.05, 0, 0, TAU); ctx.fill();
+    }
+  });
+}
+
+/* --- imagens da fase 3: os sprites aprovados na revisão --- */
+const imgCoveiro = new Image(); imgCoveiro.src = 'img/fase3/coveiro.png';
+const imgVulto = new Image(); imgVulto.src = 'img/fase3/vulto.png';
+const imgMaoMorta = new Image(); imgMaoMorta.src = 'img/fase3/mao.png';
+const imgCastical = new Image(); imgCastical.src = 'img/fase3/item-castical-2.png';
+const imgCirio = new Image(); imgCirio.src = 'img/fase3/item-vela-prato.png';
+/* itens de cenário: carregam sob demanda e repintam o cache quando chegam */
+const imgsFun = {};
+let recacheFun = false;
+function funImg(nome){
+  let im = imgsFun[nome];
+  if(!im){
+    im = new Image();
+    im.src = 'img/fase3/' + nome + '.png';
+    im.onload = () => {
+      if(recacheFun || !piso || piso.id !== 'funeral' || !mapa) return;
+      recacheFun = true;
+      setTimeout(() => { recacheFun = false; if(piso.id === 'funeral' && mapa) desenharCache(); }, 150);
+    };
+    imgsFun[nome] = im;
+  }
+  return im;
+}
+
+/* --- o Coveiro em pessoa: sprite com pernas que pisam, pá e lanterna --- */
+function desenharCoveiro(c, ox, oy){
+  const px = ox + c.x*tam, py = oy + c.y*tam, r = c.raio*tam;
+  ctx.fillStyle = 'rgba(0,0,0,.45)';
+  ctx.beginPath(); ctx.ellipse(px, py + r*.92, r*1.05, r*.36, 0, 0, TAU); ctx.fill();
+
+  const exausto = c.estado === 'exausto', tonto = c.estado === 'atordoado', cavando = c.estado === 'cava';
+  const golpe = c.golpeAnim > 0 ? c.golpeAnim/.22 : 0;
+  const flip = Math.cos(c.angulo) > 0;                  // a arte olha para a esquerda
+
+  let ajoelha = 0;
+  if(c.flash > 0) ajoelha = Math.max(ajoelha, Math.min(1, c.flash*1.1));
+  if(tonto) ajoelha = Math.max(ajoelha, .8 + Math.sin(tempo*9)*.1);
+  if(exausto) ajoelha = Math.max(ajoelha, .6);
+
+  const andando = c.estado === 'aproxima';
+  const gingado = andando ? Math.sin(c.pisada*5.5)*.08 : 0;
+  const wind = c.estado === 'combo' && golpe === 0 ? Math.max(0, 1 - Math.max(0, c.t)/.32) : 0;
+
+  let incl = 0;
+  if(andando) incl = .14 + Math.sin(c.pisada*5.5)*.06;
+  if(cavando) incl = .38 + Math.sin(tempo*13)*.14;      // dobrado sobre a pá, terra voando
+  incl += golpe ? Math.sin((1-golpe)*Math.PI)*.5 : -wind*.30;
+
+  const lunge = golpe ? Math.sin((1-golpe)*Math.PI)*r*.5 : 0;
+  const passo = andando ? Math.abs(Math.sin(c.pisada*5.5))*r*.13 : 0;
+  const lx = Math.cos(c.angulo)*lunge, ly = Math.sin(c.angulo)*lunge*.4 - passo;
+
+  if(cavando && Math.random() < .5){
+    particulas.push({x:c.x + (Math.random()-.5)*.8, y:c.y + .5,
+      vx:(Math.random()-.5)*1.6, vy:-1.2 - Math.random()*1.2,
+      vida:.5, cor:'rgba(90,74,52,.7)', tam:.1});
+  }
+  if(andando && Math.random() < .3){
+    const lado = Math.sin(c.pisada*5.5) > 0 ? 1 : -1;
+    particulas.push({x:c.x + lado*.4, y:c.y + .8,
+      vx:(Math.random()-.5)*.7 - lado*.3, vy:-.25 - Math.random()*.3,
+      vida:.4, cor:'rgba(120,104,84,.4)', tam:.09});
+  }
+
+  /* pernas magras de calça surrada, botas plantadas no chão: nada de flutuar */
+  const base = py + r*.95, alt = r*3.8;
+  const pernaAlt = r*(.92 - ajoelha*.35);
+  const balanco = andando ? Math.sin(c.pisada*5.5)*.5 : 0;
+  const hipY = base + ly - pernaAlt + ajoelha*r*.36;
+  const perna = (lado, ang) => {
+    ctx.save();
+    ctx.translate(px + lx*.55 + lado*r*.32, hipY);
+    ctx.rotate(ang);
+    ctx.fillStyle = c.flash > .5 ? '#8d8698' : '#221d24';
+    ctx.beginPath();
+    ctx.moveTo(-r*.17, 0); ctx.lineTo(r*.17, 0);
+    ctx.lineTo(r*.13, pernaAlt*.96); ctx.lineTo(-r*.13, pernaAlt*.96);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3a333c';                           // remendo no joelho
+    ctx.beginPath(); ctx.ellipse(0, pernaAlt*.46, r*.14, r*.1, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#0e0b12';                           // bota
+    ctx.beginPath(); ctx.ellipse(Math.sin(ang)*r*.06, pernaAlt*.98, r*.25, r*.14, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(200,190,215,.12)';
+    ctx.beginPath(); ctx.ellipse(0, pernaAlt*.90, r*.18, r*.05, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+  };
+  perna(-1, balanco);
+  perna(1, -balanco);
+
+  const iw = imgCoveiro.naturalWidth, ih = imgCoveiro.naturalHeight;
+  if(imgCoveiro.complete && iw > 0){
+    const lar = alt*iw/ih;
+    const resp = exausto ? Math.sin(tempo*7)*.06 : Math.sin(tempo*1.8)*.015;
+    const soco = andando ? Math.abs(Math.cos(c.pisada*5.5))*.03 : 0;
+    ctx.save();
+    ctx.translate(px + lx, hipY + r*.14);
+    if(flip) ctx.scale(-1, 1);
+    ctx.rotate(-incl + gingado + (tonto ? Math.sin(tempo*11)*.08 : 0));
+    ctx.scale(1 + ajoelha*.07 + soco, (1 - ajoelha*.24 - soco)*(1 + resp));
+    if(c.flash > .5) ctx.filter = 'brightness(2.1) saturate(.4)';
+    ctx.drawImage(imgCoveiro, -lar/2, -alt, lar, alt);
+    ctx.filter = 'none';
+    ctx.restore();
+    /* o bafo âmbar da lanterna dele — a fraqueza que a Lavadeira ensina */
+    const lgx = px + lx + (flip ? 1 : -1)*r*.72, lgy = hipY + r*.14 - alt*.42;
+    const lg = ctx.createRadialGradient(lgx, lgy, 0, lgx, lgy, Math.max(1, r*1.1));
+    lg.addColorStop(0, 'rgba(255,190,90,.20)'); lg.addColorStop(1, 'rgba(255,190,90,0)');
+    ctx.fillStyle = lg; ctx.beginPath(); ctx.arc(lgx, lgy, r*1.1, 0, TAU); ctx.fill();
+  } else {
+    ctx.fillStyle = '#2c2a33';
+    ctx.beginPath(); ctx.ellipse(px, py - r*.1, r*.78, r*.95, 0, 0, TAU); ctx.fill();
+  }
+
+  /* a pá erguida no windup e o arco da pazada */
+  const topoC = hipY + r*.14 - alt;
+  if(wind > .25){
+    const ga = c.angulo + Math.PI*.82;
+    ctx.strokeStyle = 'rgba(205,198,188,' + (wind*.75) + ')';
+    ctx.lineWidth = Math.max(1.5, r*.11*wind);
+    ctx.beginPath();
+    ctx.moveTo(px + Math.cos(ga)*r*.5, topoC + alt*.28);
+    ctx.lineTo(px + Math.cos(ga)*r*1.3, topoC + alt*.02);
+    ctx.stroke();
+  }
+  if(golpe){
+    ctx.strokeStyle = 'rgba(214,206,190,' + (golpe*.9) + ')';
+    ctx.lineWidth = Math.max(1, r*.3*golpe);
+    ctx.beginPath();
+    ctx.arc(px, py, r*2.2, c.angulo - 1.2 + (1-golpe)*1.7, c.angulo + .4 + (1-golpe)*1.7);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,' + (golpe*.45) + ')';
+    ctx.lineWidth = Math.max(1, r*.1*golpe);
+    ctx.beginPath();
+    ctx.arc(px, py, r*2.2, c.angulo - .9 + (1-golpe)*1.7, c.angulo + .1 + (1-golpe)*1.7);
+    ctx.stroke();
+  }
+}
+
+/* --- coadjuvantes: o velório na capela, com os rezadores recortados --- */
+const COADJ_FUN = [
+  {img:'rezador-4', x:8.2,  y:9.5,  esc:1.12},              // de pé, diante do esquife
+  {img:'rezador-4', x:11.1, y:9.9,  esc:1.06, flip:true},
+  {img:'rezador-2', x:6.2,  y:9.3,  esc:.9},                // ajoelhados nos bancos
+  {img:'rezador-1', x:5.1,  y:12.7, esc:.85},
+  {img:'rezador-3', x:13.3, y:12.4, esc:.9,  flip:true},
+  {img:'rezador-2', x:14.3, y:9.5,  esc:.85, flip:true}
+];
+function desenharCoadjuvantesFun(ox, oy){
+  COADJ_FUN.forEach((c2, i) => {
+    const im = funImg(c2.img);
+    if(!im.complete || !im.naturalWidth) return;
+    const px = ox + c2.x*tam, py = oy + c2.y*tam;
+    if(foraDaVista(px, py, tam*2.5)) return;
+    const q = Math.floor((tempo + i*.7)*8)/8;               // 8 quadros/s, como os informantes
+    const alt = tam*1.35*(c2.esc || 1);
+    const lar = im.naturalWidth*(alt/im.naturalHeight);
+    const gira = Math.sin(q*1.8 + i)*.03;                   // o balanço miúdo de quem reza
+    const sopro = 1 + Math.sin(q*2.6 + i*2)*.018;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.06, lar*.38, tam*.1, 0, 0, TAU); ctx.fill();
+    ctx.save();
+    ctx.translate(px, py + tam*.08);
+    ctx.rotate(gira);
+    ctx.scale((c2.flip ? -1 : 1)*(2 - sopro), sopro);
+    ctx.drawImage(im, -lar/2, -alt, lar, alt);
+    ctx.restore();
   });
 }
 
@@ -7598,11 +7807,36 @@ function pintarFunCriptaSalao(cmx, T){
   });
 }
 
+/* -- passe 5: os itens recortados da leva aprovada, assentados pelo pé -- */
+function pintarFunImagens(cmx, T){
+  const pImg = (nome, x, y, larg) => {
+    const im = funImg(nome);
+    if(!im.complete || !im.naturalWidth) return;
+    const w = larg*T, h = im.naturalHeight*(w/im.naturalWidth);
+    cmx.fillStyle = 'rgba(0,0,0,.32)';
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.42, T*.16, 0, 0, TAU); cmx.fill();
+    cmx.drawImage(im, x*T - w/2, y*T - h + T*.12, w, h);
+  };
+  pImg('item-caixao-corrente', 15.3, 8.2, 1.25);   // capela: o caixão que ninguém abre
+  pImg('item-caixao-cinza', 25.4, 12.6, 2.1);      // preparação: tampa à espera
+  pImg('item-carroca', 35.3, 21.6, 2.1);           // salão: a carroça dos enterros
+  pImg('item-caixao-escuro', 13.2, 22.4, 2.0);     // salão: a caminho da cova
+  pImg('item-bancada-ferramentas', 10.3, 32.5, 1.5);
+  pImg('item-cocho', 4.2, 34.7, 1.4);              // oficina: molhar as tábuas
+  pImg('item-barris', 5.0, 40.9, 1.9);             // depósito
+  pImg('item-feno', 9.8, 38.5, 1.6);
+  pImg('item-potes', 3.9, 38.3, 1.2);
+  pImg('item-mesa', 39.6, 28.3, 1.8);              // quarto do Coveiro
+  pImg('item-banco', 41.7, 29.7, 1.1);
+  pImg('item-lamparina', 42.8, 26.7, .7);
+}
+
 function pintarFuneralCache(cmx, T){
   pintarFunParedes(cmx, T);
   pintarFunCriptaSalao(cmx, T);
   pintarFunCapelaPrep(cmx, T);
   pintarFunOficinaColombario(cmx, T);
+  pintarFunImagens(cmx, T);
 }
 
 const PISO_FUNERAL = {
@@ -7639,7 +7873,7 @@ const PISO_FUNERAL = {
      gravada entram nas etapas 3 e 6 do /fase-nova */
   informantes:[
     { nome:'O Carpinteiro de Caixões', chave:'rastro', cor:'#a89b7c', escala:1.5,
-      retrato:null,
+      retrato:'img/fase3/velante-carpinteiro.png',
       voz:{pitch:.75, rate:.9, genero:'m'},
       x:5.5, y:33.5,       // na oficina, entre os caixões em obra
       falas:[
@@ -7648,7 +7882,7 @@ const PISO_FUNERAL = {
         'Quando ele some na terra, repare: deixa um rastro de terra revolvida. O chão conta onde ele vai sair.'
       ], ganho:'Você vai ler o rastro: o ponto onde ele irrompe se anuncia mais cedo.' },
     { nome:'A Lavadeira dos Mortos', chave:'lanterna', cor:'#9fb0c0', escala:1.5,
-      retrato:null,
+      retrato:'img/fase3/velante-lavadeira.png',
       voz:{pitch:1.2, rate:.95, genero:'f'},
       x:25.5, y:7.5,       // na sala de preparação, junto às mesas
       falas:[
@@ -7657,7 +7891,7 @@ const PISO_FUNERAL = {
         'A lanterna dele só ilumina a frente. Pelas costas, ele tá morto.'
       ], ganho:'Golpes pelas costas doem muito mais nele.' },
     { nome:'O Sacristão', chave:'mergulhos', cor:'#8d86a8', escala:1.5,
-      retrato:null,
+      retrato:'img/fase3/velante-sacristao.png',
       voz:{pitch:.6, rate:.85, genero:'m'},
       x:31.5, y:52.2,      // no fundo do colombário — o difícil de achar
       falas:[
@@ -7672,6 +7906,7 @@ const PISO_FUNERAL = {
   chefe:{
     cfg:{
       nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
+      retrato:'img/fase3/coveiro.png',
       esperaT:1.1, aproximaT:1.6, velAproxima:2.4,
       comboDist:2.4, comboIntervalo:.55, comboGolpes:1,
       comboDano:[34], comboAlcance:[2.6],            // a pazada (o Avental derruba p/ 14 no aoIniciar)
@@ -7693,7 +7928,7 @@ const PISO_FUNERAL = {
         atordoado:{chave:'rastro', com:2.2, sem:1.25}
       }
     },
-    desenhar: desenharAcougueiro   // placeholder até o sprite do Coveiro (etapa 4 em revisão)
+    desenhar: desenharCoveiro
   },
   recompensa:{
     id:'lanterna-mortos',
@@ -7859,6 +8094,7 @@ const PISO_FUNERAL = {
     avisar('A terra se abre', 'a cova grande espera');
   },
   desenharCenario(ox, oy){
+    desenharCoadjuvantesFun(ox, oy);
     desenharVelasCaminho(ox, oy);
     desenharAguaBenta(ox, oy);
     if(etapa === 'chefe') desenharCirios(ox, oy);
