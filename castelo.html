@@ -5888,10 +5888,18 @@ function desenharZonasLuz(ox, oy){
   zonasLuz.forEach(z => {
     if(z.veu <= .015) return;
     const x = ox + z.x*tam, y = oy + z.y*tam, w = z.larg*tam, h = z.alt*tam;
-    ctx.fillStyle = 'rgba(5,3,12,' + (z.veu*.55) + ')';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = 'rgba(3,2,8,' + (z.veu*.35) + ')';   // miolo ainda mais fundo
-    ctx.fillRect(x + w*.12, y + h*.12, w*.76, h*.76);
+    /* escuro que nasce no miolo e se dissolve nas bordas — retângulo chapado
+       parecia um bloco preto colado por cima do cenário */
+    const cx = x + w/2, cy = y + h/2, raio = Math.max(w, h)*.62;
+    const g = ctx.createRadialGradient(cx, cy, raio*.18, cx, cy, raio);
+    g.addColorStop(0, 'rgba(3,2,8,' + (z.veu*.82) + ')');
+    g.addColorStop(.62, 'rgba(5,3,12,' + (z.veu*.55) + ')');
+    g.addColorStop(1, 'rgba(5,3,12,0)');
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(cx, cy, w*.72, h*.78, 0, 0, TAU); ctx.clip();
+    ctx.fillStyle = g;
+    ctx.fillRect(x - w*.2, y - h*.2, w*1.4, h*1.4);
+    ctx.restore();
   });
 }
 
@@ -6061,7 +6069,8 @@ const COMODOS_FUN = [
   {x1:12.5, y1:30.5, x2:31, y2:43, nome:'A cripta alagada',  sub:'água parada — pise só nas passarelas'},
   {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de nichos; o Sacristão está no fundo'},
   {x1:38, y1:26, x2:43, y2:30, nome:'O quarto do Coveiro',   sub:'ele dorme ao lado da pá'},
-  {x1:30, y1:4,  x2:43, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'}
+  {x1:30, y1:4,  x2:43, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'},
+  {x1:36, y1:48, x2:43, y2:54, nome:'A escada de chegada',  sub:'a câmara de carnes ficou lá atrás'}
 ];
 const vistos = new Set();
 function anunciarComodo(){
@@ -6216,20 +6225,32 @@ function criarVelasCaminho(){
     {x:6,    y:44}      // descida do colombário
   ].map(v => ({...v, acesa:false}));
 }
+/* o castiçal apagado, pintado uma única vez: aplicar ctx.filter por quadro
+   tira o desenho do caminho rápido e derrubava o piso inteiro a ~44 fps */
+let casticalMorto = null;
+function casticalApagado(){
+  if(casticalMorto) return casticalMorto;
+  if(!(imgCastical.complete && imgCastical.naturalWidth > 0)) return null;
+  const c = document.createElement('canvas');
+  c.width = imgCastical.naturalWidth; c.height = imgCastical.naturalHeight;
+  const g = c.getContext('2d');
+  g.filter = 'grayscale(.7) brightness(.6)';
+  g.drawImage(imgCastical, 0, 0);
+  casticalMorto = c;
+  return c;
+}
 function desenharVelasCaminho(ox, oy){
   velasCaminho.forEach(v => {
     const px = ox + v.x*tam, py = oy + v.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
     // castiçal
     ctx.fillStyle = 'rgba(0,0,0,.35)';
     ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.16, tam*.06, 0, 0, TAU); ctx.fill();
     const spr = imgCastical.complete && imgCastical.naturalWidth > 0;
     if(spr){
       const altC = tam*1.05, larC = imgCastical.naturalWidth*(altC/imgCastical.naturalHeight);
-      ctx.save();
-      if(!v.acesa) ctx.filter = 'grayscale(.7) brightness(.6)';
-      ctx.drawImage(imgCastical, px - larC/2, py + tam*.14 - altC, larC, altC);
-      ctx.filter = 'none';
-      ctx.restore();
+      const arte = v.acesa ? imgCastical : (casticalApagado() || imgCastical);
+      ctx.drawImage(arte, px - larC/2, py + tam*.14 - altC, larC, altC);
     } else {
       ctx.fillStyle = '#5a5264';
       ctx.fillRect(px - tam*.05, py - tam*.1, tam*.1, tam*.22);
@@ -8181,9 +8202,13 @@ const PISO_FUNERAL = {
     chefe = null; el('chefeBarra').classList.remove('on');
     jog.hp = jog.hpMax;
     jog.pocoes = Math.max(jog.pocoes, 2);
+    soltarAgarrao();                       // morrer preso não pode ressuscitar preso
     jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 2.5;   // a soleira, diante da passagem
-    jog.vx = jog.vy = 0; jog.invul = 1;
+    jog.vx = jog.vy = 0; jog.invul = 2.5;  // fôlego para sair antes que as mãos cheguem
     jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
+    /* as mãos voltam aos seus buracos: nenhuma fica montando guarda no respawn */
+    maos.forEach(m => { if(m.hp > 0){ m.x = m.hx; m.y = m.hy; m.vx = m.vy = 0; } });
+    if(piso.ambientes) criarAmbientes(piso.ambientes);   // morrer não pode calar o piso
     camX = jog.x; camY = jog.y;
     el('veu').classList.add('oculto');
     atualizarHUD();
@@ -8205,8 +8230,8 @@ const PISO_FUNERAL = {
     criarMaos([
       {x:17.5, y:32.5}, {x:27.5, y:33},      // margens da cripta
       {x:16.5, y:40.5},                       // margem sul
-      {x:8.5,  y:47.5}, {x:24.5, y:51.5},     // colombário
-      {x:33.5, y:22.5}                        // guarda o caminho da cova, longe da soleira
+      {x:8.5,  y:47.5}, {x:25.5, y:49.5},     // colombário (a segunda estava dentro de parede)
+      {x:26.5, y:21.5}                        // guarda o salão, fora do alcance da soleira
     ]);
     /* uma única zona de luz que morre: o cômodo do Sacristão, no fundo leste
        do colombário — os vultos só se erguem lá (pedido do dono: fora da
