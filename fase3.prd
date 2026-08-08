@@ -186,13 +186,13 @@ Tudo que entrou além do que este PRD pedia.
 
 1. `pintarFunParedes` — paredes em perspectiva 3/4 (face de tijolo úmido onde o muro olha para o sul, topo de pedra bruta no resto), sombra em degradê no chão e lajes
 2. `pintarFunCriptaSalao` — cripta alagada, salão, cova do Coveiro, escada e quarto (as covas abertas da arena ganharam **paredes de terra** em `fb688ed`, para não ficarem pretas chapadas)
-3. `pintarFunCapelaPrep` — capela de velório com o esquife no centro do mosaico e as fileiras de bancos, mais a sala de preparação
+3. `pintarFunCapelaPrep` — capela de velório com as coroas de flores e as pétalas em volta do centro do mosaico (o caixão em si é recorte, e entra no passe 5) e as fileiras de bancos, mais a sala de preparação
 4. `pintarFunOficinaColombario` — oficina de caixões, depósito e os nichos do colombário
 5. `pintarFunImagens` — os itens recortados, assentados pelo pé, mais o cadáver da mesa
 
 A ordem importa: estrutura por cima do chão, recortes por último.
 
-**Sprites recortados da leva aprovada.** Além do que o Apêndice A previa: o **Coveiro**, o **vulto** (capuz de olhos acesos e garras-foice), a **mão dos mortos**, o **castiçal** das velas do caminho, o **círio** da arena, os **rezadores**, a **cabeça do cadáver** e **12 itens de cenário** (caixão com corrente, caixão cinza, caixão escuro, carroça, bancada de ferramentas, cocho, barris, feno, potes, mesa, banco, lamparina). Os itens carregam **sob demanda** (`funImg`) e, quando um PNG chega tarde, **o cache se repinta sozinho** — 150 ms de espera para agrupar as chegadas.
+**Sprites recortados da leva aprovada.** Além do que o Apêndice A previa: o **Coveiro**, o **vulto** (capuz de olhos acesos e garras-foice), a **mão dos mortos**, o **castiçal** das velas do caminho, o **círio** da arena, os **rezadores**, a **cabeça do cadáver** e **17 itens de cenário** (caixão com corrente, caixão cinza, caixão escuro, carroça, bancada de ferramentas, cocho, barris, feno, potes, mesa, banco, lamparina, mais a leva de velório: o **caixão de dossel** do centro do mosaico, o **altar de cálices** ao norte da capela, o **sepulcro de pedra** encostado na parede, o **esquife de brocado** da sala de preparação e o **esquife negro** do salão). Os itens carregam **sob demanda** (`funImg`) e, quando um PNG chega tarde, **o cache se repinta sozinho** — 150 ms de espera para agrupar as chegadas.
 
 **Rezadores animados na capela** (`COADJ_FUN`, `desenharCoadjuvantesFun`): 6 figuras a 8 quadros por segundo, com o balanço miúdo e o sopro de quem reza. Fazem também o papel do grupo que vela o corpo (F3-RF-25) — não há carpideiras separadas.
 
@@ -239,7 +239,7 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 
 | Tipo | Item | Formato | Status |
 |---|---|---|---|
-| Cenário | 12 itens recortados (caixões, carroça, bancada, cocho, barris, feno, potes, mesa, banco, lamparina), castiçal, círio | Pinterest → revisão → PNG | **pronto e no cenário** |
+| Cenário | 17 itens recortados (caixões, carroça, bancada, cocho, barris, feno, potes, mesa, banco, lamparina, caixão de dossel, altar de cálices, sepulcro de pedra, dois esquifes), castiçal, círio | Pinterest → revisão → PNG | **pronto e no cenário** |
 | Cenário | porta | PNG sem fundo | **recortada, não instalada** (§8) |
 | Cenário | vitrais da capela (centro e lado) | foto do dono → recorte com fundo transparente | **pronto e no cenário** (`vitrais.jpg` é a foto de origem) |
 | Retrato NPC | Carpinteiro, Lavadeira, Sacristão | PNG sem fundo | **pronto** (`velante-*.png`, escala 1.5) |
