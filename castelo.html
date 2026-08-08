@@ -6595,9 +6595,9 @@ function desenharAguaBenta(ox, oy){
   });
 }
 /* --- círios da cova: a cura da arena (25%), repostos a cada tentativa --- */
-/* a cura da cova: duas águas bentas em cantos opostos, grandes e sem nada
-   em volta que atrapalhe a vista (pedido do dono) */
-const CANTOS_AGUA = [[31.6, 5.4], [42.0, 14.8]];
+/* a cura da cova: uma água benta no canto, grande e sem nada em volta que
+   atrapalhe a vista (pedido do dono) */
+const CANTOS_AGUA = [[42.0, 14.8]];
 function criarCirios(){
   cirios = CANTOS_AGUA.map(([x, y]) => ({x, y, pego:false}));
 }
