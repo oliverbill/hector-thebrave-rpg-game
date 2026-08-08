@@ -3047,7 +3047,7 @@ function desenharArmaNaMao(px, py, r){
        lâmina para fora; as mãos não saem do cabo — empunhadura constante */
     const virado = Math.cos(jog.angulo) < 0;
     const lado = virado ? -1 : 1;
-    ctx.translate(px + lado*r*.62, my - r*.1);             // à frente, não colado no corpo
+    ctx.translate(px + lado*tam*.56, my - r*.1);           // à frente do corpo: além da metade do sprite (tam*.45)
     if(virado) ctx.scale(-1, 1);                           // a lâmina acompanha o olhar
     ctx.rotate(-.09);                                      // leve inclinação, nada de tombar
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
