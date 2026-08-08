@@ -2682,7 +2682,7 @@ function desenharCorpoJogador(ox, oy){
     /* o que ele veste por cima do tronco. Medidas em pixels da foto do avatar
        (64x159): ombro em y 52, quadril em 99 — o avental cai do peito à coxa */
     if(vestido === 'avental-acougueiro' && imgAvental.complete && imgAvental.naturalWidth > 0){
-      const aw = 31*esc, ah = 60*esc;
+      const aw = 27*esc, ah = 58*esc;
       ctx.drawImage(imgAvental, 3*esc - aw/2, (52 - 101 + 2)*esc, aw, ah);
     }
     ctx.restore();
@@ -2730,10 +2730,12 @@ function adicionarAoInventario(item){
     const im = new Image(); im.src = item.img; imgsItens[item.id] = im;
   }
   inventario.push({...item, novo:true});
-  /* o que se veste já entra no corpo: quem ganhou o avental não precisa
-     descobrir a bolsa para ficar protegido */
-  if(item.veste) vestido = item.id;
   return true;
+}
+/* peça de vestir só vai ao corpo na hora do chefão — antes disso ela viaja na
+   bolsa. Cada piso diz quando a hora chegou (a porta da arena já aberta) */
+function horaDeVestir(){
+  return etapa === 'chefe' || !!(piso && piso.horaDoChefe && piso.horaDoChefe());
 }
 function renderizarBolsa(mostrar){
   const box = el('bolsa'), itens = el('bolsaItens');
@@ -2809,16 +2811,18 @@ function renderizarListaInv(){
      o clique no avental não fazia nada, porque `pegarItem` só empunha arma */
   const a = el('invAcao');
   const it = invSelecionado;
-  const vestivel = !!it.veste && vestido !== it.id;
+  const vestivel = !!it.veste && vestido !== it.id && horaDeVestir();
   const empunhavel = !!(piso.pegarItem && ARMAS[it.id] && jog.arma !== it.id);
   a.style.display = (vestivel || empunhavel) ? '' : 'none';
   a.textContent = vestivel ? 'Vestir' : 'Pegar';
+  if(it.veste && vestido !== it.id && !horaDeVestir())
+    el('invDesc').textContent += ' — só na hora de encarar o chefe.';
 }
 /* escolher da bolsa fecha a bolsa: o jogador volta ao jogo já usando a peça */
 el('invAcao').addEventListener('click', () => {
   if(!invModoLista || !invSelecionado) return;
   const it = invSelecionado;
-  if(it.veste && vestido !== it.id){
+  if(it.veste && vestido !== it.id && horaDeVestir()){
     vestido = it.id;
     fecharPopupInventario();
     avisar('No peito', it.nome);
@@ -9070,6 +9074,8 @@ const PISO_FUNERAL = {
     avisar('Atalho de teste', 'a cova grande está aberta');
   },
   falarLiberado(){ return etapa === 'livre'; },
+  /* a cova aberta já é a hora do chefe: dali em diante dá para vestir o avental */
+  horaDoChefe(){ return !!(porta3 && porta3.aberta); },
   acaoGolpe: golpeFase3,
   pegarItem(item){
     if(!ARMAS[item.id]) return;
