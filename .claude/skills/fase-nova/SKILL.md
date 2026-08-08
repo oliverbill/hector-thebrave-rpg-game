@@ -154,14 +154,20 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 
 ## 7. Espalhar as imagens pelo cenário
 
-> **PORTEIRA: o cenário só começa com TODAS as imagens escolhidas.** As etapas 7 e 8
-> (espalhar imagens, alto-relevo, coadjuvantes) só podem começar depois que o usuário
-> revisou e escolheu **todas** as levas de imagens — cenário, personagens, coadjuvantes
-> e chefão (etapas 2–4, incluindo levas extras que surgirem). Construir o cenário com
-> revisão pendente obriga a retrofitar tudo quando as escolhas chegam (aconteceu na
-> fase 3: os 4 passes de pintura foram feitos com a leva ainda em revisão e os sprites
-> tiveram de ser amarrados por cima depois). Enquanto a revisão não fecha, adiantar as
-> etapas 5 e 6 (máquina de estados, vozes), que não dependem de imagem.
+> **PORTEIRA: o cenário é a ÚLTIMA coisa a ser construída.** As etapas 7 e 8
+> (espalhar imagens, alto-relevo, coadjuvantes) só podem começar quando **todos os
+> componentes da fase estiverem prontos**:
+>
+> 1. **Todas** as levas de imagens revisadas e escolhidas pelo usuário — cenário,
+>    personagens, coadjuvantes e chefão (etapas 2–4, incluindo levas extras);
+> 2. A máquina de estados do chefão fechada (etapa 5);
+> 3. **As vozes gravadas, normalizadas e instaladas (etapa 6)** — todas, não parte.
+>
+> Construir o cenário com componente pendente obriga a retrofitar tudo quando ele
+> chega (aconteceu na fase 3: os 4 passes de pintura foram feitos com a leva de
+> imagens ainda em revisão e os sprites tiveram de ser amarrados por cima depois).
+> Enquanto algo estiver pendente do usuário (revisão de imagens, gravação de voz),
+> a espera é dele — não adiantar o cenário para "ganhar tempo".
 
 - Fatiar folhas de itens em PNGs individuais (`img/faseN/itens/iRC.png`) e carregá-las sob demanda, repintando o cache uma vez quando a leva chega.
 - Pintar tudo no **cache do mapa** pelo gancho `pintarCache(cmx, T)` — custo zero por quadro. Só o que anima (água, fogo, portas, personagens) vai no `desenharCenario`.
