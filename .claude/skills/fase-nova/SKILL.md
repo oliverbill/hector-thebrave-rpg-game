@@ -220,6 +220,7 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 - **Item do chefe** vai à bolsa com popup e serve contra o chefe seguinte.
 - **Atalhos de teste**: `?piso=N`, `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena) e `?piso=N&transicao=1` (cai na vitória do piso, para rever a subida ao seguinte). Implementar os três na fase nova.
 - Escala de personagem por `escala` no informante; vozes e som de batida do chefe pelo `cfg` (`sons`, `somBatida`, `tremorPasso`).
+- **Pose da arma empunhada** (`desenharArmaNaMao`, fechada na fase 3): em repouso o cabo fica em **diagonal ao lado do olhar** — cabeça da lâmina erguida na altura do ombro, base descendo, com dois punhos no cabo e **nenhum braço desenhado** ligando corpo e arma. O deslocamento acompanha o olhar (`px + lado*tam*.42`); inverter esse sinal faz a diagonal atravessar o torso e a arma parecer colada. Durante o golpe, o arco por ângulo de sempre.
 
 ---
 
