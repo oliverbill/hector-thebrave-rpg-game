@@ -3043,36 +3043,23 @@ function desenharArmaNaMao(px, py, r){
     ctx.rotate(ang + cfgA.rot);
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);   // pivô na empunhadura, junto à mão
   } else {
-    /* em repouso: a arma fica ERGUIDA e À FRENTE do corpo, cabeça para cima e
-       lâmina para fora; as mãos não saem do cabo — empunhadura constante */
+    /* em repouso: empunhadura diagonal, como a referência do dono — a cabeça
+       do machado sobe do lado do olhar e o cabo cruza o corpo até o quadril
+       oposto; as duas mãos ficam fechadas no cabo o tempo todo */
     const virado = Math.cos(jog.angulo) < 0;
-    const lado = virado ? -1 : 1;
-    const wx = px + lado*tam*.5, wy = my - r*.1;           // onde a arma fica, à frente do corpo
-    /* braços esticados do ombro até o cabo: a arma é SEGURADA, não flutua */
-    const braco = (sx, sy, gx, gy) => {
-      ctx.lineCap = 'round';
-      ctx.strokeStyle = 'rgba(50,30,18,.85)';              // contorno
-      ctx.lineWidth = Math.max(2, r*.3);
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(gx, gy); ctx.stroke();
-      ctx.strokeStyle = '#a5714a';                         // a pele por dentro, no tom do sprite
-      ctx.lineWidth = Math.max(1.2, r*.18);
-      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(gx, gy); ctx.stroke();
-    };
-    braco(px + lado*r*.5,  my - tam*.46, wx - lado*r*.04, wy - alt*.17);   // do ombro à mão de cima
-    braco(px + lado*r*.35, my - tam*.32, wx - lado*r*.04, wy - alt*.015);  // do cotovelo à empunhadura
-    ctx.translate(wx, wy);
-    if(virado) ctx.scale(-1, 1);                           // a lâmina acompanha o olhar
-    ctx.rotate(-.09);                                      // leve inclinação, nada de tombar
+    ctx.translate(px - (virado ? -1 : 1)*tam*.16, my + tam*.02);  // a base do cabo, no quadril oposto
+    if(virado) ctx.scale(-1, 1);                           // espelha tudo com o olhar
+    ctx.rotate(.55);                                       // a diagonal atravessando o peito
     ctx.drawImage(im, -lar/2, -alt*cfgA.pivo, lar, alt);
-    /* as duas mãos fechadas no cabo, fechando os braços */
+    /* as duas mãos fechadas no cabo */
     const punho = (yy) => {
       ctx.fillStyle = '#c98f5e';
       ctx.beginPath(); ctx.ellipse(0, yy, r*.14, r*.11, .25, 0, TAU); ctx.fill();
       ctx.strokeStyle = 'rgba(60,30,15,.65)'; ctx.lineWidth = 1;
       ctx.stroke();
     };
-    punho(-alt*.015);                                      // a mão de baixo, na empunhadura
-    punho(-alt*.17);                                       // a mão de cima
+    punho(-alt*.04);                                       // a mão de baixo, na base do cabo
+    punho(-alt*.45);                                       // a mão de cima, no meio do cabo
   }
   ctx.restore();
 }
