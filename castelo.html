@@ -6226,6 +6226,164 @@ function desenharCirios(ox, oy){
 
 /* -- passe 1: paredes 3/4, sombras e lajes do chão (o esqueleto do relevo) -- */
 function pintarFunParedes(cmx, T){
+  const rndDe = (x,y) => hash(x*3.7, y*9.1);
+  const dentro3 = (x,y) => x>=0 && y>=0 && x<FUN.LARG && y<FUN.ALT;
+  const aberto = v => v === CHAO || v === CHAO2 || v === FOSSO || v === PONTE;
+  const ehParede = (x,y) => dentro3(x,y) && mapa[y*FUN.LARG + x] === PAREDE;
+  const ehAberto = (x,y) => dentro3(x,y) && aberto(mapa[y*FUN.LARG + x]);
+  const ehFosso  = (x,y) => dentro3(x,y) && mapa[y*FUN.LARG + x] === FOSSO;
+
+  /* ---- paredes em perspectiva 3/4, na pedra fria do funeral: onde a parede
+     olha para o sul (chão, ponte ou a água parada abaixo) desenha a FACE
+     frontal de tijolos úmidos; o resto é o TOPO do muro, pedra bruta ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(!ehParede(x,y)) continue;
+    if(!(ehAberto(x,y+1) || ehAberto(x,y-1) || ehAberto(x+1,y) || ehAberto(x-1,y)
+      || ehAberto(x+1,y+1) || ehAberto(x-1,y+1) || ehAberto(x+1,y-1) || ehAberto(x-1,y-1))) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x, y);
+
+    if(ehAberto(x, y+1)){
+      /* FACE frontal: três fiadas de tijolo cinza-azulado, úmidas */
+      cmx.fillStyle = '#4a4f63';
+      cmx.fillRect(px2, py2, T, T);
+      cmx.fillStyle = 'rgba(200,215,255,.12)';                 // luz fria pegando o alto da face
+      cmx.fillRect(px2, py2, T, T*.34);
+      cmx.fillStyle = 'rgba(6,8,16,.24)';                      // sombra na base
+      cmx.fillRect(px2, py2 + T*.66, T, T*.34);
+      // fiadas com juntas desencontradas
+      cmx.strokeStyle = 'rgba(10,12,22,.65)'; cmx.lineWidth = 1.8;
+      for(let f=1; f<3; f++){
+        cmx.beginPath(); cmx.moveTo(px2, py2 + f*T/3); cmx.lineTo(px2+T, py2 + f*T/3); cmx.stroke();
+      }
+      for(let f=0; f<3; f++){
+        const off = ((x + f) % 2)*T/4;
+        for(let j=0; j<3; j++){
+          const jx = px2 + off + j*T/2;
+          if(jx > px2 + 1 && jx < px2 + T - 1){
+            cmx.beginPath(); cmx.moveTo(jx, py2 + f*T/3); cmx.lineTo(jx, py2 + (f+1)*T/3); cmx.stroke();
+          }
+        }
+      }
+      // tijolo trocado aqui e ali (um mais pálido, um mais fundo)
+      if(h > .55){
+        cmx.fillStyle = h > .8 ? 'rgba(175,195,235,.14)' : 'rgba(4,6,12,.26)';
+        cmx.fillRect(px2 + ((h*4)|0)%2 * T/2, py2 + (((h*7)|0)%3)*T/3 + 1, T/2, T/3 - 2);
+      }
+      // escorrido de umidade descendo a face, aqui e ali
+      if(h > .62 && h < .78){
+        cmx.fillStyle = 'rgba(120,150,190,.10)';
+        cmx.fillRect(px2 + T*(.2 + h*.5), py2, T*.07, T*.86);
+      }
+      // rodapé de cantaria clara encostando no chão
+      cmx.fillStyle = '#7e8496';
+      cmx.fillRect(px2, py2 + T - T*.14, T, T*.14);
+      cmx.strokeStyle = 'rgba(12,14,24,.55)'; cmx.lineWidth = 1.3;
+      cmx.strokeRect(px2 + 1, py2 + T - T*.14, T*.5 - 1, T*.14);
+      cmx.strokeRect(px2 + T*.5, py2 + T - T*.14, T*.5 - 1, T*.14);
+      cmx.fillStyle = 'rgba(225,235,255,.22)';
+      cmx.fillRect(px2, py2 + T - T*.14, T, 1.6);
+    } else {
+      /* TOPO do muro: pedra bruta escura com pedregulhos arredondados */
+      cmx.fillStyle = '#23262f';
+      cmx.fillRect(px2, py2, T, T);
+      cmx.strokeStyle = 'rgba(6,8,14,.6)'; cmx.lineWidth = 1.5;
+      for(let k=0; k<3; k++){
+        const bx = px2 + T*(.2 + rndDe(x*3+k, y)*.6), by = py2 + T*(.2 + rndDe(x, y*3+k)*.6);
+        const br = T*(.14 + rndDe(x+k, y+k)*.12);
+        cmx.fillStyle = 'rgba(74,82,104,' + (.25 + rndDe(x-k, y)*.3) + ')';
+        cmx.beginPath(); cmx.ellipse(bx, by, br, br*.8, rndDe(x,y+k)*2, 0, TAU); cmx.fill();
+        cmx.stroke();
+      }
+      // beirada de cantaria quando o topo encosta em espaço aberto
+      cmx.fillStyle = '#7e8496';
+      if(ehAberto(x, y-1)) cmx.fillRect(px2, py2, T, T*.12);
+      if(ehAberto(x-1, y)) cmx.fillRect(px2, py2, T*.12, T);
+      if(ehAberto(x+1, y)) cmx.fillRect(px2 + T - T*.12, py2, T*.12, T);
+    }
+  }
+
+  /* sombra que a face projeta no chão (ou na água parada) logo abaixo — o relevo */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(!ehAberto(x,y) || !ehParede(x, y-1)) continue;
+    const g2 = cmx.createLinearGradient(0, y*T, 0, y*T + T*.5);
+    g2.addColorStop(0, 'rgba(0,0,0,.38)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+    cmx.fillStyle = g2;
+    cmx.fillRect(x*T, y*T, T, T*.5);
+  }
+
+  /* ---- lajões do CHAO: manchas de tom frio, lascas de canto e rachaduras ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(mapa[y*FUN.LARG + x] !== CHAO) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+7, y+3);
+    // manchas de tom (lajes que não são irmãs)
+    if(h > .55){
+      cmx.fillStyle = h > .8 ? 'rgba(225,232,250,.06)' : 'rgba(6,8,16,.10)';
+      cmx.fillRect(px2+2, py2+2, T-4, T-4);
+    }
+    // lasca no canto
+    if(h > .72){
+      cmx.fillStyle = 'rgba(6,8,16,.35)';
+      const c1 = [[px2,py2],[px2+T,py2],[px2,py2+T],[px2+T,py2+T]][(h*4)|0 % 4] || [px2,py2];
+      cmx.beginPath();
+      cmx.moveTo(c1[0], c1[1]);
+      cmx.lineTo(c1[0] + (c1[0]===px2? T*.22 : -T*.22), c1[1]);
+      cmx.lineTo(c1[0], c1[1] + (c1[1]===py2? T*.22 : -T*.22));
+      cmx.closePath(); cmx.fill();
+    }
+    // rachadura atravessando a laje
+    if(h > .9){
+      cmx.strokeStyle = 'rgba(6,8,16,.45)'; cmx.lineWidth = 1.6;
+      cmx.beginPath();
+      cmx.moveTo(px2 + T*.15, py2 + T*(.2 + h*.3));
+      cmx.lineTo(px2 + T*.5, py2 + T*.55);
+      cmx.lineTo(px2 + T*.62, py2 + T*.9);
+      cmx.stroke();
+    }
+  }
+
+  /* ---- CHAO2 = pedra molhada (mosaico da capela, terra da cova, escada de
+     chegada): juntas mais finas e um brilho úmido que anda de laje em laje ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    if(mapa[y*FUN.LARG + x] !== CHAO2) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+11, y+5);
+    // juntas finas
+    cmx.strokeStyle = 'rgba(10,12,22,.35)'; cmx.lineWidth = .9;
+    cmx.strokeRect(px2 + .5, py2 + .5, T - 1, T - 1);
+    // brilho úmido em manchas irregulares
+    if(h > .35){
+      cmx.fillStyle = 'rgba(160,190,230,.05)';
+      cmx.beginPath();
+      cmx.ellipse(px2 + T*(.25 + h*.5), py2 + T*(.3 + rndDe(x+3,y+9)*.4),
+                  T*(.22 + h*.2), T*(.14 + h*.14), h*2, 0, TAU);
+      cmx.fill();
+    }
+    // um reflexo fino onde a água escorreu
+    if(h > .82){
+      cmx.fillStyle = 'rgba(190,215,250,.08)';
+      cmx.fillRect(px2 + T*.18, py2 + T*(.5 + h*.3), T*.55, 1.4);
+    }
+  }
+
+  /* ---- musgo/limo à beira d'água: chão e ponte encostados no FOSSO ---- */
+  for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
+    const t2 = mapa[y*FUN.LARG + x];
+    if(t2 !== CHAO && t2 !== PONTE) continue;
+    if(!(ehFosso(x,y+1) || ehFosso(x,y-1) || ehFosso(x+1,y) || ehFosso(x-1,y))) continue;
+    const px2 = x*T, py2 = y*T, b = T*.16;
+    cmx.fillStyle = 'rgba(90,120,80,.18)';
+    if(ehFosso(x, y+1)) cmx.fillRect(px2, py2 + T - b, T, b);
+    if(ehFosso(x, y-1)) cmx.fillRect(px2, py2, T, b);
+    if(ehFosso(x-1, y)) cmx.fillRect(px2, py2, b, T);
+    if(ehFosso(x+1, y)) cmx.fillRect(px2 + T - b, py2, b, T);
+    // tufos de limo salpicados na beirada
+    const h = rndDe(x+5, y+13);
+    if(h > .5){
+      cmx.fillStyle = 'rgba(90,120,80,.22)';
+      cmx.beginPath();
+      cmx.arc(px2 + T*(.2 + h*.6), py2 + T*(ehFosso(x,y+1) ? .82 : .18), T*.07, 0, TAU);
+      cmx.fill();
+    }
+  }
 }
 
 /* -- passe 2: capela do velório + sala de preparação -- */
