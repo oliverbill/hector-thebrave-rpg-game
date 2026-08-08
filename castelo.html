@@ -6752,6 +6752,427 @@ function pintarFunOficinaColombario(cmx, T){
 
 /* -- passe 4: cripta alagada + salão + cova grande + quarto do Coveiro -- */
 function pintarFunCriptaSalao(cmx, T){
+  const rnd = (x,y) => hash(x*5.3, y*7.7);
+  const tf = (x,y) => (x>=0 && y>=0 && x<FUN.LARG && y<FUN.ALT) ? mapa[y*FUN.LARG + x] : PAREDE;
+
+  /* ================= 1. CRIPTA ALAGADA (x15..28, y32..42) =================
+     água parada pútrida por cima do tile de FOSSO, caixões meio afundados,
+     bisel na pedra das margens e as passarelas de tábua em alto-relevo */
+  const CR = {x1:15, y1:32, x2:28, y2:42};
+  const naAgua = (x,y) => x>=CR.x1 && x<=CR.x2 && y>=CR.y1 && y<=CR.y2 && tf(x,y) === FOSSO;
+
+  // um só gradiente radial para a lâmina d'água toda: verde-petróleo, sem azul
+  const cxA = (CR.x1 + CR.x2 + 1)*.5*T, cyA = (CR.y1 + CR.y2 + 1)*.5*T;
+  const gAgua = cmx.createRadialGradient(cxA, cyA, T*.6, cxA, cyA, (CR.x2 - CR.x1 + 1)*T*.62);
+  gAgua.addColorStop(0, '#17262a'); gAgua.addColorStop(1, '#0c1416');
+  for(let y=CR.y1; y<=CR.y2; y++) for(let x=CR.x1; x<=CR.x2; x++){
+    if(!naAgua(x,y)) continue;
+    const px = x*T, py = y*T, h = rnd(x,y);
+    cmx.fillStyle = gAgua; cmx.fillRect(px, py, T, T);
+    // limo boiando em manchas
+    if(h > .58){
+      cmx.fillStyle = 'rgba(46,72,58,' + (.05 + h*.08) + ')';
+      cmx.beginPath();
+      cmx.ellipse(px + T*h, py + T*(1 - h*.7), T*(.3 + h*.25), T*(.15 + h*.12), h*3, 0, TAU);
+      cmx.fill();
+    }
+    // réstia de reflexo na superfície parada
+    if(h > .28 && h < .48){
+      cmx.strokeStyle = 'rgba(120,150,150,.08)'; cmx.lineWidth = 1.2;
+      cmx.beginPath(); cmx.moveTo(px + T*.12, py + T*(.25 + h)); cmx.lineTo(px + T*.82, py + T*(.25 + h)); cmx.stroke();
+    }
+    // onde a pedra mergulha: a quina clara e o paredão molhado descendo
+    const ac = tf(x, y-1);
+    if(ac !== FOSSO && ac !== PONTE){
+      cmx.fillStyle = 'rgba(150,165,175,.35)'; cmx.fillRect(px, py, T, 2.2);
+      const gQ = cmx.createLinearGradient(0, py, 0, py + T*.5);
+      gQ.addColorStop(0, 'rgba(52,66,72,.6)'); gQ.addColorStop(1, 'rgba(52,66,72,0)');
+      cmx.fillStyle = gQ; cmx.fillRect(px, py + 2.2, T, T*.5);
+      if(h > .5){                                        // escorrido de limo na pedra
+        cmx.fillStyle = 'rgba(46,72,58,.28)';
+        cmx.fillRect(px + T*(.15 + h*.5), py + 2, T*.1, T*(.2 + h*.22));
+      }
+    }
+  }
+
+  // bisel escuro na aresta da pedra que cai para a água (a receita da cisterna)
+  for(let y=CR.y1-1; y<=CR.y2+1; y++) for(let x=CR.x1-1; x<=CR.x2+1; x++){
+    const v = tf(x,y);
+    if(v !== CHAO && v !== CHAO2) continue;
+    const px = x*T, py = y*T, bz = T*.18;
+    if(naAgua(x, y+1)){
+      cmx.fillStyle = 'rgba(205,220,225,.12)';
+      cmx.fillRect(px, py + T - bz - 1.6, T, 1.6);       // a quina pega luz antes de cair
+      cmx.fillStyle = 'rgba(9,16,19,.6)';
+      cmx.fillRect(px, py + T - bz, T, bz);
+    }
+    cmx.fillStyle = 'rgba(9,16,19,.55)';
+    if(naAgua(x+1, y)) cmx.fillRect(px + T - bz*.7, py, bz*.7, T);
+    if(naAgua(x-1, y)) cmx.fillRect(px, py, bz*.7, T);
+  }
+
+  // goteiras: círculos concêntricos discretos onde o teto pinga
+  [[18.5,38.2],[24.5,36.6],[20.8,41.6]].forEach(([x,y]) => {
+    const px = x*T, py = y*T;
+    cmx.strokeStyle = 'rgba(150,195,185,.15)'; cmx.lineWidth = 1.4;
+    for(let k=0; k<3; k++){
+      cmx.beginPath(); cmx.ellipse(px, py, T*(.13 + k*.16), T*(.08 + k*.11), 0, 0, TAU); cmx.stroke();
+    }
+    cmx.fillStyle = 'rgba(190,220,210,.2)';
+    cmx.beginPath(); cmx.arc(px, py, 1.5, 0, TAU); cmx.fill();
+  });
+
+  // caixões semi-submersos: a tampa quebrando a superfície, inclinada
+  const pCaixaoAgua = (x, y, ang) => {
+    const px = x*T, py = y*T;
+    cmx.save(); cmx.translate(px, py); cmx.rotate(ang);
+    // a ondulação clara que o caixão abre na água parada
+    cmx.strokeStyle = 'rgba(150,200,195,.34)'; cmx.lineWidth = 1.6;
+    cmx.beginPath(); cmx.ellipse(0, 0, T*.78, T*.42, 0, 0, TAU); cmx.stroke();
+    cmx.strokeStyle = 'rgba(150,200,195,.15)';
+    cmx.beginPath(); cmx.ellipse(0, 0, T*.96, T*.55, 0, 0, TAU); cmx.stroke();
+    // a tampa: hexágono de caixão em madeira escura
+    const w1 = T*.26, w2 = T*.34, w3 = T*.18, L = T*.62;
+    cmx.fillStyle = '#312417';
+    cmx.beginPath();
+    cmx.moveTo(-L, -w1); cmx.lineTo(-L*.25, -w2); cmx.lineTo(L, -w3);
+    cmx.lineTo(L, w3); cmx.lineTo(-L*.25, w2); cmx.lineTo(-L, w1);
+    cmx.closePath(); cmx.fill();
+    // o flanco que ainda sai da água pega a pouca luz que há
+    cmx.fillStyle = 'rgba(200,180,140,.24)';
+    cmx.beginPath();
+    cmx.moveTo(-L, -w1); cmx.lineTo(-L*.25, -w2); cmx.lineTo(L, -w3);
+    cmx.lineTo(L, -w3*.4); cmx.lineTo(-L*.25, -w2*.55); cmx.lineTo(-L, -w1*.5);
+    cmx.closePath(); cmx.fill();
+    // juntas das tábuas da tampa
+    cmx.strokeStyle = 'rgba(8,5,3,.55)'; cmx.lineWidth = 1.2;
+    cmx.beginPath(); cmx.moveTo(-L*.25, -w2); cmx.lineTo(-L*.25, w2); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(L*.4, -w3*1.15); cmx.lineTo(L*.4, w3*1.15); cmx.stroke();
+    // a ponta afundada: a água comendo a extremidade
+    cmx.fillStyle = 'rgba(14,22,24,.75)';
+    cmx.beginPath();
+    cmx.moveTo(L*.55, -w3*1.2); cmx.lineTo(L + 1.5, -w3); cmx.lineTo(L + 1.5, w3); cmx.lineTo(L*.55, w3*1.2);
+    cmx.closePath(); cmx.fill();
+    cmx.restore();
+  };
+  pCaixaoAgua(17.7, 36.2, -.32);
+  pCaixaoAgua(23.3, 35.2, .5);
+  pCaixaoAgua(25.7, 39.5, -.12);
+
+  /* passarelas PONTE em alto-relevo: tábuas no sentido do vão, pregos,
+     tábua faltando aqui e ali e a face lateral escura caindo para a água */
+  for(let y=CR.y1; y<=CR.y2; y++) for(let x=CR.x1; x<=CR.x2; x++){
+    if(tf(x,y) !== PONTE) continue;
+    const px = x*T, py = y*T, fB = hash(x*1.7, y*2.9);
+    const vert = tf(x, y-1) === PONTE || tf(x, y+1) === PONTE;
+    cmx.fillStyle = '#0a1214'; cmx.fillRect(px, py, T, T);   // a água nas frestas
+    const nB = 4, wB = T/nB;
+    for(let k=0; k<nB; k++){
+      const falta = fB > .78 && k === ((fB*13)|0) % nB;
+      const v2 = .66 + hash(vert ? x*7 + k : x*3, vert ? y*3 : y*7 + k)*.5;
+      const cor = 'rgb(' + Math.round(112*v2) + ',' + Math.round(94*v2) + ',' + Math.round(66*v2) + ')';
+      if(vert){
+        const bx = px + k*wB;
+        if(falta){                                       // a tábua que faltou: buraco escuro
+          cmx.fillStyle = cor;
+          cmx.fillRect(bx + 1, py, wB - 2, T*.2); cmx.fillRect(bx + 1, py + T*.78, wB - 2, T*.22);
+          cmx.fillStyle = 'rgba(5,9,10,.9)'; cmx.fillRect(bx + 1, py + T*.2, wB - 2, T*.58);
+          cmx.fillStyle = 'rgba(226,206,170,.18)';       // as pontas lascadas
+          cmx.fillRect(bx + 1, py + T*.18, wB - 2, 1.5);
+          cmx.fillRect(bx + 1, py + T*.78, wB - 2, 1.5);
+          continue;
+        }
+        cmx.fillStyle = cor; cmx.fillRect(bx + 1, py, wB - 2, T);
+        cmx.fillStyle = 'rgba(255,240,210,.07)'; cmx.fillRect(bx + 1, py, 1.6, T);
+        cmx.fillStyle = 'rgba(10,6,4,.25)'; cmx.fillRect(bx + wB - 2.4, py, 1.4, T);
+        if(hash(x + k, y*11) > .55){                     // veio da madeira
+          cmx.strokeStyle = 'rgba(30,20,12,.35)'; cmx.lineWidth = 1;
+          cmx.beginPath(); cmx.moveTo(bx + wB*.5, py + T*.12); cmx.lineTo(bx + wB*.4, py + T*.82); cmx.stroke();
+        }
+        cmx.fillStyle = '#191410';                       // pregos nas travessas
+        cmx.beginPath(); cmx.arc(bx + wB*.5, py + T*.14, 1.4, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(bx + wB*.5, py + T*.86, 1.4, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(230,235,240,.3)';
+        cmx.fillRect(bx + wB*.5 - .6, py + T*.14 - .6, 1, 1);
+      } else {
+        const by = py + k*wB;
+        if(falta){
+          cmx.fillStyle = cor;
+          cmx.fillRect(px, by + 1, T*.2, wB - 2); cmx.fillRect(px + T*.78, by + 1, T*.22, wB - 2);
+          cmx.fillStyle = 'rgba(5,9,10,.9)'; cmx.fillRect(px + T*.2, by + 1, T*.58, wB - 2);
+          cmx.fillStyle = 'rgba(226,206,170,.18)';
+          cmx.fillRect(px + T*.18, by + 1, 1.5, wB - 2);
+          cmx.fillRect(px + T*.78, by + 1, 1.5, wB - 2);
+          continue;
+        }
+        cmx.fillStyle = cor; cmx.fillRect(px, by + 1, T, wB - 2);
+        cmx.fillStyle = 'rgba(255,240,210,.07)'; cmx.fillRect(px, by + 1, T, 1.6);
+        cmx.fillStyle = 'rgba(10,6,4,.25)'; cmx.fillRect(px, by + wB - 2.4, T, 1.4);
+        cmx.fillStyle = '#191410';
+        cmx.beginPath(); cmx.arc(px + T*.14, by + wB*.5, 1.4, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(px + T*.86, by + wB*.5, 1.4, 0, TAU); cmx.fill();
+        cmx.fillStyle = 'rgba(230,235,240,.3)';
+        cmx.fillRect(px + T*.14 - .6, by + wB*.5 - .6, 1, 1);
+      }
+    }
+    // vigas de borda quando a passarela pende sobre a água
+    cmx.fillStyle = '#2e2114';
+    if(vert){
+      if(naAgua(x-1, y)){
+        cmx.fillRect(px, py, 3.4, T);
+        cmx.fillStyle = 'rgba(216,190,140,.3)'; cmx.fillRect(px + .8, py, 1.2, T);
+        cmx.fillStyle = '#2e2114';
+      }
+      if(naAgua(x+1, y)){
+        cmx.fillRect(px + T - 3.4, py, 3.4, T);
+        cmx.fillStyle = 'rgba(216,190,140,.3)'; cmx.fillRect(px + T - 2.2, py, 1.2, T);
+      }
+    } else if(naAgua(x, y-1)){
+      cmx.fillRect(px, py, T, 3.4);
+      cmx.fillStyle = 'rgba(216,190,140,.3)'; cmx.fillRect(px, py + .8, T, 1.2);
+    }
+    // face lateral escura na borda sul de cada trecho: o alto-relevo do estrado
+    if(naAgua(x, y+1)){
+      const fh = T*.22;
+      cmx.fillStyle = '#191108'; cmx.fillRect(px, py + T - fh, T, fh);
+      cmx.strokeStyle = 'rgba(0,0,0,.5)'; cmx.lineWidth = 1;
+      for(let k=1; k<nB; k++){
+        cmx.beginPath(); cmx.moveTo(px + k*wB, py + T - fh); cmx.lineTo(px + k*wB, py + T); cmx.stroke();
+      }
+      cmx.fillStyle = 'rgba(226,206,170,.14)'; cmx.fillRect(px, py + T - fh, T, 1.6);
+      cmx.fillStyle = 'rgba(6,10,11,.5)'; cmx.fillRect(px, py + T, T, 3);   // o reflexo na água
+    }
+  }
+
+  // véu de névoa clara em manchas, por cima de tudo na cripta
+  [[17.5,34.5],[25.8,37.5],[20.5,39.6],[23.5,34.1]].forEach(([x,y], i) => {
+    const px = x*T, py = y*T, r = T*(1.6 + (i%2)*.7);
+    const gN = cmx.createRadialGradient(px, py, 0, px, py, r);
+    gN.addColorStop(0, 'rgba(168,188,182,.09)'); gN.addColorStop(1, 'rgba(168,188,182,0)');
+    cmx.fillStyle = gN; cmx.beginPath(); cmx.arc(px, py, r, 0, TAU); cmx.fill();
+  });
+
+  /* ================= 2. SALÃO CENTRAL (x5..41, y20..23) =================
+     o caminho processional: lajes gastas no eixo e os dois sulcos
+     paralelos do arrasto de caixão, de ponta a ponta */
+  for(let y=21; y<=22; y++) for(let x=5; x<=41; x++){
+    if(tf(x,y) !== CHAO) continue;
+    const h = rnd(x + 11, y + 5);
+    cmx.fillStyle = 'rgba(14,13,20,' + (.12 + h*.10) + ')';
+    cmx.fillRect(x*T + 1, y*T + 1, T - 2, T - 2);
+    if(h > .7){                                          // laje polida pelo uso
+      cmx.fillStyle = 'rgba(205,212,228,.05)';
+      cmx.fillRect(x*T + 3, y*T + T*.55, T - 6, T*.3);
+    }
+  }
+  [21.72, 22.28].forEach((yl, si) => {
+    cmx.strokeStyle = 'rgba(8,7,12,.5)'; cmx.lineWidth = 2.6;
+    cmx.beginPath();
+    for(let x=5; x<=41; x++){
+      const yy = (yl + (hash(x*2.3, 31 + si*7) - .5)*.1)*T;
+      if(x === 5) cmx.moveTo((x + .15)*T, yy); else cmx.lineTo((x + .5)*T, yy);
+    }
+    cmx.stroke();
+    cmx.strokeStyle = 'rgba(205,215,230,.08)'; cmx.lineWidth = 1.4;   // a quina de baixo do sulco
+    cmx.beginPath();
+    for(let x=5; x<=41; x++){
+      const yy = (yl + (hash(x*2.3, 31 + si*7) - .5)*.1)*T + 2.2;
+      if(x === 5) cmx.moveTo((x + .15)*T, yy); else cmx.lineTo((x + .5)*T, yy);
+    }
+    cmx.stroke();
+  });
+  // goteiras do salão: poças pequenas com o anel da água caindo
+  [[9.4,20.6],[17.6,23.35],[27.5,20.5],[33.6,23.4]].forEach(([x,y]) => {
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(10,13,18,.55)';
+    cmx.beginPath(); cmx.ellipse(px, py, T*.24, T*.13, .3, 0, TAU); cmx.fill();
+    cmx.strokeStyle = 'rgba(170,190,205,.16)'; cmx.lineWidth = 1.3;
+    cmx.beginPath(); cmx.ellipse(px, py, T*.24, T*.13, .3, 0, TAU); cmx.stroke();
+    cmx.beginPath(); cmx.ellipse(px, py, T*.1, T*.055, .3, 0, TAU); cmx.stroke();
+  });
+
+  /* ============ 3. COVA GRANDE: a arena do Coveiro (x30..43, y4..16) ============
+     terra revolvida sobre a pedra, covas abertas com o monte de terra ao lado,
+     lápides tortas e o sulco circular de quem cava andando em roda */
+  for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
+    if(tf(x,y) !== CHAO2) continue;
+    const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
+    if(h > .3){                                          // terra revolvida em manchas miúdas
+      for(let k=0; k<3; k++){
+        const hx = hash(x*7 + k, y*5), hy = hash(x*5, y*7 + k);
+        cmx.fillStyle = 'rgba(58,51,46,' + (.14 + hx*.26) + ')';
+        cmx.beginPath();
+        cmx.ellipse(px + T*hx, py + T*hy, T*(.12 + hy*.18), T*(.08 + hx*.13), hx*5, 0, TAU);
+        cmx.fill();
+      }
+    }
+    if(h > .62){                                         // torrões escuros
+      cmx.fillStyle = 'rgba(24,20,16,.45)';
+      cmx.beginPath(); cmx.arc(px + T*(1 - h)*.9 + 2, py + T*h*.9, 1.4 + h*2, 0, TAU); cmx.fill();
+    }
+    if(h > .84){                                         // um risco de pá na terra
+      cmx.strokeStyle = 'rgba(20,17,14,.4)'; cmx.lineWidth = 1.6;
+      cmx.beginPath();
+      cmx.moveTo(px + T*.2, py + T*(h - .3)); cmx.lineTo(px + T*.85, py + T*(h - .22));
+      cmx.stroke();
+    }
+  }
+  // o sulco circular no centro da arena, com as pegadas em roda
+  const ccx = 37.2*T, ccy = 10.4*T, rC = T*2.05;
+  cmx.strokeStyle = 'rgba(14,12,16,.3)'; cmx.lineWidth = T*.16;
+  cmx.beginPath(); cmx.ellipse(ccx, ccy, rC, rC*.72, 0, 0, TAU); cmx.stroke();
+  cmx.strokeStyle = 'rgba(190,180,155,.1)'; cmx.lineWidth = 2;
+  cmx.beginPath(); cmx.ellipse(ccx, ccy, rC + T*.1, rC*.72 + T*.1, 0, .3, 5.6); cmx.stroke();
+  for(let k=0; k<10; k++){
+    const a = k*TAU/10 + .25, fx = ccx + Math.cos(a)*rC, fy = ccy + Math.sin(a)*rC*.72;
+    cmx.fillStyle = 'rgba(16,13,11,.4)';
+    cmx.beginPath(); cmx.ellipse(fx, fy, T*.09, T*.05, a + Math.PI/2, 0, TAU); cmx.fill();
+    cmx.beginPath();
+    cmx.ellipse(fx + Math.cos(a + .5)*T*.16, fy + Math.sin(a + .5)*T*.12, T*.09, T*.05, a + Math.PI/2, 0, TAU);
+    cmx.fill();
+  }
+  // covas abertas: o buraco fundo e a pá de terra ao lado, com face iluminada
+  const pCova = (x, y, ang, lado) => {
+    const px = x*T, py = y*T, w = T*1.55, hh = T*.8;
+    cmx.save(); cmx.translate(px, py); cmx.rotate(ang);
+    cmx.fillStyle = 'rgba(90,80,66,.5)';                 // o rebordo de terra remexida
+    cmx.fillRect(-w/2 - 3, -hh/2 - 3, w + 6, hh + 6);
+    cmx.fillStyle = 'rgba(198,186,158,.22)';             // a quina norte do buraco pega luz
+    cmx.fillRect(-w/2 - 2, -hh/2 - 2.6, w + 4, 2);
+    const gC = cmx.createLinearGradient(0, -hh/2, 0, hh/2);
+    gC.addColorStop(0, '#050607'); gC.addColorStop(1, '#181512');
+    cmx.fillStyle = gC; cmx.fillRect(-w/2, -hh/2, w, hh);
+    cmx.fillStyle = 'rgba(138,124,102,.5)';              // a parede interna que pega luz
+    cmx.fillRect(-w/2, hh/2 - 4.4, w, 4.4);
+    cmx.fillStyle = 'rgba(0,0,0,.5)'; cmx.fillRect(-w/2, -hh/2, w, 3);
+    cmx.restore();
+    const mx = px + lado*(w/2 + T*.5), my = py + T*.05;  // o monte de terra
+    cmx.fillStyle = 'rgba(0,0,0,.35)';
+    cmx.beginPath(); cmx.ellipse(mx + T*.06, my + T*.17, T*.46, T*.17, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = '#544838';
+    cmx.beginPath(); cmx.ellipse(mx, my, T*.4, T*.28, 0, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(200,185,150,.28)';             // a face do monte que a luz alcança
+    cmx.beginPath(); cmx.ellipse(mx - T*.09, my - T*.1, T*.26, T*.14, -.4, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(16,12,10,.4)';                 // o pé do monte, na sombra
+    cmx.beginPath(); cmx.ellipse(mx + T*.06, my + T*.14, T*.3, T*.1, .2, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(20,16,12,.5)';
+    for(let k=0; k<5; k++){
+      const hk = hash(x*9 + k, y*4 + k);
+      cmx.beginPath();
+      cmx.arc(mx + (hk - .5)*T*.7, my + (hash(x + k, y*7) - .5)*T*.4, 1.6 + hk*1.8, 0, TAU);
+      cmx.fill();
+    }
+  };
+  pCova(33.5, 6.3, -.07, 1);
+  pCova(39.8, 7.9, .05, -1);
+  pCova(33.8, 12.8, .09, 1);
+  pCova(41.2, 13.6, -.04, 1);
+  // lápides toscas, tortas, com o pé enterrado na terra
+  const pLapide = (x, y, ang) => {
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(0,0,0,.4)';                    // a sombra no chão
+    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.34, T*.34, T*.11, 0, 0, TAU); cmx.fill();
+    cmx.save(); cmx.translate(px, py + T*.3); cmx.rotate(ang);
+    const w = T*.44, hL = T*.78;
+    cmx.fillStyle = '#565c6e';
+    cmx.beginPath();
+    cmx.moveTo(-w/2, 0); cmx.lineTo(-w/2, -hL + w/2);
+    cmx.arc(0, -hL + w/2, w/2, Math.PI, 0);
+    cmx.lineTo(w/2, 0); cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(10,8,14,.35)';                 // o flanco na sombra
+    cmx.fillRect(w/2 - w*.22, -hL + w/2, w*.22, hL - w/2);
+    cmx.strokeStyle = 'rgba(215,225,240,.3)'; cmx.lineWidth = 2;   // o topo pega luz
+    cmx.beginPath(); cmx.arc(0, -hL + w/2, w/2 - 1, Math.PI*1.05, Math.PI*1.8); cmx.stroke();
+    cmx.strokeStyle = 'rgba(14,12,18,.5)'; cmx.lineWidth = 1.4;    // gravação tosca
+    cmx.beginPath(); cmx.moveTo(-w*.24, -hL*.52); cmx.lineTo(w*.2, -hL*.52); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(-w*.2, -hL*.36); cmx.lineTo(w*.14, -hL*.36); cmx.stroke();
+    cmx.fillStyle = '#3a332e';                           // a terra segurando o pé
+    cmx.beginPath(); cmx.ellipse(0, 0, w*.62, T*.09, 0, 0, TAU); cmx.fill();
+    cmx.restore();
+  };
+  pLapide(35.2, 5.2, -.14);
+  pLapide(41.8, 10.6, .11);
+
+  /* ============ 4. ESCADA DE CHEGADA (x36..43, y48..54) ============
+     degraus largos subindo do piso 2: linha de sombra no alto de cada
+     fiada, rodapé claro na quina e o fundo do vão mais escuro */
+  for(let y=48; y<=54; y++) for(let x=36; x<=43; x++){
+    if(tf(x,y) !== CHAO2) continue;
+    const px = x*T, py = y*T;
+    cmx.fillStyle = 'rgba(4,5,9,' + ((y - 48)*.035) + ')';   // desce para o escuro
+    cmx.fillRect(px, py, T, T);
+    const gD = cmx.createLinearGradient(0, py, 0, py + T*.42);
+    gD.addColorStop(0, 'rgba(0,0,0,.34)'); gD.addColorStop(1, 'rgba(0,0,0,0)');
+    cmx.fillStyle = gD; cmx.fillRect(px, py, T, T*.42);
+    cmx.fillStyle = 'rgba(225,230,245,.13)';             // o rodapé claro da quina
+    cmx.fillRect(px, py + T - 2.4, T, 2.4);
+    if(x >= 38 && x <= 41){                              // o desgaste por onde todos pisam
+      cmx.fillStyle = 'rgba(0,0,0,.08)';
+      cmx.fillRect(px + 2, py + T*.3, T - 4, T*.45);
+    }
+  }
+
+  /* ============ 5. QUARTO DO COVEIRO (x38..43, y26..30) ============
+     tapete surrado, a pá encostada na parede com seus arranhões
+     e a terra que ele traz nas botas */
+  const rx = 38.75*T, ry = 27*T, rw = 4.6*T, rh = 2.55*T;
+  cmx.fillStyle = 'rgba(58,34,32,.85)'; cmx.fillRect(rx, ry, rw, rh);
+  cmx.fillStyle = 'rgba(110,62,50,.25)'; cmx.fillRect(rx + 2, ry + 2, rw - 4, rh - 4);
+  cmx.strokeStyle = 'rgba(24,14,14,.5)'; cmx.lineWidth = 1;   // a trama do tecido
+  for(let k=1; k<8; k++){
+    cmx.beginPath(); cmx.moveTo(rx + k*rw/8, ry + 3); cmx.lineTo(rx + k*rw/8, ry + rh - 3); cmx.stroke();
+  }
+  cmx.strokeStyle = 'rgba(140,96,70,.5)'; cmx.lineWidth = 2;
+  cmx.strokeRect(rx + 3, ry + 3, rw - 6, rh - 6);
+  cmx.strokeStyle = 'rgba(30,16,16,.45)'; cmx.lineWidth = 1.4;
+  cmx.strokeRect(rx + 7, ry + 7, rw - 14, rh - 14);
+  for(let k=0; k<9; k++){                                // puídos e buracos
+    const h1 = hash(k*3.1, 11.7), h2 = hash(7.3, k*5.9);
+    if(h1 < .35) continue;
+    cmx.fillStyle = h1 > .75 ? 'rgba(10,8,10,.5)' : 'rgba(52,58,72,.35)';
+    cmx.beginPath();
+    cmx.ellipse(rx + h1*rw, ry + h2*rh, T*(.06 + h2*.1), T*(.04 + h1*.06), h1*3, 0, TAU);
+    cmx.fill();
+  }
+  cmx.strokeStyle = 'rgba(120,80,60,.4)'; cmx.lineWidth = 1.2;   // as franjas gastas
+  for(let k=0; k<10; k++){
+    const fy2 = ry + 4 + k*(rh - 8)/9;
+    cmx.beginPath(); cmx.moveTo(rx, fy2); cmx.lineTo(rx - 3.5, fy2 + 1.2); cmx.stroke();
+    cmx.beginPath(); cmx.moveTo(rx + rw, fy2); cmx.lineTo(rx + rw + 3.5, fy2 + 1.2); cmx.stroke();
+  }
+  // os arranhões da pá na parede, de encostar todo dia no mesmo lugar
+  cmx.strokeStyle = 'rgba(16,12,10,.4)'; cmx.lineWidth = 2;
+  for(let k=0; k<3; k++){
+    cmx.beginPath();
+    cmx.moveTo(42.15*T + k*4, 25.35*T); cmx.lineTo(42.3*T + k*4, 25.95*T);
+    cmx.stroke();
+  }
+  // a pá, encostada onde sempre esteve
+  cmx.fillStyle = 'rgba(0,0,0,.35)';
+  cmx.beginPath(); cmx.ellipse(42.55*T, 26.55*T, T*.3, T*.09, 0, 0, TAU); cmx.fill();
+  cmx.strokeStyle = '#6d5638'; cmx.lineWidth = Math.max(2.5, T*.07);
+  cmx.beginPath(); cmx.moveTo(42.2*T, 25.3*T); cmx.lineTo(42.55*T, 26.45*T); cmx.stroke();
+  cmx.strokeStyle = 'rgba(240,220,180,.25)'; cmx.lineWidth = 1.2;
+  cmx.beginPath(); cmx.moveTo(42.17*T, 25.32*T); cmx.lineTo(42.5*T, 26.4*T); cmx.stroke();
+  cmx.fillStyle = '#3f464f';
+  cmx.beginPath();
+  cmx.moveTo(42.4*T, 26.35*T); cmx.lineTo(42.75*T, 26.42*T);
+  cmx.lineTo(42.68*T, 26.72*T); cmx.lineTo(42.42*T, 26.66*T);
+  cmx.closePath(); cmx.fill();
+  cmx.fillStyle = 'rgba(200,215,230,.28)';
+  cmx.fillRect(42.42*T, 26.38*T, T*.22, 1.8);
+  // a terra caída no chão, do quarto até a porta
+  [[40.7,25.7],[41.2,26.2],[39.3,28.8],[42.2,29.2],[40.2,27]].forEach(([x,y]) => {
+    const h = hash(x*3.3, y*5.1);
+    cmx.fillStyle = 'rgba(58,51,46,' + (.35 + h*.3) + ')';
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, T*(.16 + h*.14), T*(.09 + h*.08), h*3, 0, TAU); cmx.fill();
+    cmx.fillStyle = 'rgba(20,16,12,.5)';
+    for(let k=0; k<3; k++){
+      cmx.beginPath();
+      cmx.arc(x*T + (hash(x + k, y) - .5)*T*.5, y*T + (hash(x, y + k) - .5)*T*.3, 1.3, 0, TAU);
+      cmx.fill();
+    }
+  });
 }
 
 function pintarFuneralCache(cmx, T){
