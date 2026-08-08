@@ -1047,17 +1047,36 @@ function sDano(){ sDorJog(); }
 
 /* efeitos em arquivo (mp3): clones para sobrepor golpes rápidos; cai na síntese se falhar */
 const sfxCache = {};
+/* efeitos em curso: enquanto alguém fala, o mundo inteiro se abaixa — inclusive
+   o grito que já estava no ar quando a legenda abriu (um grito de vulto dura
+   uns 2,5s e cobria a voz do Sacristão do começo ao fim) */
+const sfxVivos = [];
+const SFX_DUCK = .16;
 function tocarSfx(url, vol, reserva){
   try{
     if(!sfxCache[url]){ sfxCache[url] = new Audio(url); sfxCache[url].preload = 'auto'; }
     const a = sfxCache[url].cloneNode();
-    /* enquanto alguém fala, o resto do mundo se abaixa: um grito de vulto em
-       volume cheio por cima da legenda cobria a voz do personagem */
-    const duck = dialogo ? .18 : 1;
-    a.volume = Math.min(1, (vol != null ? vol : 1) * duck);
+    const base = vol != null ? vol : 1;
+    a.volume = Math.min(1, base*(dialogo ? SFX_DUCK : 1));
+    const reg = {a, base};
+    sfxVivos.push(reg);
+    const solta = () => { const i = sfxVivos.indexOf(reg); if(i >= 0) sfxVivos.splice(i, 1); };
+    a.addEventListener('ended', solta, {once:true});
+    a.addEventListener('error', solta, {once:true});
     const p = a.play();
-    if(p && p.catch) p.catch(() => { if(reserva) reserva(); });
+    if(p && p.catch) p.catch(() => { solta(); if(reserva) reserva(); });
   }catch(e){ if(reserva) reserva(); }
+}
+/* roda a cada quadro (mesmo com o jogo pausado pela fala) */
+function atualizarDuckSfx(){
+  if(!sfxVivos.length) return;
+  const f = dialogo ? SFX_DUCK : 1;
+  for(let i = sfxVivos.length - 1; i >= 0; i--){
+    const r = sfxVivos[i];
+    if(r.a.ended || r.a.paused){ sfxVivos.splice(i, 1); continue; }
+    const alvo = Math.min(1, r.base*f);
+    if(Math.abs(r.a.volume - alvo) > .02) r.a.volume = alvo;
+  }
 }
 const SFX_CLASH = 'audio/fase1/espada-clash.mp3';   // as lâminas se encontram
 const SFX_CORTE = 'audio/fase1/espada-corte.mp3';   // a lâmina acha carne
@@ -2443,6 +2462,7 @@ function atualizar(dt){
   /* os ambientes fundem mesmo com o jogo pausado: é o diálogo (que pausa tudo)
      que mais precisa do ducking — congelar aqui deixava os ajudantes gritando */
   atualizarAmbientes(dt);
+  atualizarDuckSfx();                 // o ducking também vale para o que já estava tocando
   if(!jog || etapa === 'menu' || pausado || !vivo) return;
   if(atualizarVoo(dt)){
     camX += (jog.x - camX)*Math.min(1, dt*7);      // a câmera acompanha o voo
