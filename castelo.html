@@ -8019,15 +8019,15 @@ const PISO_FUNERAL = {
       {x:8.5,  y:47.5}, {x:24.5, y:51.5},     // colombário
       {x:33.5, y:22.5}                        // guarda o caminho da cova, longe da soleira
     ]);
+    /* uma única zona de luz que morre: o cômodo do Sacristão, no fundo leste
+       do colombário — os vultos só se erguem lá (pedido do dono: fora da
+       carpintaria e do colombário oeste) */
     criarZonasLuz([
-      {x:4,  y:45, larg:14, alt:9, claroT:5, escuroT:4, fase:0,   grito:'audio/fase3/sons/grito-vulto-1.mp3'},
-      {x:18, y:45, larg:16, alt:9, claroT:6, escuroT:4, fase:3,   grito:'audio/fase3/sons/grito-vulto-2.mp3'},
-      {x:3,  y:37, larg:9,  alt:5, claroT:7, escuroT:3.5, fase:6, grito:'audio/fase3/sons/grito-vulto-1.mp3'}
+      {x:18, y:45, larg:16, alt:9, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3'}
     ]);
     criarVultos([
-      {x:8,  y:49, zona:0}, {x:13, y:51, zona:0},
-      {x:22, y:48, zona:1}, {x:30, y:51, zona:1},
-      {x:6,  y:39, zona:2}
+      {x:22, y:48, zona:0}, {x:30, y:51, zona:0},
+      {x:25.5, y:51.5, zona:0}, {x:19.5, y:48.5, zona:0}
     ]);
     /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
