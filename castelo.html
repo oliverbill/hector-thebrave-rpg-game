@@ -6662,7 +6662,7 @@ const COMODOS_FUN = [
   {x1:5,  y1:20, x2:41, y2:23, nome:'O salão dos enterros',  sub:'os caixões passam por aqui, arrastados'},
   {x1:3,  y1:31, x2:11, y2:41, nome:'A oficina de caixões',  sub:'a tábua bruta e o caixão pronto dividem o mesmo chão'},
   {x1:12.5, y1:30.5, x2:31, y2:43, nome:'A cripta alagada',  sub:'água parada — pise só nas passarelas'},
-  {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de nichos; o Sacristão está no fundo'},
+  {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de pedra; o Sacristão reza junto à parede de nichos'},
   {x1:38, y1:26, x2:43, y2:30, nome:'O quarto do Coveiro',   sub:'ele dorme ao lado da pá'},
   {x1:29, y1:2,  x2:44, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'},
   {x1:36, y1:48, x2:43, y2:54, nome:'A escada de chegada',  sub:'a câmara de carnes ficou lá atrás'}
@@ -9162,7 +9162,7 @@ const PISO_FUNERAL = {
       retrato:'img/fase3/velante-sacristao.png',
       voz:{pitch:.6, rate:.85, genero:'m',
            audios:['audio/fase3/vozes/sacristao-1.mp3','audio/fase3/vozes/sacristao-2.mp3','audio/fase3/vozes/sacristao-3.mp3']},
-      x:31.5, y:52.2,      // no fundo do colombário — o difícil de achar
+      x:25.2, y:45.7,      // ao lado da parede de nichos, que vai de x19,5 a x24,1
       falas:[
         'Shh... fala baixo. Aqui cada nome tem seu nicho... e alguns ainda respondem quando eu rezo.',
         'Eu acendo as velas, elas apagam. Acendo de novo. Alguém sopra... e não é o vento.',
@@ -9291,7 +9291,7 @@ const PISO_FUNERAL = {
       {x:11.5, y:46.5, zona:0}, {x:14,  y:49.5, zona:0},  // miolo oeste
       {x:17,  y:51.5, zona:0},                            // o miolo, na fileira do fundo
       {x:19.5, y:48.5, zona:0}, {x:22, y:48, zona:0},     // metade leste (as de antes)
-      {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0}   // o fundo, onde reza o Sacristão
+      {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0}   // o fundo do labirinto
     ]);
     /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');

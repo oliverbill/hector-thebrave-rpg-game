@@ -64,7 +64,7 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 
 | # | Requisito | Origem |
 |---|---|---|
-| F3-RF-06 | Três velantes: **O Carpinteiro de Caixões** (chave `rastro`, na oficina — mede as pessoas com o olhar), **A Lavadeira dos Mortos** (chave `lanterna`, na sala de preparação) e **O Sacristão** (chave `mergulhos`, no fundo do colombário — o difícil de achar) | questionário 06/08 — *"Carpinteiro, Lavadeira e Sacristão"* |
+| F3-RF-06 | Três velantes: **O Carpinteiro de Caixões** (chave `rastro`, na oficina — mede as pessoas com o olhar), **A Lavadeira dos Mortos** (chave `lanterna`, na sala de preparação) e **O Sacristão** (chave `mergulhos`, ~~no fundo do colombário~~ **ao lado da parede de nichos**, em 25,2/45,7 — mudou em 09/08 a pedido do dono) | questionário 06/08 + pedido do dono 09/08 |
 | F3-RF-07 | Retratos e sprites do Pinterest (`testes/pinterest.py`), PNG sem fundo, revisados pelo usuário antes de entrar; escala 1.5× | processo /fase-nova |
 
 
@@ -139,7 +139,7 @@ RNF-01 a RNF-05 do template. O piso 3 não pode regredir os pisos 1–2 (o teste
 
 O que entrou no código e depois saiu. Registrado para não voltar por engano.
 
-**1. Três zonas de luz cíclica → uma só.** A construção começou com o escuro descendo em três trechos: o **depósito da carpintaria** (hoje o lado sul da oficina, §5.6), o **colombário oeste** e o cômodo do Sacristão. Ficou cansativo e espalhava o susto. Por pedido do dono, sobrou **uma zona só** — o fundo leste do colombário, onde o Sacristão reza (`x:18, y:45, 16×9`, 6 s de claro / 4 s de escuro). Os **4 vultos vivem todos nela**; fora dali, o piso não tem vulto nenhum. (commit `bac7e58`)
+**1. Três zonas de luz cíclica → uma só.** A construção começou com o escuro descendo em três trechos: o **depósito da carpintaria** (hoje o lado sul da oficina, §5.6), o **colombário oeste** e o cômodo do Sacristão. Ficou cansativo e espalhava o susto. Por pedido do dono, sobrou **uma zona só** — o fundo leste do colombário, onde o Sacristão reza (`x:18, y:45, 16×9`, 6 s de claro / 4 s de escuro). Os **4 vultos vivem todos nela**; fora dali, o piso não tem vulto nenhum. (commit `bac7e58`) — **em 09/08 o dono voltou atrás na metade**: a zona única cresceu para o colombário inteiro e virou 9 vultos (F3-RF-03), e o Sacristão saiu do fundo para o lado da parede de nichos.
 
 **2. As ondas e os riscos animados da água da cripta → só as goteiras e o que boia.** A primeira versão da cripta viva tinha ondulação na superfície inteira e riscos de reflexo correndo pela lâmina. Ficou parecendo tecido, não água parada. Saiu a ondulação primeiro (`87a8d35`), depois saíram os riscos (`11ede2e`). O que ficou: **5 goteiras** pingando em anéis que nascem e somem, **6 objetos boiando** (3 caixões, 3 caixotes) com rastro elíptico próprio, e o **reflexo das velas acesas** escorrendo para dentro d'água. O bailado dos boiantes teve a velocidade **dobrada** (`3b83276`) — no ritmo original ninguém percebia que se mexiam.
 

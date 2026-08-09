@@ -78,7 +78,7 @@ const PISOS = [
     alvos: [
       ['O Carpinteiro de Caixões (5,33)', 5, 33, 'fala'],
       ['A Lavadeira dos Mortos (25,7)', 25, 7, 'fala'],
-      ['O Sacristão (31,52)', 31, 52, 'fala'],
+      ['O Sacristão (25,45)', 25, 45, 'fala'],
       ['capela — mosaico (9,10)', 9, 10, 'alcanca'],
       ['preparação dos corpos (23,9)', 23, 9, 'alcanca'],
       ['oficina de caixões (5,33)', 5, 33, 'alcanca'],
