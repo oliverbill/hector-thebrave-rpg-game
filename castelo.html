@@ -6756,9 +6756,11 @@ function construirFuneral(){
     if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
     if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
   }
-  /* as duas entradas do colombário */
+  /* a ÚNICA entrada do colombário: a descida a oeste, pela oficina.
+     A boca do centro (x16..17, y43..44), que caía da margem sul da cripta
+     direto nos nichos, foi murada — a margem sul acaba em pedra, e quem
+     quiser os nichos volta e desce pela carpintaria */
   cavar(5,42,6,44);             // oeste: desce do depósito
-  cavar(16,43,17,44);           // centro: desce da margem sul da cripta
 
   /* ---- escada de chegada (vinda das cozinhas), canto sudeste ---- */
   cavar(36,48,43,54,CHAO2);
@@ -9398,7 +9400,7 @@ const PISO_FUNERAL = {
     criarVultos([
       {x:5,  y:46,   zona:0}, {x:8.5,  y:51.5, zona:0},   // labirinto oeste
       {x:11.5, y:46.5, zona:0}, {x:14,  y:49.5, zona:0},  // miolo oeste
-      {x:17,  y:51.5, zona:0},                            // a boca da descida da cripta
+      {x:17,  y:51.5, zona:0},                            // o miolo, na fileira do fundo
       {x:19.5, y:48.5, zona:0}, {x:22, y:48, zona:0},     // metade leste (as de antes)
       {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0}   // o fundo, onde reza o Sacristão
     ]);
