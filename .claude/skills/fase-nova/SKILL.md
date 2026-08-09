@@ -1,6 +1,6 @@
 ---
 name: fase-nova
-description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta — questionário que preenche o faseN.prd, busca de imagens de cenário/personagens/chefe no Pinterest para o usuário revisar, máquina de estados inédita para o chefão, chão de cor e forma inéditas (nunca repetir entre fases), gravação das vozes uma a uma, montagem do cenário em alto-relevo com coadjuvantes em cômodos inacessíveis, e herança de tudo que a fase anterior já resolveu. Usar quando o usuário pedir para criar/começar uma fase nova, o piso N, ou invocar /fase-nova.
+description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta — questionário que preenche o faseN.prd, busca de imagens de cenário/personagens/chefe no Pinterest para o usuário revisar, máquina de estados inédita para o chefão, chão de cor e forma inéditas e itens inéditos (nunca repetir entre fases), gravação das vozes uma a uma, montagem do cenário em alto-relevo com coadjuvantes em cômodos inacessíveis, e herança de tudo que a fase anterior já resolveu. Usar quando o usuário pedir para criar/começar uma fase nova, o piso N, ou invocar /fase-nova.
 ---
 
 # Criar uma fase nova
@@ -46,9 +46,9 @@ Fazer as perguntas com **AskUserQuestion**, em blocos de até 4, sempre com opç
 - *As 4 tarefas do HUD*.
 - *Ponto de retorno após a morte*.
 
-**Bloco 4 — itens e combate (§3.4):**
+**Bloco 4 — itens e combate (§3.4)** — todos **inéditos**, sem repetir fase anterior (etapa 1.6):
 - *Consumível de cura* da fase (o "pão e caldo" desta) e percentual.
-- *Inimigo comum* — reaproveitar ratazanas/baratas ou criar novo.
+- *Inimigo comum* — **novo**, nunca as ratazanas ou baratas de novo; herda-se o comportamento, não o bicho.
 - **HP e ataque de CADA ameaça/inimigo** — perguntar explicitamente, um a um (obstáculo cíclico incluído), com faixas de referência das fases prontas nas opções: ratazana 18 HP/mordida 6 · barata 34 HP/mordida 9 · espinho e labareda ~9-11 de dano por janela. As respostas entram no PRD como números oficiais (sem ⚠).
 - *Cura da arena* (o análogo dos esparadrapos/caldos), 25%.
 
@@ -83,6 +83,32 @@ Como não repetir de verdade:
 - Não vale herdar o `pintarCache` da fase anterior e trocar só as cores — copiar o passe de laje é copiar a forma. O passe de paredes 3/4 e de sombras, esse sim, se herda (é gramática do jogo, não identidade do piso).
 
 Perguntar a cor e a forma ao usuário com **AskUserQuestion** no Bloco 2 do questionário (mundo), com 3 opções concretas derivadas do tema + Outro, e já mostrando na descrição o que cada fase anterior usou. As respostas entram no PRD (§3.1) como a paleta oficial do piso.
+
+---
+
+## 1.6. Itens inéditos: nunca repetir um item de uma fase na outra
+
+**Regra dura, irmã da 1.5: nenhum item de uma fase anterior reaparece na fase nova.** O que o jogador pega, come, quebra ou encontra pelo chão é a identidade do andar tanto quanto a laje — encontrar de novo o pão da cozinha na cripta apaga a viagem. Cada piso inventa os seus.
+
+Vale para **todas** as famílias de item, não só a cura:
+
+| Família | Piso 1 | Piso 2 | Piso 3 |
+|---|---|---|---|
+| Cura espalhada (15%, `Q`) | trapos | pão e caldo | frascos de água benta |
+| Cura da arena (25%, por tentativa) | esparadrapos nos cantos da areia | postas de carne nos cantos da câmara | círios acesos nos cantos da cova |
+| Inimigo comum | ratazanas (18 HP / mordida 6) | baratas (34 HP / mordida 9) | vultos no escuro (45 HP / mordida 9) e mãos dos mortos (25 HP) |
+| Obstáculo cíclico | espinhos do chão | labaredas dos fornos | mãos que agarram + velas que apagam |
+| Mobília e adereços | correntes, braseiros, grades de cela, palha | fornos, mesas de talho, prateleiras, barris, tonel de cobre, ganchos de carne | caixões, esquife, lápides, nichos do colombário, coroas de flores, castiçais, teias |
+
+Como não repetir de verdade:
+
+- **Trocar o objeto, não o rótulo.** "Pão" virar "broa" é o mesmo item com outro nome. O item novo tem de ter **arte própria** (PNG recortado na etapa 2), som próprio ao pegar e um motivo temático para estar naquele piso.
+- **A única exceção são os itens de bolsa herdados** — machado do Gladiador, facão, Avental de Aço. Esses **têm** de atravessar as fases: é o fio que liga um chefe ao seguinte (etapa 9). Item de bolsa é o oposto da regra; item de chão obedece a ela.
+- **O inimigo comum é sempre novo.** Nada de reaproveitar ratazana ou barata "porque já está pronta" — herdar o *comportamento* (perseguir, morder em janela fixa) é certo; herdar o *bicho* não.
+- **Mobília também conta**: o cômodo novo se mobilia com peças do tema dele. Reutilizar o barril da adega no colombário é encher o piso novo com sobra do anterior.
+- **Limpeza anti-vazamento no `aoIniciar`**: zerar explicitamente os itens de todos os pisos anteriores antes de montar o piso novo — a fase 3 zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas e os ajudantes de cozinha, e repovoa as portas internas com as do próprio piso. Sem isso, item de fase velha ressurge no andar novo (é bug, não herança). A lista cresce a cada fase: acrescentar a do piso anterior inteira.
+
+No questionário (Bloco 4), perguntar **cada família** com AskUserQuestion, mostrando nas descrições o que cada fase já usou, e nunca oferecer "reaproveitar o da fase anterior" como opção. As respostas entram no PRD (§3.4) com nome, arte e percentual.
 
 ---
 
@@ -270,11 +296,12 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 2. **Geometria**: `node testes/geometria.js` — flood-fill do spawn em todos os pisos. Acrescentar o piso novo ao array `PISOS` do teste com os alvos (`fala` para NPC, que pode estar atrás de grade; `alcanca` para região; `anda` + `selado` para a arena do chefe). O teste sai com código 1 se algo quebrar.
 3. **Navegador headless**: carregar `?piso=N`, checar `console --errors` vazio e tirar screenshots das regiões novas — olhar as imagens, não só o log.
 4. **Chão inédito**: pôr lado a lado um screenshot do chão da fase nova e o de cada fase anterior — cor e forma têm de ser reconhecivelmente outras (etapa 1.5). Conferir também os números da `paleta` contra a tabela.
-5. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
-6. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
-7. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
-8. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
-9. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
+5. **Itens inéditos**: percorrer a tabela da etapa 1.6 família por família e confirmar que nenhuma peça da fase nova repete uma anterior — cura, cura de arena, inimigo comum, obstáculo e mobília. Depois **jogar o piso anterior e subir a escada**: se um trapo, pão, ratazana ou barril do andar de baixo aparecer no de cima, faltou entrada na limpeza do `aoIniciar`.
+6. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
+7. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
+8. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
+9. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
+10. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
 
 ## Armadilhas conhecidas
 
