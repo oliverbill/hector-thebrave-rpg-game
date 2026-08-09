@@ -9222,7 +9222,9 @@ const PISO_FUNERAL = {
   missao:{
     titulo:'Sobreviver às Salas de Funeral',
     tarefas:[
-      {id:'t-cripta', label:'Atravessar a cripta alagada'},
+      /* 'Atravessar a cripta alagada' saiu da lista: com a boca do centro
+         murada, a margem sul deixou de levar a lugar nenhum e o objetivo
+         virava um carimbo num beco */
       {id:'t-velas', label:'Reacender as velas do caminho', contador:5},
       {id:'t-velantes', label:'Ouvir os velantes', contador:3},
       {id:'t-chefe3', label:'Derrotar o Coveiro'}
@@ -9404,8 +9406,6 @@ const PISO_FUNERAL = {
     bg.classList.add('on');
     bg.classList.toggle('off', jog.recarga > 0);
     el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
-    /* a travessia da cripta conta quando o jogador pisa na margem sul */
-    if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
     anunciarComodo();
     atualizarPortasInternas(dt);      // as mesmas dobradiças do piso 2, na lista do piso 3
     /* a cova aberta desfaz o portão: some em pouco menos de um segundo */
@@ -9504,7 +9504,7 @@ const PISO_FUNERAL = {
     informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
     const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
     if(cont) cont.textContent = informantes.length + '/' + informantes.length;
-    marcarTarefa(tid); marcarTarefa('t-cripta'); marcarTarefa('t-velas');
+    marcarTarefa(tid); marcarTarefa('t-velas');
     velasCaminho.forEach(v => { v.acesa = true; });
     const vc = el('t-velas-cont'); if(vc) vc.textContent = velasCaminho.length + '/' + velasCaminho.length;
     porta3.aberta = true; porta3.quebra = 1;      // atalho: o portão já nem existe
