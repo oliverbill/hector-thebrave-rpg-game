@@ -3177,30 +3177,19 @@ function sairDoJogo(){
     const d = document.createElement('div');
     d.id = 'adeus';
     d.innerHTML = '<h1>O portão se fecha</h1>'
-      + '<p>Até a próxima, bravo Hector. Já pode fechar esta aba.</p>';
+      + '<p>Até a próxima, bravo Hector.</p>';
     document.body.appendChild(d);
   }
-  /* a aba fecha sozinha: close() direto vale para aba de histórico curto;
-     se o navegador recusar, open('','_self') marca a aba como aberta por
-     script e destrava o close() seguinte */
+  /* fechar a aba só é permitido quando foi um script que a abriu, ou quando o
+     jogo roda instalado na tela de início. Numa aba comum o navegador recusa
+     ("Scripts may close only the windows that were opened by them") e não há
+     truque que valha — o open('','_self') de antigamente também é recusado.
+     Então: tenta fechar e, se a página ainda estiver aqui, convida a fechar. */
   try{ window.close(); }catch(e){}
   setTimeout(() => {
-    try{ const w = window.open('', '_self'); w && w.close(); }catch(e){}
-    /* recusou os dois: o truque acima pode ter trocado o documento por um em
-       branco — reescreve o adeus para o convite manual não se perder */
-    setTimeout(() => {
-      try{
-        if(!document.getElementById('adeus')){
-          document.open();
-          document.write('<body style="margin:0;background:#07050c;color:#d8cfc0;'
-            + 'font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;'
-            + 'min-height:100vh;text-align:center"><div><h1 style="font-weight:normal">O portão se fecha</h1>'
-            + '<p style="color:#8b8299">Até a próxima, bravo Hector. Já pode fechar esta aba.</p></div></body>');
-          document.close();
-        }
-      }catch(e){}
-    }, 180);
-  }, 180);
+    const p = el('adeus') && el('adeus').querySelector('p');
+    if(p) p.textContent = 'Até a próxima, bravo Hector. Já pode fechar esta aba.';
+  }, 300);
 }
 const botaoSistema = (id, fn) => {
   const b = el(id);
