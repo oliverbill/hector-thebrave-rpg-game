@@ -7744,45 +7744,14 @@ function pintarFunCapelaPrep(cmx, T){
   cmx.strokeStyle = 'rgba(120,128,152,.5)'; cmx.lineWidth = 2.2;
   cmx.beginPath(); cmx.arc(MX, MY, MR, 0, TAU); cmx.stroke();
 
-  /* ---- o velório, no centro do mosaico: o caixão em si é a aquarela recortada,
-     assentada no passe das imagens; aqui ficam só as coroas e as pétalas, todas
-     por fora da pegada dele para não sumirem debaixo do desenho ---- */
+  /* ---- o velório, no centro do mosaico: o caixão e as coroas são aquarelas
+     recortadas, assentadas no passe das imagens; aqui ficam só as pétalas que
+     caíram delas, espalhadas no mosaico à frente do esquife ---- */
   {
     const ex = MX, ey = MY;
-
-    /* coroas de flores grandes, de pé em volta do caixão */
-    const coroa = (cx3, cy3, raio, girada, cores) => {
-      cmx.save(); cmx.translate(cx3, cy3); cmx.rotate(girada);
-      cmx.fillStyle = 'rgba(0,0,0,.3)';                         // a sombra do arranjo
-      cmx.beginPath(); cmx.ellipse(raio*.1, raio*.5, raio*1.05, raio*.3, 0, 0, TAU); cmx.fill();
-      cmx.strokeStyle = '#3f5236';                              // a trança de folhagem
-      cmx.lineWidth = Math.max(2.4, raio*.42);
-      cmx.beginPath(); cmx.ellipse(0, 0, raio, raio*.72, 0, 0, TAU); cmx.stroke();
-      cmx.strokeStyle = 'rgba(120,150,104,.5)';
-      cmx.lineWidth = Math.max(1, raio*.14);
-      cmx.beginPath(); cmx.ellipse(0, -raio*.08, raio*.98, raio*.66, 0, 0, TAU); cmx.stroke();
-      for(let k=0; k<11; k++){                                  // as flores presas na coroa
-        const a = k/11*TAU + girada*2;
-        const fx = Math.cos(a)*raio, fy = Math.sin(a)*raio*.72;
-        const c = cores[k % cores.length];
-        cmx.fillStyle = c;
-        cmx.beginPath(); cmx.ellipse(fx, fy, raio*.2, raio*.16, a, 0, TAU); cmx.fill();
-        cmx.fillStyle = 'rgba(255,250,225,.5)';                 // o miolo claro
-        cmx.beginPath(); cmx.arc(fx, fy, Math.max(.8, raio*.06), 0, TAU); cmx.fill();
-      }
-      cmx.restore();
-    };
-    const BRANCAS = ['#e6e2d4','#d8d2c2','#cfd8d0'];
-    const ROXAS   = ['#8f7fa8','#b09ec0','#e6e2d4'];
-    const SECAS   = ['#b8a075','#cbb489','#9c8a6a'];
-    coroa(ex - T*2.15, ey + T*.55, T*.42, -.12, ROXAS);          // de pé, à cabeceira
-    coroa(ex + T*2.15, ey + T*.50, T*.40, .18, BRANCAS);         // de pé, aos pés
-    coroa(ex - T*.85, ey + T*1.60, T*.34, .35, SECAS);           // encostadas na frente do caixão
-    coroa(ex + T*.90, ey + T*1.65, T*.32, -.28, ROXAS);
-    /* pétalas caídas no mosaico, à frente do caixão */
     for(let k=0; k<26; k++){
       const h = rnd(k*3.7, k*8.1), a = h*TAU, d = T*(1.2 + rnd(k, k*2)*1.6);
-      cmx.fillStyle = ['rgba(230,226,212,.5)','rgba(176,158,192,.45)','rgba(203,180,137,.4)'][k % 3];
+      cmx.fillStyle = ['rgba(236,232,220,.5)','rgba(206,140,150,.45)','rgba(140,166,116,.4)'][k % 3];
       cmx.beginPath();
       cmx.ellipse(ex + Math.cos(a)*d, ey + Math.sin(a)*d*.5 + T*1.05, T*.055, T*.03, a, 0, TAU);
       cmx.fill();
@@ -9085,9 +9054,29 @@ function pintarFunImagens(cmx, T){
     cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.42, T*.16, 0, 0, TAU); cmx.fill();
     cmx.drawImage(im, x*T - w/2, y*T - h + T*.12, w, h);
   };
+  /* as coroas de flores, de pé em volta do esquife: as duas da cabeceira e dos
+     pés ficam atrás do caixão, as duas da frente encostam nele — por isso vêm
+     uma leva antes e outra depois do desenho dele */
+  const coroa = (nome, x, y, larg, tomba) => {
+    const im = funImg(nome);
+    if(!im.complete || !im.naturalWidth) return;
+    const w = larg*T, h = im.naturalHeight*(w/im.naturalWidth);
+    cmx.save();
+    cmx.translate(x*T, y*T);
+    cmx.fillStyle = 'rgba(0,0,0,.34)';                          // a sombra do cavalete no mosaico
+    cmx.beginPath(); cmx.ellipse(0, 0, w*.44, T*.15, 0, 0, TAU); cmx.fill();
+    cmx.rotate(tomba);                                          // encostada, nunca perfeitamente a prumo
+    cmx.drawImage(im, -w/2, -h + T*.10, w, h);
+    cmx.restore();
+  };
+  coroa('item-coroa-flores-1', 7.35, 11.05, 1.35, -.07);        // à cabeceira, atrás do caixão
+  coroa('item-coroa-flores-2', 11.65, 11.00, 1.30, .09);        // aos pés, atrás do caixão
+
   /* o caixão do velório, no olho do mosaico: dossel, cortinas e o corpo sob a
-     mortalha. As coroas e os castiçais já foram pintados em volta da pegada */
+     mortalha. Os castiçais já foram pintados em volta da pegada */
   pImg('item-caixao-velorio', 9.5, 11.3, 3.1);
+  coroa('item-coroa-flores-2', 8.60, 11.86, 1.05, .16);         // encostadas na frente do caixão
+  coroa('item-coroa-flores-1', 10.45, 11.90, 1.00, -.13);
   pImg('item-altar-calices', 9.5, 6.25, 2.5);      // capela: a mesa dos cálices, ao norte
   pImg('item-tumulo-pedra', 12.6, 6.7, 2.2);       // capela: o sepulcro velho da parede
   pImg('item-esquife-dourado', 20.3, 12.3, 2.4);   // preparação: o esquife de brocado, à espera
