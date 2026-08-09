@@ -7962,7 +7962,6 @@ function pintarFunOficinaColombario(cmx, T){
   const rnd = (x,y) => hash(x*5.31 + 17.3, y*7.77 + 5.1);
   const anda3 = v => v === CHAO || v === CHAO2 || v === PONTE;
   const chaoEm = (x,y) => x>=0 && y>=0 && x<W && y<H && anda3(mapa[y*W+x]);
-  const paredeEm = (x,y) => x>=0 && y>=0 && x<W && y<H && mapa[y*W+x] === PAREDE;
   const sombraCh = (cx, cy, rx, ry, a) => {            // sombra elíptica no chão
     cmx.fillStyle = 'rgba(0,0,0,' + a + ')';
     cmx.beginPath(); cmx.ellipse(cx*T, cy*T, rx*T, ry*T, 0, 0, TAU); cmx.fill();
@@ -8257,12 +8256,10 @@ function pintarFunOficinaColombario(cmx, T){
      Erguida na face norte, entre as duas entradas: cinco colunas por cinco
      fiadas, com pilastras nas pontas e cornija em cima. Como a face tem só
      um tile de altura, o monumento cresce para cima, por sobre o topo do
-     muro — é o que dá a leitura de parede alta em perspectiva 3/4. */
-  /* pegada do monumento, em tiles (x1 = x0 + COL*.92, e as pilastras somam .34
-     de cada lado). O labirinto pinta arcadas em toda face de parede, e nesta
-     face elas vinham por cima: dava uma fileira de nichos atravessando o
-     monumento inteiro, na frente dele */
-  const MON = {x0:19.5, x1:24.1, y:44, borda:.34};
+     muro — é o que dá a leitura de parede alta em perspectiva 3/4.
+     Desde 09/08 é o ÚNICO nicho do piso: as arcadas que enfeitavam toda face
+     de parede do labirinto saíram a pedido do dono. */
+  const MON = {x0:19.5, y:44};
   {
     const PX = MON.x0*T, BASE = (MON.y + 1)*T;       // canto inferior esquerdo da parede
     const COL = 5, FIA = 5, LN = T*.92, AN = T*.62;  // largura e altura de cada nicho
@@ -8380,85 +8377,9 @@ function pintarFunOficinaColombario(cmx, T){
     }
   }
 
-  /* ========== COLOMBÁRIO-LABIRINTO: os nichos funerários (y>=44) ==========
-     Em cada face de parede visível dentro do colombário, duas arcadas
-     escavadas com prateleira de pedra; dentro, urna, crânio, ossos ou o
-     vazio — variando por hash, sem repetir vizinhos. */
-  for(let y=44; y<=53; y++) for(let x=3; x<=33; x++){
-    if(!paredeEm(x,y) || !chaoEm(x,y+1)) continue;
-    // a face do monumento já tem os seus 25 nichos: não leva a arcada comum
-    if(y === MON.y && x + 1 > MON.x0 - MON.borda && x < MON.x1 + MON.borda) continue;
-    const px = x*T, py = y*T;
-    const offLinha = (hash(2.13, y*1.71)*4)|0;          // baralha os conteúdos por linha
-    for(let k=0; k<2; k++){
-      const nx = px + T*(.27 + k*.46);
-      const topo = py + T*.16, altN = T*.5, r = T*.16, omb = topo + r;
-      const tracarArco = () => {
-        cmx.beginPath();
-        cmx.moveTo(nx - r, topo + altN);
-        cmx.lineTo(nx - r, omb);
-        cmx.arc(nx, omb, r, Math.PI, 0);
-        cmx.lineTo(nx + r, topo + altN);
-        cmx.closePath();
-      };
-      // prateleira de pedra sob o arco
-      cmx.fillStyle = '#797e93';
-      cmx.fillRect(nx - r - T*.05, topo + altN, r*2 + T*.1, T*.085);
-      cmx.fillStyle = 'rgba(236,240,250,.25)';
-      cmx.fillRect(nx - r - T*.05, topo + altN, r*2 + T*.1, 1.4);
-      cmx.fillStyle = 'rgba(0,0,0,.4)';
-      cmx.fillRect(nx - r - T*.05, topo + altN + T*.085, r*2 + T*.1, T*.05);
-      // o vão escavado
-      cmx.fillStyle = '#141721';
-      tracarArco(); cmx.fill();
-      // conteúdo, guardado dentro do arco
-      const v = (x*2 + k + offLinha) % 4;
-      cmx.save(); tracarArco(); cmx.clip();
-      const chaoN = topo + altN;
-      // a sombra funda que desce do alto do vão (antes do conteúdo, para não apagá-lo)
-      const gN = cmx.createLinearGradient(0, topo, 0, topo + altN*.7);
-      gN.addColorStop(0, 'rgba(0,0,0,.55)'); gN.addColorStop(1, 'rgba(0,0,0,0)');
-      cmx.fillStyle = gN; cmx.fillRect(nx - r, topo, r*2, altN*.7);
-      if(v === 0){          // a urna
-        cmx.fillStyle = '#a29ab2';
-        cmx.beginPath();
-        cmx.moveTo(nx - T*.055, chaoN - T*.29);
-        cmx.quadraticCurveTo(nx - T*.13, chaoN - T*.16, nx - T*.08, chaoN);
-        cmx.lineTo(nx + T*.08, chaoN);
-        cmx.quadraticCurveTo(nx + T*.13, chaoN - T*.16, nx + T*.055, chaoN - T*.29);
-        cmx.closePath(); cmx.fill();
-        cmx.fillStyle = '#847c98'; cmx.fillRect(nx - T*.065, chaoN - T*.33, T*.13, T*.045);
-        cmx.fillStyle = 'rgba(238,242,252,.45)'; cmx.fillRect(nx - T*.065, chaoN - T*.33, T*.13, 1.2);
-        cmx.fillStyle = 'rgba(238,242,252,.28)'; cmx.fillRect(nx - T*.07, chaoN - T*.24, T*.035, T*.2);
-        cmx.strokeStyle = 'rgba(30,28,44,.5)'; cmx.lineWidth = .9;   // o friso do bojo
-        cmx.beginPath(); cmx.moveTo(nx - T*.1, chaoN - T*.14); cmx.lineTo(nx + T*.1, chaoN - T*.14); cmx.stroke();
-      } else if(v === 1){   // o crânio
-        cmx.fillStyle = '#b3ac9c';
-        cmx.beginPath(); cmx.arc(nx, chaoN - T*.14, T*.085, 0, TAU); cmx.fill();
-        cmx.fillRect(nx - T*.055, chaoN - T*.1, T*.11, T*.08);
-        cmx.fillStyle = '#141721';
-        cmx.beginPath(); cmx.arc(nx - T*.035, chaoN - T*.15, T*.024, 0, TAU); cmx.fill();
-        cmx.beginPath(); cmx.arc(nx + T*.035, chaoN - T*.15, T*.024, 0, TAU); cmx.fill();
-        cmx.fillRect(nx - T*.008, chaoN - T*.1, T*.016, T*.03);
-        cmx.strokeStyle = 'rgba(20,16,12,.5)'; cmx.lineWidth = .9;
-        cmx.beginPath(); cmx.moveTo(nx - T*.05, chaoN - T*.04); cmx.lineTo(nx + T*.05, chaoN - T*.04); cmx.stroke();
-      } else if(v === 2){   // os ossos cruzados
-        cmx.strokeStyle = '#a49d8c'; cmx.lineWidth = Math.max(1.6, T*.045); cmx.lineCap = 'round';
-        cmx.beginPath(); cmx.moveTo(nx - T*.1, chaoN - T*.05); cmx.lineTo(nx + T*.1, chaoN - T*.11); cmx.stroke();
-        cmx.beginPath(); cmx.moveTo(nx - T*.09, chaoN - T*.13); cmx.lineTo(nx + T*.09, chaoN - T*.05); cmx.stroke();
-        cmx.lineCap = 'butt';
-        cmx.fillStyle = '#a49d8c';
-        cmx.beginPath(); cmx.arc(nx - T*.1, chaoN - T*.05, T*.026, 0, TAU); cmx.fill();
-        cmx.beginPath(); cmx.arc(nx + T*.1, chaoN - T*.11, T*.026, 0, TAU); cmx.fill();
-      }                     // v === 3: vazio — resta a sombra
-      cmx.restore();
-      // aduela do arco e pedra angular
-      cmx.strokeStyle = 'rgba(160,166,190,.4)'; cmx.lineWidth = 1.5;
-      cmx.beginPath(); cmx.arc(nx, omb, r + .8, Math.PI, 0); cmx.stroke();
-      cmx.fillStyle = 'rgba(170,176,198,.35)';
-      cmx.fillRect(nx - T*.035, topo - T*.035, T*.07, T*.075);
-    }
-  }
+  /* As arcadas escavadas em cada face de parede do colombário saíram em
+     09/08 (pedido do dono): sobra a PAREDE DE NICHOS, o monumento 5x5 da
+     face norte. O muro do labirinto é pedra lisa, como o resto do piso. */
 
   /* placas de pedra caídas (nomes gastos, ilegíveis) e flores secas */
   for(let y=45; y<=53; y++) for(let x=3; x<=33; x++){

@@ -188,7 +188,7 @@ Tudo que entrou além do que este PRD pedia.
 1. `pintarFunParedes` — paredes em perspectiva 3/4 (face de tijolo úmido onde o muro olha para o sul, topo de pedra bruta no resto), sombra em degradê no chão e lajes
 2. `pintarFunCriptaSalao` — cripta alagada, salão, cova do Coveiro, escada e quarto (as covas abertas da arena ganharam **paredes de terra** em `fb688ed`, para não ficarem pretas chapadas)
 3. `pintarFunCapelaPrep` — capela de velório com as coroas de flores e as pétalas em volta do centro do mosaico (o caixão em si é recorte, e entra no passe 5) e as fileiras de bancos, mais a sala de preparação
-4. `pintarFunOficinaColombario` — a oficina de caixões inteira (a obra ao norte, o material ao sul, sem divisória no meio) e os nichos do colombário
+4. `pintarFunOficinaColombario` — a oficina de caixões inteira (a obra ao norte, o material ao sul, sem divisória no meio) e o colombário. Desde 09/08 o único nicho pintado é a **parede de nichos** (o monumento 5×5 da face norte, em x19,5–24,1/y44): as arcadas que enfeitavam toda face de parede do labirinto saíram a pedido do dono, e o muro ficou de pedra lisa
 5. `pintarFunImagens` — os itens recortados, assentados pelo pé, mais o cadáver da mesa
 
 A ordem importa: estrutura por cima do chão, recortes por último.
