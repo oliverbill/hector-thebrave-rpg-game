@@ -8189,8 +8189,13 @@ function pintarFunOficinaColombario(cmx, T){
      fiadas, com pilastras nas pontas e cornija em cima. Como a face tem só
      um tile de altura, o monumento cresce para cima, por sobre o topo do
      muro — é o que dá a leitura de parede alta em perspectiva 3/4. */
+  /* pegada do monumento, em tiles (x1 = x0 + COL*.92, e as pilastras somam .34
+     de cada lado). O labirinto pinta arcadas em toda face de parede, e nesta
+     face elas vinham por cima: dava uma fileira de nichos atravessando o
+     monumento inteiro, na frente dele */
+  const MON = {x0:19.5, x1:24.1, y:44, borda:.34};
   {
-    const PX = 19.5*T, BASE = 45*T;                  // canto inferior esquerdo da parede
+    const PX = MON.x0*T, BASE = (MON.y + 1)*T;       // canto inferior esquerdo da parede
     const COL = 5, FIA = 5, LN = T*.92, AN = T*.62;  // largura e altura de cada nicho
     const larg = COL*LN, alt = FIA*AN;
     const topo = BASE - alt;
@@ -8312,6 +8317,8 @@ function pintarFunOficinaColombario(cmx, T){
      vazio — variando por hash, sem repetir vizinhos. */
   for(let y=44; y<=53; y++) for(let x=3; x<=33; x++){
     if(!paredeEm(x,y) || !chaoEm(x,y+1)) continue;
+    // a face do monumento já tem os seus 25 nichos: não leva a arcada comum
+    if(y === MON.y && x + 1 > MON.x0 - MON.borda && x < MON.x1 + MON.borda) continue;
     const px = x*T, py = y*T;
     const offLinha = (hash(2.13, y*1.71)*4)|0;          // baralha os conteúdos por linha
     for(let k=0; k<2; k++){
