@@ -3202,16 +3202,35 @@ function sairDoJogo(){
       + '<p>Até a próxima, bravo Hector.</p>';
     document.body.appendChild(d);
   }
-  /* fechar a aba só é permitido quando foi um script que a abriu, ou quando o
-     jogo roda instalado na tela de início. Numa aba comum o navegador recusa
-     ("Scripts may close only the windows that were opened by them") e não há
-     truque que valha — o open('','_self') de antigamente também é recusado.
-     Então: tenta fechar e, se a página ainda estiver aqui, convida a fechar. */
+  /* a aba fecha sozinha, em três degraus — o segundo voltou em 09/08, depois
+     que sumiu num commit que o deu por inútil e o ✕ parou de fechar:
+       1. close() direto, que basta na aba de histórico curto;
+       2. open('','_self') e close() logo atrás: reabrir a si mesma marca a
+          aba como aberta por script, e o close() seguinte passa;
+       3. recusou os dois — convida a fechar na mão. O passo 2 pode ter
+          trocado o documento por um em branco, então o adeus se reescreve.
+     Nada disso é truque garantido: o navegador só deixa fechar o que um
+     script abriu, ou o jogo instalado na tela de início. */
   try{ window.close(); }catch(e){}
   setTimeout(() => {
-    const p = el('adeus') && el('adeus').querySelector('p');
-    if(p) p.textContent = 'Até a próxima, bravo Hector. Já pode fechar esta aba.';
-  }, 300);
+    try{ const w = window.open('', '_self'); w && w.close(); }catch(e){}
+    setTimeout(() => {
+      try{
+        const d2 = document.getElementById('adeus');
+        if(d2){
+          const p = d2.querySelector('p');
+          if(p) p.textContent = 'Até a próxima, bravo Hector. Já pode fechar esta aba.';
+        } else {
+          document.open();
+          document.write('<body style="margin:0;background:#07050c;color:#d8cfc0;'
+            + 'font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;'
+            + 'min-height:100vh;text-align:center"><div><h1 style="font-weight:normal">O portão se fecha</h1>'
+            + '<p style="color:#8b8299">Até a próxima, bravo Hector. Já pode fechar esta aba.</p></div></body>');
+          document.close();
+        }
+      }catch(e){}
+    }, 180);
+  }, 180);
 }
 const botaoSistema = (id, fn) => {
   const b = el(id);
