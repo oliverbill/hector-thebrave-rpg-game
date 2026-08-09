@@ -8252,128 +8252,171 @@ function pintarFunOficinaColombario(cmx, T){
     cmx.beginPath(); cmx.ellipse(px, py + T*.1, T*.3, T*.12, 0, 0, TAU); cmx.fill();
   });
 
-  /* ========== A PAREDE DE NICHOS: 5x5 empilhados, o monumento do colombário
-     Erguida na face norte, entre as duas entradas: cinco colunas por cinco
-     fiadas, com pilastras nas pontas e cornija em cima. Como a face tem só
-     um tile de altura, o monumento cresce para cima, por sobre o topo do
-     muro — é o que dá a leitura de parede alta em perspectiva 3/4.
-     Desde 09/08 é o ÚNICO nicho do piso: as arcadas que enfeitavam toda face
-     de parede do labirinto saíram a pedido do dono. */
+  /* ========== A PAREDE DE NICHOS: o monumento do colombário ================
+     Erguida na face norte, entre as duas entradas: cinco colunas de nichos,
+     pilastras nas pontas e cornija em cima. Como a face tem só um tile de
+     altura, o monumento cresce para cima, por sobre o topo do muro — é o que
+     dá a leitura de parede alta em perspectiva 3/4. Desde 09/08 é o ÚNICO
+     nicho do piso: as arcadas de toda face de parede do labirinto saíram.
+
+     ESCALA 2x (pedido do dono, 09/08): tudo aqui se mede em U = T*2, então a
+     parede e cada nicho dobraram juntos — a largura foi de 4,6 para 9,2 tiles.
+     A ALTURA não pôde dobrar: acima desta face só há 1 tile de rocha maciça
+     (em x19..28), porque em y=42 começa a água da cripta e em y=40 passa a
+     passarela da travessia. Com 6,2 tiles o monumento apareceria pintado por
+     cima das duas pontes. Por isso são 2 fiadas em vez de 5 — contando a
+     cornija, o topo cai em y=41,44, o MESMO ponto de antes: a silhueta não
+     invade um dedo a mais de cripta do que já invadia. */
   const MON = {x0:19.5, y:44};
   {
+    const E = 2, U = T*E;                            // o tile virtual do monumento
     const PX = MON.x0*T, BASE = (MON.y + 1)*T;       // canto inferior esquerdo da parede
-    const COL = 5, FIA = 5, LN = T*.92, AN = T*.62;  // largura e altura de cada nicho
+    const COL = 5, FIA = 2, LN = U*.92, AN = U*.66;  // largura e altura de cada nicho
     const larg = COL*LN, alt = FIA*AN;
     const topo = BASE - alt;
+    /* os mortos do colombário: nomes ibéricos atestados nos séculos XI-XIV
+       (Egas Moniz o Aio, Mécia Lopes de Haro, Chamoa Gomes de Pombeiro,
+       Lourenço Viegas o Espadeiro...). Um por nicho, sem repetir nome nem
+       nome+sobrenome; a plaquinha leva o batismo em cima e o patronímico
+       embaixo, que é o que cabe na largura. */
+    const MORTOS = [
+      ['Álvaro','Gonçalves'], ['Egas','Moniz'],      ['Mécia','Lopes'],
+      ['Gonçalo','Mendes'],   ['Urraca','Afonso'],   ['Vasco','Martins'],
+      ['Elvira','Anes'],      ['Lourenço','Viegas'], ['Chamoa','Gomes'],
+      ['Estêvão','Soares']
+    ];
+    /* gravado na pedra: o sulco escuro por cima da luz que bate na borda de
+       baixo — o mesmo truque de dois fillText do dano flutuante */
+    const FONTE = Math.round(U*.095);
+    const gravar = (txt, cx, cy) => {
+      cmx.fillStyle = 'rgba(238,242,252,.26)'; cmx.fillText(txt, cx, cy + 1);
+      cmx.fillStyle = 'rgba(16,18,26,.72)';    cmx.fillText(txt, cx, cy);
+    };
+    cmx.font = '600 ' + FONTE + 'px ui-monospace, Menlo, monospace';
+    cmx.textAlign = 'center'; cmx.textBaseline = 'middle';
     // o paredão de fundo, mais claro que o muro comum: pedra lavrada
     cmx.fillStyle = '#4a5064';
-    cmx.fillRect(PX - T*.34, topo - T*.30, larg + T*.68, alt + T*.34);
+    cmx.fillRect(PX - U*.34, topo - U*.30, larg + U*.68, alt + U*.34);
     cmx.fillStyle = 'rgba(214,224,246,.10)';
-    cmx.fillRect(PX - T*.34, topo - T*.30, larg + T*.68, 3);
+    cmx.fillRect(PX - U*.34, topo - U*.30, larg + U*.68, 4);
     // pilastras das pontas, em alto-relevo
-    [PX - T*.34, PX + larg - T*.02].forEach((qx, i) => {
+    [PX - U*.34, PX + larg - U*.02].forEach((qx, i) => {
       cmx.fillStyle = '#5d6478';
-      cmx.fillRect(qx, topo - T*.30, T*.36, alt + T*.34);
+      cmx.fillRect(qx, topo - U*.30, U*.36, alt + U*.34);
       cmx.fillStyle = 'rgba(226,234,252,.16)';       // a quina iluminada
-      cmx.fillRect(qx + (i ? T*.28 : 0), topo - T*.30, T*.08, alt + T*.34);
+      cmx.fillRect(qx + (i ? U*.28 : 0), topo - U*.30, U*.08, alt + U*.34);
       cmx.fillStyle = 'rgba(10,12,20,.4)';           // e a que fica na sombra
-      cmx.fillRect(qx + (i ? 0 : T*.28), topo - T*.30, T*.08, alt + T*.34);
+      cmx.fillRect(qx + (i ? 0 : U*.28), topo - U*.30, U*.08, alt + U*.34);
     });
     // cornija: a laje que fecha o monumento em cima
     cmx.fillStyle = '#79809a';
-    cmx.fillRect(PX - T*.52, topo - T*.46, larg + T*1.04, T*.20);
+    cmx.fillRect(PX - U*.52, topo - U*.46, larg + U*1.04, U*.20);
     cmx.fillStyle = 'rgba(236,242,255,.22)';
-    cmx.fillRect(PX - T*.52, topo - T*.46, larg + T*1.04, 2.6);
+    cmx.fillRect(PX - U*.52, topo - U*.46, larg + U*1.04, 4);
     cmx.fillStyle = 'rgba(0,0,0,.42)';
-    cmx.fillRect(PX - T*.52, topo - T*.26, larg + T*1.04, T*.07);
-    // os 25 nichos
+    cmx.fillRect(PX - U*.52, topo - U*.26, larg + U*1.04, U*.07);
+    // os 15 nichos
     for(let f=0; f<FIA; f++) for(let c=0; c<COL; c++){
       const nx = PX + c*LN + LN/2, ny = topo + f*AN;
-      const r = LN*.30, altV = AN*.62, omb = ny + T*.14 + r;
+      const r = LN*.24, altV = AN*.40, topoV = ny + U*.05, omb = topoV + r;
+      const chaoN = topoV + altV;
       const arco = () => {
         cmx.beginPath();
-        cmx.moveTo(nx - r, ny + T*.14 + altV);
+        cmx.moveTo(nx - r, chaoN);
         cmx.lineTo(nx - r, omb);
         cmx.arc(nx, omb, r, Math.PI, 0);
-        cmx.lineTo(nx + r, ny + T*.14 + altV);
+        cmx.lineTo(nx + r, chaoN);
         cmx.closePath();
       };
-      // moldura do vão e prateleira
+      // moldura do vão
       cmx.fillStyle = '#666d82';
-      cmx.fillRect(nx - r - T*.07, ny + T*.10, r*2 + T*.14, altV + T*.13);
+      cmx.fillRect(nx - r - U*.06, topoV - U*.03, r*2 + U*.12, altV + U*.09);
       cmx.fillStyle = '#141721';
       arco(); cmx.fill();
       // conteúdo, sem repetir o vizinho de lado nem o de cima
       const v = (c*3 + f*2 + ((hash(c*4.1, f*7.3)*3)|0)) % 5;
       cmx.save(); arco(); cmx.clip();
-      const g = cmx.createLinearGradient(0, ny, 0, ny + altV);
+      const g = cmx.createLinearGradient(0, topoV, 0, chaoN);
       g.addColorStop(0, 'rgba(0,0,0,.6)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-      cmx.fillStyle = g; cmx.fillRect(nx - r, ny, r*2, altV);
-      const chaoN = ny + T*.14 + altV;
+      cmx.fillStyle = g; cmx.fillRect(nx - r, topoV, r*2, altV);
       if(v === 0){                                   // urna de cerâmica
         cmx.fillStyle = '#a8a0b6';
         cmx.beginPath();
-        cmx.ellipse(nx, chaoN - AN*.20, r*.52, AN*.22, 0, 0, TAU); cmx.fill();
-        cmx.fillRect(nx - r*.2, chaoN - AN*.40, r*.4, AN*.16);
+        cmx.ellipse(nx, chaoN - AN*.13, r*.52, AN*.14, 0, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - r*.2, chaoN - AN*.26, r*.4, AN*.11);
         cmx.fillStyle = 'rgba(240,244,255,.2)';
-        cmx.beginPath(); cmx.ellipse(nx - r*.18, chaoN - AN*.24, r*.16, AN*.09, -.4, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.ellipse(nx - r*.18, chaoN - AN*.16, r*.16, AN*.06, -.4, 0, TAU); cmx.fill();
       } else if(v === 1){                            // crânio olhando para fora
         cmx.fillStyle = '#cfc7ae';
-        cmx.beginPath(); cmx.ellipse(nx, chaoN - AN*.22, r*.44, AN*.2, 0, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.ellipse(nx, chaoN - AN*.14, r*.44, AN*.13, 0, 0, TAU); cmx.fill();
         cmx.fillStyle = '#15161d';
-        cmx.beginPath(); cmx.ellipse(nx - r*.17, chaoN - AN*.25, r*.11, AN*.07, 0, 0, TAU); cmx.fill();
-        cmx.beginPath(); cmx.ellipse(nx + r*.17, chaoN - AN*.25, r*.11, AN*.07, 0, 0, TAU); cmx.fill();
-        cmx.fillRect(nx - r*.06, chaoN - AN*.14, r*.12, AN*.05);
+        cmx.beginPath(); cmx.ellipse(nx - r*.17, chaoN - AN*.16, r*.11, AN*.045, 0, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.ellipse(nx + r*.17, chaoN - AN*.16, r*.11, AN*.045, 0, 0, TAU); cmx.fill();
+        cmx.fillRect(nx - r*.06, chaoN - AN*.09, r*.12, AN*.035);
       } else if(v === 2){                            // ossos cruzados
         cmx.strokeStyle = '#c3bba4'; cmx.lineCap = 'round';
         cmx.lineWidth = Math.max(1.6, r*.2);
         cmx.beginPath();
-        cmx.moveTo(nx - r*.5, chaoN - AN*.28); cmx.lineTo(nx + r*.5, chaoN - AN*.1); cmx.stroke();
+        cmx.moveTo(nx - r*.5, chaoN - AN*.18); cmx.lineTo(nx + r*.5, chaoN - AN*.06); cmx.stroke();
         cmx.beginPath();
-        cmx.moveTo(nx - r*.5, chaoN - AN*.1); cmx.lineTo(nx + r*.5, chaoN - AN*.28); cmx.stroke();
+        cmx.moveTo(nx - r*.5, chaoN - AN*.06); cmx.lineTo(nx + r*.5, chaoN - AN*.18); cmx.stroke();
+        cmx.lineCap = 'butt';
       } else if(v === 3){                            // vazio, à espera — só teia
-        cmx.strokeStyle = 'rgba(190,196,214,.2)'; cmx.lineWidth = 1;
+        cmx.strokeStyle = 'rgba(190,196,214,.2)'; cmx.lineWidth = 1.4;
         for(let k=0; k<3; k++){
           cmx.beginPath();
-          cmx.moveTo(nx - r, ny + T*.16);
-          cmx.lineTo(nx - r + r*(k+1)*.7, ny + T*.16 + altV*.5);
+          cmx.moveTo(nx - r, topoV + U*.02);
+          cmx.lineTo(nx - r + r*(k+1)*.7, topoV + U*.02 + altV*.5);
           cmx.stroke();
         }
       } else {                                       // lacrado com placa de pedra
         cmx.fillStyle = '#6f7488';
-        cmx.fillRect(nx - r*.86, chaoN - altV*.86, r*1.72, altV*.8);
+        cmx.fillRect(nx - r*.86, chaoN - altV*.78, r*1.72, altV*.72);
         cmx.fillStyle = 'rgba(228,234,250,.16)';
-        cmx.fillRect(nx - r*.86, chaoN - altV*.86, r*1.72, 2);
-        cmx.strokeStyle = 'rgba(30,34,46,.5)'; cmx.lineWidth = 1;
-        for(let k=0; k<3; k++){                      // o nome gasto, ilegível
-          const ly = chaoN - altV*.7 + k*altV*.2;
+        cmx.fillRect(nx - r*.86, chaoN - altV*.78, r*1.72, 2);
+        cmx.strokeStyle = 'rgba(30,34,46,.5)'; cmx.lineWidth = 1.2;
+        for(let k=0; k<3; k++){                      // a oração que o tempo comeu
+          const ly = chaoN - altV*.62 + k*altV*.18;
           cmx.beginPath();
           cmx.moveTo(nx - r*.6, ly); cmx.lineTo(nx + r*(.2 + hash(c+k, f)*.4), ly); cmx.stroke();
         }
       }
       cmx.restore();
-      // plaquinha de nome sob cada nicho
-      cmx.fillStyle = '#828798';
-      cmx.fillRect(nx - r*.7, ny + T*.14 + altV + T*.02, r*1.4, T*.07);
-      cmx.strokeStyle = 'rgba(30,34,46,.45)'; cmx.lineWidth = .9;
-      cmx.beginPath();
-      cmx.moveTo(nx - r*.5, ny + T*.14 + altV + T*.055);
-      cmx.lineTo(nx + r*.5, ny + T*.14 + altV + T*.055);
-      cmx.stroke();
-      cmx.fillStyle = 'rgba(0,0,0,.35)';             // a sombra da prateleira na fiada de baixo
-      cmx.fillRect(nx - r - T*.07, ny + T*.14 + altV + T*.09, r*2 + T*.14, T*.04);
+      // aduela do arco e pedra angular
+      cmx.strokeStyle = 'rgba(160,166,190,.4)'; cmx.lineWidth = 2;
+      cmx.beginPath(); cmx.arc(nx, omb, r + 1.2, Math.PI, 0); cmx.stroke();
+      cmx.fillStyle = 'rgba(170,176,198,.35)';
+      cmx.fillRect(nx - U*.035, topoV - U*.035, U*.07, U*.075);
+      // prateleira de pedra sob o vão
+      cmx.fillStyle = '#797e93';
+      cmx.fillRect(nx - r - U*.06, chaoN, r*2 + U*.12, U*.045);
+      cmx.fillStyle = 'rgba(236,240,250,.25)';
+      cmx.fillRect(nx - r - U*.06, chaoN, r*2 + U*.12, 2);
+      cmx.fillStyle = 'rgba(0,0,0,.4)';
+      cmx.fillRect(nx - r - U*.06, chaoN + U*.045, r*2 + U*.12, U*.025);
+      // a plaquinha com o nome de quem está ali dentro
+      const mo = MORTOS[(f*COL + c) % MORTOS.length];
+      const plW = LN*.84, plH = U*.22, plX = nx - plW/2, plY = chaoN + U*.115;
+      cmx.fillStyle = '#8a8fa2'; cmx.fillRect(plX, plY, plW, plH);
+      cmx.fillStyle = 'rgba(236,242,255,.28)'; cmx.fillRect(plX, plY, plW, 2);
+      cmx.fillStyle = 'rgba(18,20,30,.45)';    cmx.fillRect(plX, plY + plH - 2, plW, 2);
+      cmx.strokeStyle = 'rgba(24,27,38,.5)'; cmx.lineWidth = 1;
+      cmx.strokeRect(plX, plY, plW, plH);
+      gravar(mo[0], nx, plY + plH*.29);
+      gravar(mo[1], nx, plY + plH*.72);
     }
+    cmx.textAlign = 'left'; cmx.textBaseline = 'alphabetic';   // o cache não escreve mais nada
     // velas pingadas no pé do monumento e a sombra que ele joga no chão
     cmx.fillStyle = 'rgba(0,0,0,.45)';
-    cmx.fillRect(PX - T*.52, BASE, larg + T*1.04, T*.22);
-    for(let k=0; k<6; k++){
-      const vx = PX + T*.4 + k*(larg - T*.8)/5;
+    cmx.fillRect(PX - U*.52, BASE, larg + U*1.04, U*.22);
+    for(let k=0; k<9; k++){
+      const vx = PX + U*.4 + k*(larg - U*.8)/8;
       cmx.fillStyle = '#d8d2c0';
-      cmx.fillRect(vx - T*.05, BASE - T*.26, T*.1, T*.26);
+      cmx.fillRect(vx - U*.05, BASE - U*.26, U*.1, U*.26);
       cmx.fillStyle = 'rgba(255,206,130,.5)';
-      cmx.beginPath(); cmx.ellipse(vx, BASE - T*.3, T*.05, T*.08, 0, 0, TAU); cmx.fill();
+      cmx.beginPath(); cmx.ellipse(vx, BASE - U*.3, U*.05, U*.08, 0, 0, TAU); cmx.fill();
       cmx.fillStyle = 'rgba(255,190,110,.10)';
-      cmx.beginPath(); cmx.ellipse(vx, BASE - T*.05, T*.34, T*.14, 0, 0, TAU); cmx.fill();
+      cmx.beginPath(); cmx.ellipse(vx, BASE - U*.05, U*.34, U*.14, 0, 0, TAU); cmx.fill();
     }
   }
 
@@ -9162,7 +9205,7 @@ const PISO_FUNERAL = {
       retrato:'img/fase3/velante-sacristao.png',
       voz:{pitch:.6, rate:.85, genero:'m',
            audios:['audio/fase3/vozes/sacristao-1.mp3','audio/fase3/vozes/sacristao-2.mp3','audio/fase3/vozes/sacristao-3.mp3']},
-      x:25.2, y:45.7,      // ao lado da parede de nichos, que vai de x19,5 a x24,1
+      x:30.4, y:45.7,      // ao lado da parede de nichos, que com a cornija vai de x18,5 a x29,7
       falas:[
         'Shh... fala baixo. Aqui cada nome tem seu nicho... e alguns ainda respondem quando eu rezo.',
         'Eu acendo as velas, elas apagam. Acendo de novo. Alguém sopra... e não é o vento.',
