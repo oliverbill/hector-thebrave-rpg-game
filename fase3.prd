@@ -3,7 +3,7 @@
 **Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
 **Fase:** 3 de 6 — salas de funeral, capela, cripta e colombário, e O Coveiro
 **Status:** construído e jogável — cenário, chefe, ameaças e itens no ar; vozes e trilha pendentes
-**Escrito em:** 06/08/2026 · **atualizado com o código em:** 08/08/2026
+**Escrito em:** 06/08/2026 · **atualizado com o código em:** 09/08/2026
 
 ---
 
@@ -52,10 +52,10 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 |---|---|---|
 | F3-RF-00 | **No código:** mapa **46×58**, spawn na escada de chegada (canto sudeste, 40/52), 2 trapos de partida | construído |
 | F3-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase3-funeral rooms.png`), **sempre com paredes visiveis**: capela com mosaico circular, salas de serviço, cripta alagada com caixões boiando, colombário, oficina do carpinteiro | fixado — imagem de inspiração |
-| F3-RF-02 | Regiões **sempre com detalhes em alto relevo**: **escada de chegada** (das cozinhas), **capela de velório** (mosaico circular no chão, esquifes), **sala de preparação dos corpos**, **oficina de caixões + depósito**, **cripta alagada**, **colombário em labirinto**, **quarto do Coveiro**, **cova grande** (arena) | questionário 06/08 — regiões marcadas |
+| F3-RF-02 | Regiões **sempre com detalhes em alto relevo**: **escada de chegada** (das cozinhas), **capela de velório** (mosaico circular no chão, esquifes), **sala de preparação dos corpos**, **oficina de caixões** (um salão só: a obra ao norte, o material ao sul — ver §5.6), **cripta alagada**, **colombário em labirinto**, **quarto do Coveiro**, **cova grande** (arena) | questionário 06/08 — regiões marcadas |
 | F3-RF-03 | Obstáculo cíclico duplo: **mãos dos mortos** (25 HP, drenam 5 por segundo enquanto agarram) irrompem do chão em ritmo fixo (janela de dano aprendível) **e velas que apagam** — trechos escurecem em ciclo e, no escuro, os vultos (45 HP, mordida de 9 a cada 0,9 s) atacam. **No código:** 6 mãos fixas nas margens da cripta, no colombário e no caminho da cova; a zona escura é uma só, 6 s de claro e 4 s de escuro | questionário 06/08 — *"1 e 3"* |
 | F3-RF-04 | Labirinto (`gerarLabirinto`, semente própria) no **colombário**; travessia falsa: a **escada desmoronada** que parece levar à arena mas termina no buraco | questionário 06/08 — recomendado aceito |
-| F3-RF-04b | **No código:** o labirinto do colombário é uma grade **10×3 de celas 2×2**, semente `20260806`, com duas entradas (oeste, descendo do depósito; centro, descendo da margem sul da cripta). A escada desmoronada sai do salão em x31–32 e morre num FOSSO | construído |
+| F3-RF-04b | **No código:** o labirinto do colombário é uma grade **10×3 de celas 2×2**, semente `20260806`, com duas entradas (oeste, descendo pelo vão sul da oficina de caixões; centro, descendo da margem sul da cripta). A escada desmoronada sai do salão em x31–32 e morre num FOSSO | construído |
 | F3-RF-05 | A cripta alagada usa água em alto-relevo (padrão da grande cisterna da fase 2), com caixões boiando e travessia por passarelas/pedras | derivado da imagem de inspiração |
 
 **HERDADO:** cenário detalhado em alto-relevo (perspectiva 3/4), caminhos conectados, imagens de referência são inspiração.
@@ -70,7 +70,7 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 
 | F3-RF-25 | **Velório na capela**: além das estações de trabalho, um grupo de coadjuvantes **vela um corpo** num esquife (círios, mortalha, cabeças baixas), com **som de choro** subindo por proximidade | pedido 06/08 — *"adicione pessoas velando o corpo com som de choros"* |
 | F3-RF-27 | **Rezadores na capela**: outro grupo de coadjuvantes **rezando** — ajoelhados nos bancos e de pé com as mãos postas, com murmúrio de rezas por proximidade | pedido 06/08 — *"adicione pessoas rezando na capela"* |
-| F3-RF-28 | **Ajudantes de carpintaria na oficina**: grupo trabalhando nos caixões — serrando, martelando, aplainando — com serrote e martelo audíveis por proximidade (a estação de trabalho da oficina) | pedido 06/08 — *"Adicione ajudantes de carpintaria trabalhando"* |
+| F3-RF-28 | **Ajudantes de carpintaria na oficina**: grupo trabalhando nos caixões — serrando, martelando, aplainando — com serrote e martelo audíveis por proximidade (a estação de trabalho da oficina). **No código:** **2 ajudantes** (`img/fase3/ajudante-carpinteiro.png`) que **circulam entre as estações de trabalho** do salão — bancada, cavaletes com o caixão em obra, cocho, pilhas de tábuas, caixas de pregos —, parando em cada uma para trabalhar antes de seguir para a próxima | pedido 06/08 — *"Adicione ajudantes de carpintaria trabalhando"* |
 
 **HERDADO:** animação em loop, presença no mapa, facho dourado sobre quem tem segredo, PULAR.
 
@@ -87,7 +87,7 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 | # | Requisito | Origem |
 |---|---|---|
 | F3-RF-11 | Cura espalhada: **água benta** (frascos, 15%, botão Q); cura da arena: **dois círios acesos** nos cantos (25%, repostos por tentativa) | questionário 06/08 — recomendado aceito |
-| F3-RF-11b | **No código:** **6 frascos** de água benta (capela, preparação, depósito, dois no colombário, quarto do Coveiro) — curam 15% na hora **e ainda entram na bolsa como ração** (+1 no contador do Q). **2 círios** nos cantos norte da cova (31,5/5,4 e 42,5/5,4), 25%, só valem com `etapa === 'chefe'`. **5 velas** no caminho | construído |
+| F3-RF-11b | **No código:** **6 frascos** de água benta (capela, preparação, lado sul da oficina de caixões, dois no colombário, quarto do Coveiro) — curam 15% na hora **e ainda entram na bolsa como ração** (+1 no contador do Q). **2 círios** nos cantos norte da cova (31,5/5,4 e 42,5/5,4), 25%, só valem com `etapa === 'chefe'`. **5 velas** no caminho | construído |
 | F3-RF-12 | Inimigos comuns: **vultos** (sombras que só se erguem nos trechos escuros — a luz os afugenta) e **mãos que perseguem e AGARRAM: imobilizam o jogador e drenam vida até ele se soltar esmagando o GOLPE** | questionário 06/08 — *"vultos + mãos q perseguem e te imobilizam enquanto tiram vida"* |
 | F3-RF-13 | **Avental de Aço equipado reduz o dano da pá do Coveiro** (34 → 14, −59%) e **encurta o agarrão das mãos: 3 apertos de GOLPE viram 2** | questionário 06/08 — *"protege de um ataque do chefe"* |
 | F3-RF-14 | Recompensa: **Lanterna dos Mortos** — vai à bolsa com popup; na fase 4 revela o invisível | questionário 06/08 |
@@ -121,7 +121,7 @@ Mecânica inédita — **ele cava e some** (questionário 06/08, recomendado ace
 | F3-RF-22 | Trilhas: BGM fúnebre do piso + trilha da cova grande — **fornecidas pelo usuário** | questionário 06/08 |
 | F3-RF-23 | SFX via `/buscar-sfx-prd`: terra cavando, emersão/estouro de terra, mãos raspando pedra, sussurro de vulto, sopro apagando vela, gota d'água/eco da cripta, sino fúnebre, madeira de caixão, choro de velório | derivado do §3 |
 | F3-RF-26 | **Grito alto quando um vulto surge** — one-shot no momento em que ele se ergue do escuro, acima do volume do ambiente (o susto é o ponto) | pedido 06/08 — *"Adicione um grito alto quando um vulto surgir"* |
-| F3-RF-24 | Ambientes por proximidade (`piso.ambientes`): gotejar + eco na cripta, **coro fúnebre baixo + o choro do velório na capela (F3-RF-25)**, **serrote e martelo na oficina**, água na preparação, **murmúrio de rezas dos rezadores (F3-RF-27)**, vento oco no colombário | processo /fase-nova, etapa 8 |
+| F3-RF-24 | Ambientes por proximidade (`piso.ambientes`): gotejar + eco na cripta, **coro fúnebre baixo + o choro do velório na capela (F3-RF-25)**, **serrote e martelo na oficina (agora com quem os toque, F3-RF-28)**, água na preparação, **murmúrio de rezas dos rezadores (F3-RF-27)**, vento oco no colombário | processo /fase-nova, etapa 8 |
 
 ### 3.7 Controles e HUD — HERDADO
 
@@ -139,7 +139,7 @@ RNF-01 a RNF-05 do template. O piso 3 não pode regredir os pisos 1–2 (o teste
 
 O que entrou no código e depois saiu. Registrado para não voltar por engano.
 
-**1. Três zonas de luz cíclica → uma só.** A construção começou com o escuro descendo em três trechos: o **depósito da carpintaria**, o **colombário oeste** e o cômodo do Sacristão. Ficou cansativo e espalhava o susto. Por pedido do dono, sobrou **uma zona só** — o fundo leste do colombário, onde o Sacristão reza (`x:18, y:45, 16×9`, 6 s de claro / 4 s de escuro). Os **4 vultos vivem todos nela**; fora dali, o piso não tem vulto nenhum. (commit `bac7e58`)
+**1. Três zonas de luz cíclica → uma só.** A construção começou com o escuro descendo em três trechos: o **depósito da carpintaria** (hoje o lado sul da oficina, §5.6), o **colombário oeste** e o cômodo do Sacristão. Ficou cansativo e espalhava o susto. Por pedido do dono, sobrou **uma zona só** — o fundo leste do colombário, onde o Sacristão reza (`x:18, y:45, 16×9`, 6 s de claro / 4 s de escuro). Os **4 vultos vivem todos nela**; fora dali, o piso não tem vulto nenhum. (commit `bac7e58`)
 
 **2. As ondas e os riscos animados da água da cripta → só as goteiras e o que boia.** A primeira versão da cripta viva tinha ondulação na superfície inteira e riscos de reflexo correndo pela lâmina. Ficou parecendo tecido, não água parada. Saiu a ondulação primeiro (`87a8d35`), depois saíram os riscos (`11ede2e`). O que ficou: **5 goteiras** pingando em anéis que nascem e somem, **6 objetos boiando** (3 caixões, 3 caixotes) com rastro elíptico próprio, e o **reflexo das velas acesas** escorrendo para dentro d'água. O bailado dos boiantes teve a velocidade **dobrada** (`3b83276`) — no ritmo original ninguém percebia que se mexiam.
 
@@ -148,6 +148,8 @@ O que entrou no código e depois saiu. Registrado para não voltar por engano.
 **4. Arma empunhada erguida acima da cabeça → pose diagonal.** Foram cinco tentativas antes de acertar: arma erguida com a cabeça para cima (`a80a85e`), arma em repouso à frente do corpo (`af75e65`), braços desenhados esticados do corpo até o cabo (`5a4fb61`), o recuo pelo raio de colisão (`58d5cbe`). Ficou a **empunhadura diagonal** da referência do dono: o cabo cruzando o peito, a arma inteira deslocada para o lado do olhar (fora do corpo), **sem braços desenhados** — só dois punhos fechados no cabo. (commits `5c074ae`, `5e23b92`, `bf2a738`; virou herança para as próximas fases em `0482dfa`)
 
 **5. Os caixões da cripta como decoração parada → destroços vivos.** Entraram primeiro como `dec.push({tipo:'caixote'})`, iguais aos do resto do piso. Não boiavam. Saíram do `decor` e passaram a ser desenhados por `desenharAguaCripta`, na constante `BOIAM`.
+
+**6. A oficina e o depósito como dois cômodos → um salão só.** O canto sudoeste nasceu partido: a oficina em x3..11 / y31..35, o depósito em x3..11 / y37..41 e uma **divisória em y=36** entre os dois, com porta no meio (6,36). O depósito virou um puxadinho sem função própria — o mesmo material, a mesma luz, uma parede a mais para contornar. Por pedido do dono (09/08), a divisória foi **derrubada**: o retângulo **x3..11 / y31..41** é agora um salão único, **A oficina de caixões**, com a **obra ao norte** (bancada, cavaletes, o caixão em construção) e o **material ao sul** (tábuas, pregos, cordas, barris). A porta da divisória saiu; a porta do cômodo passou a ser a do **vão sul** (x5..6 / y=42), a passagem que desce para o colombário — o "início" do cômodo, como o dono desenhou. A entrada norte pelo corredor do salão dos enterros (porta em 6,30) continua.
 
 ---
 
@@ -172,7 +174,7 @@ O que entrou no código e depois saiu. Registrado para não voltar por engano.
 
 Tudo que entrou além do que este PRD pedia.
 
-**Cada cômodo se apresenta na primeira entrada** (`COMODOS_FUN`, `anunciarComodo`). São **9 retângulos nomeados** — capela do velório, sala de preparação, salão dos enterros, oficina de caixões, depósito, cripta alagada, colombário, quarto do Coveiro e cova grande. Cada um dispara um aviso de tela com título e uma linha de subtexto ("*água parada — pise só nas passarelas*"), **uma vez por partida**; o `Set` de vistos zera no `aoIniciar`. Serve de mapa sem precisar de mapa.
+**Cada cômodo se apresenta na primeira entrada** (`COMODOS_FUN`, `anunciarComodo`). São **9 retângulos nomeados** — capela do velório, sala de preparação, salão dos enterros, oficina de caixões (o salão único de §5.6), cripta alagada, colombário, quarto do Coveiro, cova grande e a escada de chegada. Cada um dispara um aviso de tela com título e uma linha de subtexto ("*água parada — pise só nas passarelas*"), **uma vez por partida**; o `Set` de vistos zera no `aoIniciar`. Serve de mapa sem precisar de mapa.
 
 **A cripta alagada viva** (`desenharAguaCripta`, `CRIPTA`, `BOIAM`, `GOTEIRAS`). A pintura do cache dá a cor da água; isto dá o movimento. Cada objeto que boia tem âncora, inclinação, escala e um bailado próprio: sobe, desce, gira, deriva um palmo para cada lado, e abre dois anéis de rastro que respiram junto com o quanto ele está submerso. As goteiras batem em três anéis defasados mais a gota caindo. Tudo recortado pelo retângulo da cripta — nada escapa para a margem.
 
@@ -187,18 +189,20 @@ Tudo que entrou além do que este PRD pedia.
 1. `pintarFunParedes` — paredes em perspectiva 3/4 (face de tijolo úmido onde o muro olha para o sul, topo de pedra bruta no resto), sombra em degradê no chão e lajes
 2. `pintarFunCriptaSalao` — cripta alagada, salão, cova do Coveiro, escada e quarto (as covas abertas da arena ganharam **paredes de terra** em `fb688ed`, para não ficarem pretas chapadas)
 3. `pintarFunCapelaPrep` — capela de velório com as coroas de flores e as pétalas em volta do centro do mosaico (o caixão em si é recorte, e entra no passe 5) e as fileiras de bancos, mais a sala de preparação
-4. `pintarFunOficinaColombario` — oficina de caixões, depósito e os nichos do colombário
+4. `pintarFunOficinaColombario` — a oficina de caixões inteira (a obra ao norte, o material ao sul, sem divisória no meio) e os nichos do colombário
 5. `pintarFunImagens` — os itens recortados, assentados pelo pé, mais o cadáver da mesa
 
 A ordem importa: estrutura por cima do chão, recortes por último.
 
 **Sprites recortados da leva aprovada.** Além do que o Apêndice A previa: o **Coveiro**, o **vulto** (capuz de olhos acesos e garras-foice), a **mão dos mortos**, o **castiçal** das velas do caminho, o **círio** da arena, os **rezadores**, a **cabeça do cadáver** e **17 itens de cenário** (caixão com corrente, caixão cinza, caixão escuro, carroça, bancada de ferramentas, cocho, barris, feno, potes, mesa, banco, lamparina, mais a leva de velório: o **caixão de dossel** do centro do mosaico, o **altar de cálices** ao norte da capela, o **sepulcro de pedra** encostado na parede, o **esquife de brocado** da sala de preparação e o **esquife negro** do salão). Os itens carregam **sob demanda** (`funImg`) e, quando um PNG chega tarde, **o cache se repinta sozinho** — 150 ms de espera para agrupar as chegadas.
 
-**As portas do piso, espalhadas nos vãos** (`criarPortasFun`, `desenharPortasFun`). A arte recortada `porta.png` — arco de pedra com folha de tábuas — pagou o débito que morava no §8. O arco fica de pé para sempre em cinco vãos de frente (capela→salão, preparação→salão, salão→oficina, divisória oficina/depósito e o quarto do Coveiro); a folha de madeira, recortada de dentro do próprio PNG, gira para dentro quando o jogador chega — rangendo — e fecha quando ele se afasta. A passagem capela↔preparação, na parede vertical, leva uma folha de tábuas vista de cima, na palheta da arte. As dobradiças são as do piso 2 (`atualizarPortasInternas`), rodando sobre a lista própria do piso. (A janela já tinha saído deste débito antes: a sala de velório — e só ela — leva os três **vitrais** recortados da foto do dono, `vitral-esq.png`, `vitral-centro.png` e `vitral-dir.png`.)
+**As portas do piso, espalhadas nos vãos** (`criarPortasFun`, `desenharPortasFun`). A arte recortada `porta.png` — arco de pedra com folha de tábuas — pagou o débito que morava no §8. O arco fica de pé para sempre em cinco vãos de frente (capela→salão, preparação→salão, salão→oficina, o **vão sul da oficina** que desce para o colombário — a porta da antiga divisória saiu com ela, §5.6 — e o quarto do Coveiro); a folha de madeira, recortada de dentro do próprio PNG, gira para dentro quando o jogador chega — rangendo — e fecha quando ele se afasta. A passagem capela↔preparação, na parede vertical, leva uma folha de tábuas vista de cima, na palheta da arte. As dobradiças são as do piso 2 (`atualizarPortasInternas`), rodando sobre a lista própria do piso. (A janela já tinha saído deste débito antes: a sala de velório — e só ela — leva os três **vitrais** recortados da foto do dono, `vitral-esq.png`, `vitral-centro.png` e `vitral-dir.png`.)
 
 **Rezadores animados na capela** (`COADJ_FUN`, `desenharCoadjuvantesFun`): 6 figuras a 8 quadros por segundo, com o balanço miúdo e o sopro de quem reza. Fazem também o papel do grupo que vela o corpo (F3-RF-25) — não há carpideiras separadas.
 
-**Limpeza anti-vazamento no `aoIniciar`**: zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas e ajudantes antes de montar o piso 3 — e repovoa as portas internas com as do próprio piso (§7). Nada dos pisos 1–2 sobrevive à subida.
+**Ajudantes de carpintaria que rodam a oficina** (F3-RF-28): **2 figuras** (`img/fase3/ajudante-carpinteiro.png`) que **não ficam paradas num canto** — andam de estação em estação pelo salão único (bancada, cavaletes com o caixão em obra, cocho, pilhas de tábuas, caixas de pregos), param para trabalhar e seguem para a próxima. O serrote e o martelo do ambiente (F3-RF-24) deixaram de ser som sem dono.
+
+**Limpeza anti-vazamento no `aoIniciar`**: zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas e os ajudantes de cozinha do piso 2 (lista à parte da dos ajudantes de carpintaria desta fase) antes de montar o piso 3 — e repovoa as portas internas com as do próprio piso (§7). Nada dos pisos 1–2 sobrevive à subida.
 
 **A arma vem da bolsa**: machado do Gladiador se estiver no inventário (13 de dano), senão o facão das catacumbas (10). Com o Avental no peito, o piso avisa na entrada: *"a pá dele vai doer bem menos"*.
 
@@ -220,7 +224,7 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 
 **Arte recortada e ainda não instalada**
 
-- **Ajudantes de carpintaria** (`img/fase3/ajudante-carpinteiro.png`): recortado e **não instalado**. F3-RF-28 continua em aberto — hoje o serrote e o martelo tocam num cômodo sem ninguém trabalhando.
+- ~~**Ajudantes de carpintaria** (`img/fase3/ajudante-carpinteiro.png`): recortado e não instalado~~ — instalados em 09/08: **2 ajudantes** na oficina, andando de estação em estação e parando para trabalhar em cada uma (F3-RF-28, §7). O serrote e o martelo têm dono.
 - **Rezadores 2, 3 e 4 faltam como PNG.** `COADJ_FUN` pede seis figuras (`rezador-1`, `rezador-2`, `rezador-3`, `rezador-4`), mas `img/fase3/` só tem `rezador-1.png` recortado — as outras estão em `.jpg` com fundo, e `rezador-4` não existe. Na prática **só uma das seis figuras aparece na capela**.
 - **A Lanterna dos Mortos não tem arte**: `recompensa.img = null`, o popup da bolsa entra sem ícone.
 
@@ -245,7 +249,7 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 | Cenário | os 3 vitrais da sala de velório (esq, centro, dir) | foto do dono → homografia de endireitamento → recorte com fundo transparente | **pronto e no cenário**, só na capela (`vitrais.jpg` é a foto de origem) |
 | Retrato NPC | Carpinteiro, Lavadeira, Sacristão | PNG sem fundo | **pronto** (`velante-*.png`, escala 1.5) |
 | Coadjuvantes | rezadores da capela | PNG sem fundo | **parcial**: só `rezador-1.png`; faltam 2, 3 e 4 (§8) |
-| Coadjuvantes | ajudantes de carpintaria | PNG sem fundo | **recortado, não instalado** (§8) |
+| Coadjuvantes | ajudantes de carpintaria | PNG sem fundo | **pronto e no cenário** — 2 figuras rodando as estações da oficina (F3-RF-28, §7) |
 | Inimigos | vulto, mão dos mortos, cabeça de cadáver | PNG sem fundo | **pronto e no jogo** |
 | Chefe | O Coveiro (com pá e lanterna) | PNG sem fundo, 3,8 tiles de altura | **pronto** (`coveiro.png`) |
 | Item | Lanterna dos Mortos (popup) | PNG sem fundo | pendente — `recompensa.img` está `null` |
