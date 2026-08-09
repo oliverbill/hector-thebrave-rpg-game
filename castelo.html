@@ -2485,6 +2485,7 @@ function atualizar(dt){
   atualizarAmbientes(dt);
   atualizarDuckSfx();                 // o ducking também vale para o que já estava tocando
   if(!jog || etapa === 'menu' || pausado || !vivo) return;
+  checarOfertaVestir(dt);
   if(atualizarVoo(dt)){
     camX += (jog.x - camX)*Math.min(1, dt*7);      // a câmera acompanha o voo
     camY += (jog.y - camY)*Math.min(1, dt*7);
@@ -2877,6 +2878,21 @@ function adicionarAoInventario(item){
 function horaDeVestir(){
   return etapa === 'chefe' || !!(piso && piso.horaDoChefe && piso.horaDoChefe());
 }
+/* a bolsa se abre sozinha na soleira da arena, uma vez por piso: é ali que o
+   jogador decide se veste a peça (o avental) antes de encarar o chefe. Vale
+   para todo piso que diga quando é a hora do chefe — da fase 3 em diante. */
+let ofertaVestirFeita = false, ofertaVestirEspera = 0;
+function checarOfertaVestir(dt){
+  if(ofertaVestirFeita || etapa === 'chefe' || !horaDeVestir()) return;
+  const peca = inventario.find(i => i.veste && vestido !== i.id);
+  if(!peca) return;
+  ofertaVestirEspera += dt;                   // deixa o aviso da porta ser lido antes
+  if(ofertaVestirEspera < 1.4) return;
+  if(dialogo || !el('popupInv').classList.contains('oculto')) return;
+  invSelecionado = peca;                      // a peça já vem escolhida na lista
+  abrirInventario();
+  ofertaVestirFeita = true;
+}
 function renderizarBolsa(mostrar){
   const box = el('bolsa'), itens = el('bolsaItens');
   if(!mostrar){ box.classList.remove('on'); itens.innerHTML = ''; return; }
@@ -3017,6 +3033,7 @@ function iniciarPiso(p){
   pausaMenu = false; pausadoAntes = false; el('pausaVeu').classList.add('oculto');
   particulas = []; riscos = []; destrocos = [];
   chefe = null; dialogo = null; interacao = null;
+  ofertaVestirFeita = false; ofertaVestirEspera = 0;   // a oferta da peça é uma por piso
   el('dialogo').classList.remove('on'); calarVoz();   // nada do piso anterior fica na tela
   intel = {};
   jog = {x:p.spawn.x, y:p.spawn.y, vx:0, vy:0, raio:.30, hp:100, hpMax:100, dano:10,
