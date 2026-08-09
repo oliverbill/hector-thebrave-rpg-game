@@ -6665,7 +6665,7 @@ const COMODOS_FUN = [
   {x1:12.5, y1:30.5, x2:31, y2:43, nome:'A cripta alagada',  sub:'água parada — pise só nas passarelas'},
   {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de nichos; o Sacristão está no fundo'},
   {x1:38, y1:26, x2:43, y2:30, nome:'O quarto do Coveiro',   sub:'ele dorme ao lado da pá'},
-  {x1:30, y1:4,  x2:43, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'},
+  {x1:29, y1:2,  x2:44, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'},
   {x1:36, y1:48, x2:43, y2:54, nome:'A escada de chegada',  sub:'a câmara de carnes ficou lá atrás'}
 ];
 const vistos = new Set();
@@ -6696,8 +6696,11 @@ function construirFuneral(){
   /* ---- sala de preparação dos corpos, a leste da capela ---- */
   cavar(19,5,27,13);
   cavar(17,8,18,9);             // porta capela <-> preparação
-  /* ---- cova grande: a arena do Coveiro, SELADA (FUN.PORTA fica PAREDE) ---- */
-  cavar(30,4,43,16,CHAO2);
+  /* ---- cova grande: a arena do Coveiro, SELADA (FUN.PORTA fica PAREDE) ----
+     Cresceu para caber o portão: 16x15 tiles, o máximo que a planta permite —
+     ao sul a porta cola em y=17, a oeste a preparação acaba em x=27 e a leste
+     e ao norte só há a borda do mapa. */
+  cavar(29,2,44,16,CHAO2);
   cavar(36,18,38,19);           // a soleira: corredor curto até o salão
 
   /* ---- salão central, ligando tudo ---- */
@@ -6751,7 +6754,7 @@ function construirFuneral(){
   /* ---- luzes: poucas e espaçadas — o piso é sombrio ---- */
   [[9.5,5.6],[4,15.6],[15,15.6],                    // capela
    [23,5.6],[26.5,12.5],                            // preparação
-   [31,4.6],[42,4.6],[37,15.5],                     // cova grande
+   [30,2.6],[43,2.6],[30,15.5],[43,15.5],[37,15.5], // cova grande: um fogo em cada canto da arena maior
    [37,19],                                         // soleira da cova
    [10,20.5],[22,20.5],[34,20.5],                   // salão
    [40.5,26.5],                                     // quarto do Coveiro
@@ -6772,10 +6775,13 @@ function construirFuneral(){
   dec.push({tipo:'poca', x:22, y:9.5}); dec.push({tipo:'poca', x:24.5, y:11.8});
   dec.push({tipo:'osso', x:26.5, y:6.5});
   // cova grande: correntes, ossos de quem já desceu e um esquife à beira
-  [[33,3.3],[38,3.3],[41,3.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
-  dec.push({tipo:'caixote', x:31.5, y:5.5}); dec.push({tipo:'caixote', x:32.5, y:5.5});
-  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:42.5, y:14.5});
+  [[33,1.3],[38,1.3],[41,1.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
+  dec.push({tipo:'caixote', x:30.5, y:3.5}); dec.push({tipo:'caixote', x:31.5, y:3.5});
+  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:43.5, y:14.5});
   dec.push({tipo:'poca', x:35, y:7.5}); dec.push({tipo:'poca', x:40, y:12});
+  /* as faixas novas da arena, para o tamanho a mais não virar chão pelado */
+  dec.push({tipo:'osso', x:30.4, y:8.5}); dec.push({tipo:'caveira', x:43.4, y:6.5});
+  dec.push({tipo:'poca', x:31.5, y:12.5}); dec.push({tipo:'osso', x:36.5, y:2.8});
   // escada desmoronada: o aviso de quem não voltou
   dec.push({tipo:'rachadura', x:31.5, y:19.2}); dec.push({tipo:'osso', x:32.4, y:18.6});
   // salão: pedra gasta e goteiras
@@ -6820,7 +6826,7 @@ function criarPortasFun(){
     {x:6,  y:30, vert:false},    // salão -> oficina de caixões
     {x:5,  y:42, vert:false},    // oficina -> a descida do colombário
     {x:40, y:25, vert:false},    // o quarto do Coveiro
-    {x:16, y:44, vert:false}     // a boca do colombário, descendo da margem sul da cripta
+    {x:5,  y:44, vert:false}     // a boca do colombário, a oeste: a descida que vem do depósito
   ].map(p => ({...p, ab:0, rangeu:false}));
 }
 function desenharPortasFun(ox, oy){
@@ -6881,6 +6887,23 @@ function desenharPortasFun(ox, oy){
   });
 }
 
+/* --- o portão do Coveiro: o vão da cova não é um vão, é um portão selado.
+   A arte fica de pé enquanto a terra está fechada e se desfaz quando ela abre —
+   depois disso nada pode tapar a arena, e o monumento tem 6 tiles de altura. --- */
+const imgPortaCoveiro = new Image(); imgPortaCoveiro.src = 'img/fase3/porta-coveiro.png';
+function desenharPortaoCova(ox, oy){
+  if(!porta3 || porta3.quebra >= 1) return;
+  if(!(imgPortaCoveiro.complete && imgPortaCoveiro.naturalWidth > 0)) return;
+  const cx = ox + (FUN.PORTA.x + FUN.PORTA.larg/2)*tam;
+  const base = oy + (FUN.PORTA.y + 1)*tam;             // os degraus pousam no chão da soleira
+  const larg = tam*4.2, alt = larg*(imgPortaCoveiro.naturalHeight/imgPortaCoveiro.naturalWidth);
+  if(foraDaVista(cx, base - alt/2, alt)) return;
+  ctx.save();
+  ctx.globalAlpha = 1 - porta3.quebra;
+  ctx.drawImage(imgPortaCoveiro, cx - larg/2, base - alt, larg, alt);
+  ctx.restore();
+}
+
 /* --- o piso, montado (esqueleto: F3-RF-01..05 na geometria; o resto vem depois) --- */
 /* --- as velas do caminho (t-velas): apagadas até o jogador ACENDER com E --- */
 let velasCaminho = [], aguaBenta = [], cirios = [];
@@ -6890,7 +6913,7 @@ function criarVelasCaminho(){
     {x:22.5, y:21.5},   // salão, centro
     {x:16.5, y:33},     // margem noroeste da cripta
     {x:17,   y:41.5},   // margem sul da cripta
-    {x:6,    y:44}      // descida do colombário
+    {x:5.5,  y:45.6}    // descida do colombário: fora da soleira, para não subir na folha da porta
   ].map(v => ({...v, acesa:false}));
 }
 /* o castiçal apagado, pintado uma única vez: aplicar ctx.filter por quadro
@@ -6990,7 +7013,7 @@ function desenharAguaBenta(ox, oy){
 /* --- círios da cova: a cura da arena (25%), repostos a cada tentativa --- */
 /* a cura da cova: uma água benta no canto, grande e sem nada em volta que
    atrapalhe a vista (pedido do dono) */
-const CANTOS_AGUA = [[42.0, 14.8]];
+const CANTOS_AGUA = [[43.0, 14.8]];
 function criarCirios(){
   cirios = CANTOS_AGUA.map(([x, y]) => ({x, y, pego:false}));
 }
@@ -8746,11 +8769,11 @@ function pintarFunCriptaSalao(cmx, T){
     cmx.beginPath(); cmx.ellipse(px, py, T*.1, T*.055, .3, 0, TAU); cmx.stroke();
   });
 
-  /* ============ 3. COVA GRANDE: a arena do Coveiro (x30..43, y4..16) ============
+  /* ============ 3. COVA GRANDE: a arena do Coveiro (x29..44, y2..16) ============
      terra revolvida sobre a pedra, covas abertas com o monte de terra ao lado,
      lápides tortas e o sulco circular de quem cava andando em roda */
   const longeDaAgua = (x, y) => CANTOS_AGUA.every(([ax, ay]) => Math.hypot(x - ax, y - ay) > 2.6);
-  for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
+  for(let y=2; y<=16; y++) for(let x=29; x<=44; x++){
     if(tf(x,y) !== CHAO2) continue;
     const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
     /* o chão da cova é TERRA, não pedra: cobre a laje inteira antes de tudo */
@@ -8788,7 +8811,7 @@ function pintarFunCriptaSalao(cmx, T){
     }
   }
   // o sulco circular no centro da arena, com as pegadas em roda
-  const ccx = 37.2*T, ccy = 10.4*T, rC = T*2.05;
+  const ccx = 37.2*T, ccy = 9.8*T, rC = T*2.45;   // o centro subiu e a roda abriu com a arena
   cmx.strokeStyle = 'rgba(14,12,16,.3)'; cmx.lineWidth = T*.16;
   cmx.beginPath(); cmx.ellipse(ccx, ccy, rC, rC*.72, 0, 0, TAU); cmx.stroke();
   cmx.strokeStyle = 'rgba(190,180,155,.1)'; cmx.lineWidth = 2;
@@ -8843,31 +8866,8 @@ function pintarFunCriptaSalao(cmx, T){
   };
   [[33.5,6.3,-.07,1],[39.8,7.9,.05,-1],[33.8,12.8,.09,1],[38.9,13.6,-.04,1]]
     .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,a,l]) => pCova(x, y, a, l));
-  // lápides toscas, tortas, com o pé enterrado na terra
-  const pLapide = (x, y, ang) => {
-    const px = x*T, py = y*T;
-    cmx.fillStyle = 'rgba(0,0,0,.4)';                    // a sombra no chão
-    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.34, T*.34, T*.11, 0, 0, TAU); cmx.fill();
-    cmx.save(); cmx.translate(px, py + T*.3); cmx.rotate(ang);
-    const w = T*.44, hL = T*.78;
-    cmx.fillStyle = '#565c6e';
-    cmx.beginPath();
-    cmx.moveTo(-w/2, 0); cmx.lineTo(-w/2, -hL + w/2);
-    cmx.arc(0, -hL + w/2, w/2, Math.PI, 0);
-    cmx.lineTo(w/2, 0); cmx.closePath(); cmx.fill();
-    cmx.fillStyle = 'rgba(10,8,14,.35)';                 // o flanco na sombra
-    cmx.fillRect(w/2 - w*.22, -hL + w/2, w*.22, hL - w/2);
-    cmx.strokeStyle = 'rgba(215,225,240,.3)'; cmx.lineWidth = 2;   // o topo pega luz
-    cmx.beginPath(); cmx.arc(0, -hL + w/2, w/2 - 1, Math.PI*1.05, Math.PI*1.8); cmx.stroke();
-    cmx.strokeStyle = 'rgba(14,12,18,.5)'; cmx.lineWidth = 1.4;    // gravação tosca
-    cmx.beginPath(); cmx.moveTo(-w*.24, -hL*.52); cmx.lineTo(w*.2, -hL*.52); cmx.stroke();
-    cmx.beginPath(); cmx.moveTo(-w*.2, -hL*.36); cmx.lineTo(w*.14, -hL*.36); cmx.stroke();
-    cmx.fillStyle = '#3a332e';                           // a terra segurando o pé
-    cmx.beginPath(); cmx.ellipse(0, 0, w*.62, T*.09, 0, 0, TAU); cmx.fill();
-    cmx.restore();
-  };
-  [[35.2,5.2,-.14],[41.8,10.6,.11],[31.4,11.9,-.2],[38.6,4.8,.16],[40.2,15.6,-.09]]
-    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,g]) => pLapide(x, y, g));
+  /* as lápides deixaram de ser vetor tosco: agora são arte recortada, e vivem
+     no passe 5 (pintarFunImagens), junto dos outros itens assentados pelo pé */
 
   /* a cova é um cemitério inteiro: cruzes fincadas, caveiras, caixões
      empilhados e as oferendas de quem veio despedir-se — menos em volta das
@@ -9093,6 +9093,27 @@ function pintarFunImagens(cmx, T){
   pImg('item-banco', 41.7, 29.7, 1.1);
   pImg('item-lamparina', 42.8, 26.7, .7);
 
+  /* ---- as lápides da cova grande ----
+     Uma folha de 16 recortes, células de mesmo tamanho com o pé no rodapé —
+     assim a cruz céltica continua mais alta que as pedras, sem cada uma
+     precisar da sua medida. Todas encostam nas paredes: o miolo fica livre,
+     que é onde o Coveiro cava em roda e a luta acontece. */
+  const LAP_QL = 157, LAP_QA = 313;                // uma célula da folha
+  const pLapide = (x, y, larg, quadro) => {
+    const im = funImg('lapides');
+    if(!im.complete || !im.naturalWidth) return;
+    const w = larg*T, h = LAP_QA*(w/LAP_QL);
+    cmx.fillStyle = 'rgba(0,0,0,.32)';             // a sombra segue o pé, não a célula
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.30, T*.13, 0, 0, TAU); cmx.fill();
+    cmx.drawImage(im, quadro*LAP_QL, 0, LAP_QL, LAP_QA, x*T - w/2, y*T - h + T*.12, w, h);
+  };
+  [[29.4, 4.2, .86,  7], [29.4, 7.0, .82, 12], [29.4, 10.2, .88,  4],   // parede oeste
+   [29.5, 13.6, .80, 15],
+   [34.5, 3.0, .92,  0], [39.8, 3.0, .84,  6], [41.5, 3.2, .78,  3],    // parede norte
+   [43.6, 3.8, .86,  9], [43.7, 5.2, .80,  2], [43.6, 9.9, .85, 11],    // parede leste
+   [31.4, 15.8, .83, 14], [34.9, 15.9, .86,  5]                          // parede sul
+  ].forEach(([x, y, g, q]) => pLapide(x, y, g, q));
+
   /* vitrais: só a sala de velório os tem, e são os três da foto — cada recorte
      no seu lugar (esquerdo, lanceta alta do meio, direito). Nenhuma outra
      parede do piso leva vitral. */
@@ -9272,8 +9293,8 @@ const PISO_FUNERAL = {
       desespero:{
         abaixoDe:.18, alcance:6.5, enterradoT:5,
         danoPorSegundo:0, danoArremesso:0, comoPazada:true, pazadas:1,
-        arremesso:26, distancia:9,                    // cospe o jogador do outro lado da cova
-        area:{x1:30.6, y1:4.6, x2:42.6, y2:15.6},     // sem passar da terra da arena
+        arremesso:26, distancia:11,                   // cospe o jogador do outro lado da cova
+        area:{x1:29.6, y1:2.6, x2:44.4, y2:15.6},     // sem passar da terra da arena
         aviso:['Ele te agarra', 'se você desce, desce comigo!']
       },
       cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
@@ -9390,6 +9411,8 @@ const PISO_FUNERAL = {
     if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
     anunciarComodo();
     atualizarPortasInternas(dt);      // as mesmas dobradiças do piso 2, na lista do piso 3
+    /* a cova aberta desfaz o portão: some em pouco menos de um segundo */
+    if(porta3.aberta && porta3.quebra < 1) porta3.quebra = Math.min(1, porta3.quebra + dt*1.4);
     atualizarMaos(dt);
     atualizarZonasLuz(dt);
     atualizarVultos(dt);
@@ -9470,6 +9493,7 @@ const PISO_FUNERAL = {
     desenharCoadjuvantesFun(ox, oy);
     desenharCarpinteiros(ox, oy);
     desenharPortasFun(ox, oy);
+    desenharPortaoCova(ox, oy);
     desenharVelasCaminho(ox, oy);
     desenharAguaBenta(ox, oy);
     if(etapa === 'chefe') desenharCirios(ox, oy);
@@ -9486,7 +9510,7 @@ const PISO_FUNERAL = {
     marcarTarefa(tid); marcarTarefa('t-cripta'); marcarTarefa('t-velas');
     velasCaminho.forEach(v => { v.acesa = true; });
     const vc = el('t-velas-cont'); if(vc) vc.textContent = velasCaminho.length + '/' + velasCaminho.length;
-    porta3.aberta = true;
+    porta3.aberta = true; porta3.quebra = 1;      // atalho: o portão já nem existe
     for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
     desenharCache();
     jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 1.6;
