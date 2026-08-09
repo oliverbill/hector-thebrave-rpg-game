@@ -485,6 +485,9 @@ function montarFatiasJog(){
   };
 }
 const luzCv = document.createElement('canvas'), lcx = luzCv.getContext('2d');
+/* o véu do escuro precisa do seu próprio canvas quando a zona tem janela:
+   o furo só fica sem costura se for APAGADO do véu já pintado */
+const veuCv = document.createElement('canvas'), vcx = veuCv.getContext('2d');
 
 /* ---------- som (síntese realista via Web Audio) ---------- */
 let ac = null, somOk = true;
@@ -2556,6 +2559,7 @@ function redimensionar(){
   W = Math.max(1, window.innerWidth); H = Math.max(1, window.innerHeight);
   tela.width = Math.max(1, Math.floor(W*dpr)); tela.height = Math.max(1, Math.floor(H*dpr));
   luzCv.width = Math.max(1, Math.floor(W*dpr/2)); luzCv.height = Math.max(1, Math.floor(H*dpr/2));
+  veuCv.width = luzCv.width; veuCv.height = luzCv.height;
   tam = Math.min(W, H)/VISAO;
 }
 window.addEventListener('resize', redimensionar);
@@ -6466,26 +6470,55 @@ function atualizarZonasLuz(dt){
   });
 }
 function zonaDe(v){ return zonasLuz[v.zona]; }
+/* a JANELA da zona: uma faixa onde o escuro não desce, porque ali há fogo
+   aceso de verdade (os braseiros da parede de nichos). Vale para a pintura do
+   véu e para o vulto, que não se ergue em cima da luz (F3-RF-12) */
+function naJanela(z, x, y){
+  const j = z && z.janela;
+  return !!j && x > j.x && x < j.x + j.larg && y > j.y && y < j.y + j.alt;
+}
 function desenharZonasLuz(ox, oy){
   zonasLuz.forEach(z => {
     if(z.veu <= .015) return;
-    const x = ox + z.x*tam, y = oy + z.y*tam, w = z.larg*tam, h = z.alt*tam;
+    const k = dpr/2;                      // o véu mora no mesmo meio-tamanho da luz
+    const x = (ox + z.x*tam)*k, y = (oy + z.y*tam)*k, w = z.larg*tam*k, h = z.alt*tam*k;
     /* escuro que nasce no miolo e se dissolve nas bordas — retângulo chapado
        parecia um bloco preto colado por cima do cenário. O gradiente é redondo
        num espaço deformado, senão uma sala comprida (o colombário inteiro tem
        31x10) ficaria preta no meio e clara nas duas pontas */
     const cx = x + w/2, cy = y + h/2;
-    ctx.save();
-    ctx.translate(cx, cy);
-    ctx.scale(w/2, h/2);                 // a sala vira um círculo de raio 1
-    const g = ctx.createRadialGradient(0, 0, .18, 0, 0, 1.04);
+    vcx.setTransform(1,0,0,1,0,0);
+    vcx.clearRect(0, 0, veuCv.width, veuCv.height);
+    vcx.save();
+    vcx.translate(cx, cy);
+    vcx.scale(w/2, h/2);                 // a sala vira um círculo de raio 1
+    const g = vcx.createRadialGradient(0, 0, .18, 0, 0, 1.04);
     g.addColorStop(0, 'rgba(3,2,8,' + (z.veu*.82) + ')');
     g.addColorStop(.62, 'rgba(5,3,12,' + (z.veu*.55) + ')');
     g.addColorStop(1, 'rgba(5,3,12,0)');
-    ctx.beginPath(); ctx.arc(0, 0, 1.04, 0, TAU); ctx.clip();
-    ctx.fillStyle = g;
-    ctx.fillRect(-1.1, -1.1, 2.2, 2.2);
-    ctx.restore();
+    vcx.beginPath(); vcx.arc(0, 0, 1.04, 0, TAU); vcx.clip();
+    vcx.fillStyle = g;
+    vcx.fillRect(-1.1, -1.1, 2.2, 2.2);
+    vcx.restore();
+    /* a JANELA: onde há fogo aceso de verdade, o véu é apagado do próprio véu.
+       Recortar com clip deixava a borda do furo aparecendo como um arco a
+       faca; apagando com degradê, o escuro só se dissolve. */
+    const j = z.janela;
+    if(j){
+      const jx = (ox + (j.x + j.larg/2)*tam)*k, jy = (oy + (j.y + j.alt/2)*tam)*k;
+      const jrx = j.larg/2*tam*k, jry = j.alt/2*tam*k;
+      vcx.save();
+      vcx.globalCompositeOperation = 'destination-out';
+      vcx.translate(jx, jy);
+      vcx.scale(jrx, jry);
+      const gj = vcx.createRadialGradient(0, 0, .30, 0, 0, 1);
+      gj.addColorStop(0, 'rgba(0,0,0,1)');
+      gj.addColorStop(1, 'rgba(0,0,0,0)');
+      vcx.fillStyle = gj;
+      vcx.beginPath(); vcx.arc(0, 0, 1, 0, TAU); vcx.fill();
+      vcx.restore();
+    }
+    ctx.drawImage(veuCv, 0, 0, W, H);
   });
 }
 
@@ -6503,7 +6536,9 @@ function atualizarVultos(dt){
     v.fase += dt;
     v.flash = Math.max(0, v.flash - dt*4);
     v.morde = Math.max(0, v.morde - dt);
-    const z = zonaDe(v), escuro = z && z.escura;
+    /* a faixa acesa na frente da parede de nichos afugenta o vulto como a luz
+       do ciclo afugenta: quem entra nela afunda */
+    const z = zonaDe(v), escuro = z && z.escura && !naJanela(z, v.x, v.y);
     switch(v.estado){
       case 'submerso':               // afundado e invulnerável, deriva de volta pra casa
         v.x += (v.hx - v.x)*Math.min(1, dt*.8);
@@ -9293,13 +9328,18 @@ const PISO_FUNERAL = {
        (x3..34) — antes só a metade leste apagava e o labirinto oeste ficava
        sem vulto nenhum. A carpintaria continua de fora (pedido do dono) */
     criarZonasLuz([
-      {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3'}
+      /* a janela: a faixa da parede de nichos, onde os 3 braseiros ardem sempre.
+         O escuro do ciclo não desce ali, e é o que deixa ler as 30 lápides */
+      {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3',
+       janela:{x:11, y:43, larg:20.4, alt:4}}
     ]);
     /* um vulto por punhado de celas, do primeiro nicho oeste ao fundo leste —
        cada um mora no miolo de uma cela 2x2 do labirinto */
     criarVultos([
       {x:5,  y:46,   zona:0}, {x:8.5,  y:51.5, zona:0},   // labirinto oeste
-      {x:11.5, y:46.5, zona:0}, {x:14,  y:49.5, zona:0},  // miolo oeste
+      /* o de 11,5 desceu de y46,5 para y48,5: o antigo nicho caía dentro da
+         janela acesa e ele nunca mais se ergueria */
+      {x:11.5, y:48.5, zona:0}, {x:14,  y:49.5, zona:0},  // miolo oeste
       {x:17,  y:51.5, zona:0},                            // o miolo, na fileira do fundo
       {x:19.5, y:48.5, zona:0}, {x:22, y:48, zona:0},     // metade leste (as de antes)
       {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0}   // o fundo do labirinto
