@@ -7497,11 +7497,12 @@ function pintarFunParedes(cmx, T){
 
   /* ---- paredes em perspectiva 3/4, na pedra fria do funeral: onde a parede
      olha para o sul (chão, ponte ou a água parada abaixo) desenha a FACE
-     frontal de tijolos úmidos; o resto é o TOPO do muro, pedra bruta ---- */
+     frontal de tijolos úmidos; o resto é o TOPO do muro, pedra bruta.
+     O miolo maciço entra junto: sem pintura ele ficava com a laje
+     quadriculada do motor e o bloco de pedra passava por cômodo escuro
+     e sem porta — três deles, entre o salão e a cripta. ---- */
   for(let y=0; y<FUN.ALT; y++) for(let x=0; x<FUN.LARG; x++){
     if(!ehParede(x,y)) continue;
-    if(!(ehAberto(x,y+1) || ehAberto(x,y-1) || ehAberto(x+1,y) || ehAberto(x-1,y)
-      || ehAberto(x+1,y+1) || ehAberto(x-1,y+1) || ehAberto(x+1,y-1) || ehAberto(x-1,y-1))) continue;
     const px2 = x*T, py2 = y*T, h = rndDe(x, y);
 
     if(ehAberto(x, y+1)){
