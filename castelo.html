@@ -7232,14 +7232,25 @@ function desenharCoveiro(c, ox, oy){
    O cache dá a cor; isto dá o movimento que faz o olho ler ÁGUA. --- */
 const CRIPTA = {x1:15, y1:32, x2:28, y2:42};
 const GOTEIRAS = [[18.5,38.2],[24.5,36.6],[20.8,41.6],[26.3,40.1],[17.2,34.8]];
-/* o que a cripta carrega na superfície — posição de âncora, inclinação e escala */
+/* o que a cripta carrega na superfície — posição de âncora, inclinação, escala
+   e o tamanho do rastro que cada um abre (um crânio não afasta a mesma água
+   que um caixão). Nenhuma âncora cai sobre passarela: só água parada. */
 const BOIAM = [
-  {tipo:'caixao',  x:17.7, y:36.2, ang:-.32, esc:1},
-  {tipo:'caixao',  x:23.3, y:35.2, ang:.5,   esc:1},
-  {tipo:'caixao',  x:25.7, y:39.5, ang:-.12, esc:.92},
-  {tipo:'caixote', x:20,   y:35.5, ang:.25,  esc:1},
-  {tipo:'caixote', x:24,   y:38.5, ang:-.4,  esc:.85},
-  {tipo:'caixote', x:19.5, y:41.3, ang:.6,   esc:.9}
+  {tipo:'caixao',   x:17.7, y:36.2, ang:-.32, esc:1,   rastro:1},
+  {tipo:'caixao',   x:23.3, y:35.2, ang:.5,   esc:1,   rastro:1},
+  {tipo:'caixao',   x:25.7, y:39.5, ang:-.12, esc:.92, rastro:1},
+  {tipo:'caixote',  x:20,   y:35.5, ang:.25,  esc:1,   rastro:.8},
+  {tipo:'caixote',  x:24,   y:38.5, ang:-.4,  esc:.85, rastro:.8},
+  {tipo:'caixote',  x:19.5, y:41.3, ang:.6,   esc:.9,  rastro:.8},
+  /* os mortos que a água não guardou: soltaram-se dos caixões e boiam soltos */
+  {tipo:'esqueleto', x:18.9, y:34.3, ang:.18,  esc:1,   rastro:1.05},
+  {tipo:'esqueleto', x:24.6, y:41.5, ang:-.55, esc:.92, rastro:1},
+  {tipo:'esqueleto', x:26.3, y:36.9, ang:.82,  esc:.86, rastro:.95},
+  {tipo:'cranio',    x:21.1, y:34.4, ang:.4,   esc:1,   rastro:.4},
+  {tipo:'cranio',    x:19.3, y:38.7, ang:-.9,  esc:.85, rastro:.36},
+  {tipo:'cranio',    x:25.1, y:34.7, ang:1.3,  esc:.95, rastro:.38},
+  {tipo:'cranio',    x:20.6, y:41.6, ang:-.2,  esc:.9,  rastro:.37},
+  {tipo:'cranio',    x:23.6, y:37.2, ang:.7,   esc:.8,  rastro:.34}
 ];
 function desenharAguaCripta(ox, oy){
   const x0 = ox + CRIPTA.x1*tam, y0 = oy + CRIPTA.y1*tam;
@@ -7251,20 +7262,31 @@ function desenharAguaCripta(ox, oy){
   /* o que a água carrega: caixões e caixotes boiando, cada um no seu bailado
      lento — sobe, desce, gira e deriva um palmo para cada lado */
   BOIAM.forEach((o, i) => {
-    const f = tempo*.7 + i*1.7;                          // o bailado, no dobro da velocidade
+    const f = tempo*1.4 + i*1.7;                         // o bailado, no dobro da velocidade de antes
     const dx = Math.sin(f*.7)*.16, dy = Math.cos(f*.53 + 1.2)*.12;
     const px = ox + (o.x + dx)*tam, py = oy + (o.y + dy)*tam;
     if(foraDaVista(px, py, tam*2)) return;
     const ang = o.ang + Math.sin(f*.6 + i)*.07;
     const afunda = .5 + Math.sin(f*.9 + i*2.1)*.5;        // quanto está submerso agora
+    const ras = (o.rastro === undefined ? 1 : o.rastro)*o.esc;
+    /* a água que sobe pelo corpo: recortada na silhueta do que boia, senão vira
+       um retângulo preto chapado por cima da lâmina */
+    const veuDagua = (rx, ry, yLinha) => {
+      ctx.save();
+      ctx.beginPath(); ctx.rect(-rx, yLinha, rx*2, ry*2);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(16,44,46,' + (.42 + afunda*.32) + ')';
+      ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fill();
+      ctx.restore();
+    };
     ctx.save();
     ctx.translate(px, py);
     /* o rastro que ele abre na água, respirando junto */
     ctx.strokeStyle = 'rgba(160,206,200,' + (.14 + afunda*.18) + ')';
     ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.74 + afunda*.1)*o.esc, tam*(.4 + afunda*.06)*o.esc, ang, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.74 + afunda*.1)*ras, tam*(.4 + afunda*.06)*ras, ang, 0, TAU); ctx.stroke();
     ctx.strokeStyle = 'rgba(160,206,200,' + (.05 + afunda*.07) + ')';
-    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.98 + afunda*.14)*o.esc, tam*(.55 + afunda*.08)*o.esc, ang, 0, TAU); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, tam*(.98 + afunda*.14)*ras, tam*(.55 + afunda*.08)*ras, ang, 0, TAU); ctx.stroke();
     ctx.rotate(ang);
     ctx.scale(o.esc, o.esc);
     if(o.tipo === 'caixao'){
@@ -7286,6 +7308,79 @@ function desenharAguaCripta(ox, oy){
       ctx.beginPath();
       ctx.moveTo(L*.55, -w3*1.2); ctx.lineTo(L + 1.5, -w3); ctx.lineTo(L + 1.5, w3); ctx.lineTo(L*.55, w3*1.2);
       ctx.closePath(); ctx.fill();
+    } else if(o.tipo === 'cranio'){
+      /* o crânio de bruços na água: caixa, maxilar, órbitas e sutura — a mesma
+         caveira da cova, mas com a linha d'água subindo e descendo nela */
+      const r = tam*.19;
+      ctx.fillStyle = '#cfc7ae';
+      ctx.beginPath(); ctx.ellipse(0, 0, r, r*.86, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#bdb49a';                                       // o maxilar
+      ctx.beginPath(); ctx.ellipse(0, r*.72, r*.62, r*.34, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#15161d';                                       // as órbitas e o nariz
+      ctx.beginPath(); ctx.ellipse(-r*.36, -r*.1, r*.26, r*.24, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(r*.36, -r*.1, r*.26, r*.24, 0, 0, TAU); ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, r*.1); ctx.lineTo(-r*.14, r*.42); ctx.lineTo(r*.14, r*.42);
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,252,240,.3)';                          // o brilho no alto
+      ctx.beginPath(); ctx.ellipse(-r*.2, -r*.42, r*.4, r*.2, -.3, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(40,34,26,.4)'; ctx.lineWidth = 1;        // a sutura
+      ctx.beginPath(); ctx.moveTo(-r*.5, -r*.5); ctx.lineTo(r*.2, -r*.72); ctx.stroke();
+      veuDagua(r*1.05, r*1.15, r*(.1 - afunda*.75));                   // o que a água cobre
+    } else if(o.tipo === 'esqueleto'){
+      /* a ossada inteira, de barriga para cima e cabeça à frente: ombros, caixa
+         das costelas, bacia, braços rentes ao corpo e pernas esticadas. Os
+         membros correm ao longo do corpo, senão a coisa lê como aranha. */
+      const B = tam*.5, osso = '#d3cab0';
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const membro = (pts, grossura) => {
+        ctx.beginPath();
+        ctx.moveTo(pts[0], pts[1]);
+        ctx.quadraticCurveTo(pts[2], pts[3], pts[4], pts[5]);
+        ctx.lineWidth = grossura; ctx.stroke();
+      };
+      ctx.strokeStyle = 'rgba(8,14,16,.4)';                            // o corpo escurece a água por baixo
+      ctx.lineWidth = Math.max(3, B*.2);
+      ctx.beginPath(); ctx.moveTo(-B*.5, 2); ctx.lineTo(B*.2, 2); ctx.stroke();
+      ctx.strokeStyle = osso;
+      [-1, 1].forEach(s => {                                           // pernas esticadas, joelho de leve
+        membro([B*.14, s*B*.11,  B*.5, s*B*.19,  B*.86, s*B*.13], Math.max(1.8, B*.085));
+        ctx.beginPath();                                               // o pé
+        ctx.ellipse(B*.92, s*B*.12, B*.055, B*.04, 0, 0, TAU); ctx.fillStyle = osso; ctx.fill();
+      });
+      [-1, 1].forEach(s => {                                           // braços rentes ao tronco
+        membro([-B*.36, s*B*.19, -B*.12, s*B*.29, B*.14, s*B*.24], Math.max(1.5, B*.07));
+        ctx.beginPath();
+        ctx.ellipse(B*.19, s*B*.23, B*.05, B*.04, 0, 0, TAU); ctx.fillStyle = osso; ctx.fill();
+      });
+      ctx.strokeStyle = osso; ctx.lineWidth = Math.max(2, B*.1);       // a coluna
+      ctx.beginPath(); ctx.moveTo(-B*.48, 0); ctx.lineTo(B*.16, 0); ctx.stroke();
+      ctx.lineWidth = Math.max(1.6, B*.075);                           // a barra dos ombros
+      ctx.beginPath(); ctx.moveTo(-B*.38, -B*.2); ctx.lineTo(-B*.38, B*.2); ctx.stroke();
+      ctx.strokeStyle = 'rgba(214,205,180,.92)';                       // a caixa das costelas
+      ctx.lineWidth = Math.max(1.3, B*.06);
+      for(let k=0; k<5; k++){
+        const rx = -B*.32 + k*B*.085, arco = B*(.17 + (k < 2 ? k*.02 : (4-k)*.015));
+        [-1, 1].forEach(s => {
+          ctx.beginPath();
+          ctx.moveTo(rx, s*B*.02);
+          ctx.quadraticCurveTo(rx + B*.06, s*arco, rx + B*.02, s*arco);
+          ctx.stroke();
+        });
+      }
+      ctx.fillStyle = osso;                                            // a bacia
+      ctx.beginPath(); ctx.ellipse(B*.15, 0, B*.09, B*.15, 0, 0, TAU); ctx.fill();
+      const r = B*.2;                                                  // o crânio, na ponta
+      ctx.fillStyle = '#cfc7ae';
+      ctx.beginPath(); ctx.ellipse(-B*.66, 0, r, r*.86, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#bdb49a';                                       // o maxilar, para a frente
+      ctx.beginPath(); ctx.ellipse(-B*.78, 0, r*.42, r*.5, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#15161d';                                       // as órbitas
+      ctx.beginPath(); ctx.ellipse(-B*.71, -r*.36, r*.23, r*.19, 0, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-B*.71, r*.36, r*.23, r*.19, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,252,240,.26)';
+      ctx.beginPath(); ctx.ellipse(-B*.58, -r*.1, r*.34, r*.2, .4, 0, TAU); ctx.fill();
+      veuDagua(B*1.15, B*.62, B*(.04 - afunda*.4));
     } else {
       const l = tam*.34;
       ctx.fillStyle = '#4a3925';
