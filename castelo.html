@@ -61,6 +61,20 @@
   #pausaBotoes button:active{background:var(--brasa); color:#120d06;}
   #pausaBotoes #pausaSair{border-color:#6b3040; color:#d98a8a;}
   #pausaBotoes #pausaSair:active{background:#6b3040; color:var(--osso);}
+  /* seletor de fase dentro da pausa: trancado até a senha */
+  #pausaBotoes #pausaFases.trancado{border-color:#4a3d63; color:#8b8299;}
+  #mSenhaLinha{display:flex; gap:8px;}
+  #mSenhaLinha.oculto{display:none;}
+  #mSenha{flex:1; min-width:0; background:#0d0917; border:1px solid #4a3d63; border-radius:4px;
+    color:#e8dcc0; font-family:var(--mono); font-size:12px; letter-spacing:.15em;
+    padding:10px 12px; outline:none;}
+  #mSenha:focus{border-color:var(--brasa);}
+  #mSenha.erro{border-color:#c0392b;}
+  #mSenha.erro::placeholder{color:#c0392b;}
+  #pausaBotoes #mSenhaOk{padding:12px 16px;}
+  #mFasesLista{display:flex; flex-direction:column; gap:10px;}
+  #mFasesLista.oculto{display:none;}
+  #mFasesLista button.on{background:var(--brasa); color:#120d06;}
   #pausaAtalho{font-family:var(--mono); font-size:9px; letter-spacing:.18em; color:#6f6683; margin-top:16px;}
 
   /* tela de despedida (o ✕ confirmado) */
@@ -217,17 +231,6 @@
     letter-spacing:.2em; padding:12px 0; text-transform:uppercase;}
   #menuCard button:active, #menuCard button.on{background:var(--brasa); color:#120d06;}
   #menuCard #mVoltar{border-color:#443659; color:#9d94ad; margin-bottom:0;}
-  #menuCard #mFases.trancado{border-color:#443659; color:#9d94ad;}
-  #mSenhaLinha{display:flex; gap:8px; width:220px; margin:0 auto 10px;}
-  #mSenhaLinha.oculto{display:none;}
-  #mSenha{flex:1; min-width:0; background:#0d0917; border:1px solid #443659; border-radius:4px;
-    color:#e8dcc0; font-family:var(--mono); font-size:12px; letter-spacing:.15em;
-    padding:10px 12px; text-transform:none; outline:none;}
-  #mSenha:focus{border-color:var(--brasa);}
-  #mSenha.erro{border-color:#c0392b;}
-  #mSenha.erro::placeholder{color:#c0392b;}
-  #menuCard #mSenhaOk{width:auto; margin:0; padding:12px 16px;}
-  #mFasesLista.oculto{display:none;}
 
   #btnGolpe{width:70px; height:70px; border-color:#8a4a3a; background:#241410d9; display:none;}
   #btnGolpe.on{display:flex;}
@@ -287,12 +290,6 @@
     <div id="menuCard">
       <h2>Menu</h2>
       <button id="mSemMusica">Sem música</button>
-      <button id="mFases">Trocar de fase 🔒</button>
-      <div id="mSenhaLinha" class="oculto">
-        <input id="mSenha" type="password" placeholder="SENHA" autocomplete="off">
-        <button id="mSenhaOk">OK</button>
-      </div>
-      <div id="mFasesLista" class="oculto"></div>
       <button id="mSair">Sair do jogo</button>
       <button id="mVoltar">Voltar</button>
     </div>
@@ -326,6 +323,12 @@
     <p id="pausaTexto"></p>
     <div id="pausaBotoes">
       <button id="pausaSeguir" type="button">Continuar</button>
+      <button id="pausaFases" type="button">Trocar de fase 🔒</button>
+      <div id="mSenhaLinha" class="oculto">
+        <input id="mSenha" type="password" placeholder="SENHA" autocomplete="off">
+        <button id="mSenhaOk" type="button">OK</button>
+      </div>
+      <div id="mFasesLista" class="oculto"></div>
       <button id="pausaSair" type="button">Fechar o jogo</button>
     </div>
     <div id="pausaAtalho">P OU ESC</div>
@@ -2984,13 +2987,6 @@ el('btnBolsa').addEventListener('mousedown', abrirInventario);
 function pintarMenu(){
   el('mSemMusica').textContent = semMusica ? 'Sem música ✓' : 'Sem música';
   el('mSemMusica').classList.toggle('on', semMusica);
-  el('mFases').textContent = fasesLiberadas ? 'Trocar de fase' : 'Trocar de fase 🔒';
-  el('mFases').classList.toggle('trancado', !fasesLiberadas);
-  el('mSenhaLinha').classList.add('oculto');
-  el('mFasesLista').classList.add('oculto');
-  el('mSenha').value = '';
-  el('mSenha').classList.remove('erro');
-  el('mSenha').placeholder = 'SENHA';
 }
 function abrirMenu(){
   if(etapa === 'menu') return;                       // na tela-título não há o que pausar
@@ -3013,51 +3009,6 @@ el('mSemMusica').addEventListener('click', () => {
   if(semMusica) pararBgm();
   else if(bgmDesejada.url) tocarBgm(bgmDesejada.url, bgmDesejada.vol);
   pintarMenu();
-});
-
-/* seletor de fase: trancado por senha, que vale só até fechar a página */
-const SENHA_FASES = 'Baleia302';
-let fasesLiberadas = false;
-function montarListaFases(){
-  const lista = el('mFasesLista');
-  lista.innerHTML = '';
-  PISOS.forEach((p, i) => {
-    const b = document.createElement('button');
-    b.textContent = 'Fase ' + (i+1) + ' — ' + NOMES_PISOS[i];
-    if(i === pisoAtual) b.classList.add('on');
-    b.addEventListener('click', () => { location.href = location.pathname + '?piso=' + (i+1); });
-    lista.appendChild(b);
-  });
-}
-el('mFases').addEventListener('click', () => {
-  if(fasesLiberadas){
-    montarListaFases();
-    el('mFasesLista').classList.toggle('oculto');
-    return;
-  }
-  el('mSenhaLinha').classList.toggle('oculto');
-  if(!el('mSenhaLinha').classList.contains('oculto')) el('mSenha').focus();
-});
-function conferirSenhaFases(){
-  if(el('mSenha').value === SENHA_FASES){
-    fasesLiberadas = true;
-    el('mSenhaLinha').classList.add('oculto');
-    el('mFases').textContent = 'Trocar de fase';
-    el('mFases').classList.remove('trancado');
-    montarListaFases();
-    el('mFasesLista').classList.remove('oculto');
-  } else {
-    el('mSenha').value = '';
-    el('mSenha').classList.add('erro');
-    el('mSenha').placeholder = 'SENHA ERRADA';
-    el('mSenha').focus();
-  }
-}
-el('mSenhaOk').addEventListener('click', conferirSenhaFases);
-el('mSenha').addEventListener('keydown', e => { if(e.key === 'Enter') conferirSenhaFases(); });
-el('mSenha').addEventListener('input', () => {
-  el('mSenha').classList.remove('erro');
-  el('mSenha').placeholder = 'SENHA';
 });
 
 function iniciarPiso(p){
@@ -3176,6 +3127,15 @@ function pintarPausa(){
   el('pausaSeguir').textContent = sair ? (podePausar() ? 'Continuar jogando' : 'Voltar') : 'Continuar';
   el('pausaSair').textContent = sair ? 'Fechar mesmo' : 'Fechar o jogo';
   el('pausaAtalho').style.display = sair ? 'none' : '';
+  /* o seletor de fase só existe na pausa comum, e sempre renasce fechado */
+  el('pausaFases').style.display = sair ? 'none' : '';
+  el('pausaFases').textContent = fasesLiberadas ? 'Trocar de fase' : 'Trocar de fase 🔒';
+  el('pausaFases').classList.toggle('trancado', !fasesLiberadas);
+  el('mSenhaLinha').classList.add('oculto');
+  el('mFasesLista').classList.add('oculto');
+  el('mSenha').value = '';
+  el('mSenha').classList.remove('erro');
+  el('mSenha').placeholder = 'SENHA';
 }
 function abrirPausa(modo){
   pausaModo = modo || 'pausa';
@@ -3251,6 +3211,54 @@ botaoSistema('btnPausa', () => alternarPausa());
 botaoSistema('btnFechar', () => abrirPausa('sair'));
 botaoSistema('pausaSeguir', () => retomarJogo());
 botaoSistema('pausaSair', () => { if(pausaModo === 'sair') sairDoJogo(); else abrirPausa('sair'); });
+
+/* ---------- seletor de fase (na pausa) ----------
+   Trancado por senha; o destranque vale só até fechar a página. */
+const SENHA_FASES = 'Baleia302';
+let fasesLiberadas = false;
+function montarListaFases(){
+  const lista = el('mFasesLista');
+  lista.innerHTML = '';
+  PISOS.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.textContent = 'Fase ' + (i+1) + ' — ' + NOMES_PISOS[i];
+    if(i === pisoAtual) b.classList.add('on');
+    b.addEventListener('click', () => { location.href = location.pathname + '?piso=' + (i+1); });
+    lista.appendChild(b);
+  });
+}
+botaoSistema('pausaFases', () => {
+  if(fasesLiberadas){
+    montarListaFases();
+    el('mFasesLista').classList.toggle('oculto');
+    return;
+  }
+  el('mSenhaLinha').classList.toggle('oculto');
+  if(!el('mSenhaLinha').classList.contains('oculto'))
+    setTimeout(() => el('mSenha').focus(), 0);
+});
+function conferirSenhaFases(){
+  if(el('mSenha').value === SENHA_FASES){
+    fasesLiberadas = true;
+    el('mSenhaLinha').classList.add('oculto');
+    el('pausaFases').textContent = 'Trocar de fase';
+    el('pausaFases').classList.remove('trancado');
+    montarListaFases();
+    el('mFasesLista').classList.remove('oculto');
+  } else {
+    el('mSenha').value = '';
+    el('mSenha').classList.add('erro');
+    el('mSenha').placeholder = 'SENHA ERRADA';
+    el('mSenha').focus();
+  }
+}
+botaoSistema('mSenhaOk', conferirSenhaFases);
+el('mSenha').addEventListener('keydown', e => { if(e.key === 'Enter') conferirSenhaFases(); });
+el('mSenha').addEventListener('input', () => {
+  el('mSenha').classList.remove('erro');
+  el('mSenha').placeholder = 'SENHA';
+});
 
 let ultimo = performance.now(), falhou = false;
 function quadro(t){
