@@ -6486,16 +6486,20 @@ function desenharZonasLuz(ox, oy){
     if(z.veu <= .015) return;
     const x = ox + z.x*tam, y = oy + z.y*tam, w = z.larg*tam, h = z.alt*tam;
     /* escuro que nasce no miolo e se dissolve nas bordas — retângulo chapado
-       parecia um bloco preto colado por cima do cenário */
-    const cx = x + w/2, cy = y + h/2, raio = Math.max(w, h)*.62;
-    const g = ctx.createRadialGradient(cx, cy, raio*.18, cx, cy, raio);
+       parecia um bloco preto colado por cima do cenário. O gradiente é redondo
+       num espaço deformado, senão uma sala comprida (o colombário inteiro tem
+       31x10) ficaria preta no meio e clara nas duas pontas */
+    const cx = x + w/2, cy = y + h/2;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(w/2, h/2);                 // a sala vira um círculo de raio 1
+    const g = ctx.createRadialGradient(0, 0, .18, 0, 0, 1.04);
     g.addColorStop(0, 'rgba(3,2,8,' + (z.veu*.82) + ')');
     g.addColorStop(.62, 'rgba(5,3,12,' + (z.veu*.55) + ')');
     g.addColorStop(1, 'rgba(5,3,12,0)');
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(cx, cy, w*.72, h*.78, 0, 0, TAU); ctx.clip();
+    ctx.beginPath(); ctx.arc(0, 0, 1.04, 0, TAU); ctx.clip();
     ctx.fillStyle = g;
-    ctx.fillRect(x - w*.2, y - h*.2, w*1.4, h*1.4);
+    ctx.fillRect(-1.1, -1.1, 2.2, 2.2);
     ctx.restore();
   });
 }
@@ -9382,15 +9386,20 @@ const PISO_FUNERAL = {
       {x:8.5,  y:47.5}, {x:25.5, y:49.5},     // colombário (a segunda estava dentro de parede)
       {x:26.5, y:21.5}                        // guarda o salão, fora do alcance da soleira
     ]);
-    /* uma única zona de luz que morre: o cômodo do Sacristão, no fundo leste
-       do colombário — os vultos só se erguem lá (pedido do dono: fora da
-       carpintaria e do colombário oeste) */
+    /* uma única zona de luz que morre, agora cobrindo o colombário INTEIRO
+       (x3..34) — antes só a metade leste apagava e o labirinto oeste ficava
+       sem vulto nenhum. A carpintaria continua de fora (pedido do dono) */
     criarZonasLuz([
-      {x:18, y:45, larg:16, alt:9, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3'}
+      {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3'}
     ]);
+    /* um vulto por punhado de celas, do primeiro nicho oeste ao fundo leste —
+       cada um mora no miolo de uma cela 2x2 do labirinto */
     criarVultos([
-      {x:22, y:48, zona:0}, {x:30, y:51, zona:0},
-      {x:25.5, y:51.5, zona:0}, {x:19.5, y:48.5, zona:0}
+      {x:5,  y:46,   zona:0}, {x:8.5,  y:51.5, zona:0},   // labirinto oeste
+      {x:11.5, y:46.5, zona:0}, {x:14,  y:49.5, zona:0},  // miolo oeste
+      {x:17,  y:51.5, zona:0},                            // a boca da descida da cripta
+      {x:19.5, y:48.5, zona:0}, {x:22, y:48, zona:0},     // metade leste (as de antes)
+      {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0}   // o fundo, onde reza o Sacristão
     ]);
     /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
