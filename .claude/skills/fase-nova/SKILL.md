@@ -1,11 +1,11 @@
 ---
 name: fase-nova
-description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta — questionário que preenche o faseN.prd, busca de imagens de cenário/personagens/chefe no Pinterest para o usuário revisar, máquina de estados inédita para o chefão, gravação das vozes uma a uma, montagem do cenário em alto-relevo com coadjuvantes em cômodos inacessíveis, e herança de tudo que a fase anterior já resolveu. Usar quando o usuário pedir para criar/começar uma fase nova, o piso N, ou invocar /fase-nova.
+description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta — questionário que preenche o faseN.prd, busca de imagens de cenário/personagens/chefe no Pinterest para o usuário revisar, máquina de estados inédita para o chefão, chão de cor e forma inéditas (nunca repetir entre fases), gravação das vozes uma a uma, montagem do cenário em alto-relevo com coadjuvantes em cômodos inacessíveis, e herança de tudo que a fase anterior já resolveu. Usar quando o usuário pedir para criar/começar uma fase nova, o piso N, ou invocar /fase-nova.
 ---
 
 # Criar uma fase nova
 
-Processo fechado depois da Fase 2 (as Cozinhas). As nove etapas abaixo rodam **em ordem**, com paradas explícitas para revisão do usuário. Nada de pular etapa: cada uma existe porque a Fase 2 pagou o preço de não tê-la.
+Processo fechado depois da Fase 2 (as Cozinhas). As dez etapas abaixo rodam **em ordem**, com paradas explícitas para revisão do usuário. Nada de pular etapa: cada uma existe porque a Fase 2 pagou o preço de não tê-la.
 
 **Regra que atravessa tudo:** ao fim de cada entrega de código, abrir o jogo no navegador do usuário para ele testar (`open "http://127.0.0.1:PORTA/castelo.html?piso=N"`, servindo com `python3 -m http.server` o checkout onde a mudança está). Ele nunca deve ter que pedir.
 
@@ -36,6 +36,7 @@ Fazer as perguntas com **AskUserQuestion**, em blocos de até 4, sempre com opç
 
 **Bloco 2 — mundo (§3.1):**
 - *Regiões do piso* (multiSelect, 5–7 opções derivadas da imagem de inspiração em `img/scenarios/`).
+- *Cor do chão* e *forma da laje* — **inéditas, sem repetir nenhuma fase anterior**: ver a etapa 1.5, que traz o que já está tomado e o que sobrou.
 - *Obstáculo cíclico* — o papel dos espinhos/labaredas nesta fase (gás, lâminas, água fervente, correntes, luz que cega…).
 - *Estrutura labiríntica* — reaproveitar o gerador (`gerarLabirinto`) em qual região.
 - *Travessia falsa* — qual caminho parece válido e não é.
@@ -54,6 +55,34 @@ Fazer as perguntas com **AskUserQuestion**, em blocos de até 4, sempre com opç
 **Bloco 5 — chefe (§3.5) e áudio (§3.6):** ver etapas 5 e 6 — as respostas entram no PRD na hora.
 
 Ao fim: escrever `faseN.prd` inteiro a partir do `fase-template.prd`, com **todas** as respostas já aplicadas, a coluna *Origem* preenchida (data + trecho do pedido) e os itens não decididos marcados com ⚠. Mostrar o PRD ao usuário e só seguir com o "ok".
+
+---
+
+## 1.5. Chão inédito: nunca repetir cor nem forma entre fases
+
+**Regra dura: o chão de uma fase nova não pode repetir a cor nem o desenho do chão de nenhuma fase anterior.** Quem sobe a escada tem que perceber que mudou de andar só de olhar para os próprios pés — dois pisos com a mesma laje cinza-arroxeada viram o mesmo lugar na cabeça do jogador, por mais diferente que seja a mobília.
+
+São **duas** decisões independentes, e as duas têm que ser novas:
+
+1. **Cor** — `paleta.chao`, `paleta.chao2`, `paleta.parede`, `paleta.fundo` e `luzAmbiente` do objeto do piso.
+2. **Forma** — o desenho da laje no `pintarCache`: o formato do módulo, o tamanho, o assentamento e a junta.
+
+Antes de escolher, conferir o que já está tomado:
+
+| Piso | Chão (`chao` / `chao2`) | Família de cor | Forma da laje |
+|---|---|---|---|
+| 1 | `[96,90,110]` / `[122,104,80]` | cinza arroxeado + areia | laje quadrada de 1 tile, contorno escuro grosso, trinca em raio ocasional; areia lisa com poças de sombra circulares na arena |
+| 2 | `[122,106,84]` / `[117,86,56]` | pedra quente ocre + madeira | laje grande **2×2 tiles** com desgaste no caminho; **tábua corrida** longa nas cozinhas, câmara e escada |
+| 3 | `[88,92,108]` / `[72,78,96]` | pedra fria azulada | laje de junta **fina** com brilho úmido andando de laje em laje; **mosaico circular** em anéis (rosácea) na capela |
+
+Como não repetir de verdade:
+
+- **Cor**: a família tem que ser outra — não basta escurecer ou clarear o mesmo tom. Se as três anteriores são cinza-arroxeado, ocre-quente e azul-frio, a próxima puxa para um eixo livre (verde de limo, vermelho de terra queimada, ossos esbranquiçados, verde-azulado de bronze oxidado, negro de fuligem…). Distância mínima: se o `chao` novo tem os três canais a menos de ~25 de distância de um `chao`/`chao2` já usado, é a mesma cor com outro nome — escolher outra.
+- **Forma**: trocar o **módulo**, não só a textura. Repertório ainda livre: hexágono, espinha de peixe, paralelepípedo irregular de rio, tijolo em fiada deslocada (meia-junta), placa de metal rebitada, terra batida com sulcos, grade/ripado sobre vazio, ladrilho pequeno tipo damero, círculos concêntricos que não sejam rosácea.
+- O `chao2` conta como chão: os **dois** têm de ser novos, e devem se distinguir um do outro dentro da própria fase.
+- Não vale herdar o `pintarCache` da fase anterior e trocar só as cores — copiar o passe de laje é copiar a forma. O passe de paredes 3/4 e de sombras, esse sim, se herda (é gramática do jogo, não identidade do piso).
+
+Perguntar a cor e a forma ao usuário com **AskUserQuestion** no Bloco 2 do questionário (mundo), com 3 opções concretas derivadas do tema + Outro, e já mostrando na descrição o que cada fase anterior usou. As respostas entram no PRD (§3.1) como a paleta oficial do piso.
 
 ---
 
@@ -180,6 +209,7 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 > Enquanto algo estiver pendente do usuário (revisão de imagens, gravação de voz),
 > a espera é dele — não adiantar o cenário para "ganhar tempo".
 
+- **O passe de chão vem primeiro e é escrito do zero** com a cor e a forma decididas na etapa 1.5 — nada de copiar o passe de laje da fase anterior e trocar a cor.
 - Fatiar folhas de itens em PNGs individuais (`img/faseN/itens/iRC.png`) e carregá-las sob demanda, repintando o cache uma vez quando a leva chega.
 - Pintar tudo no **cache do mapa** pelo gancho `pintarCache(cmx, T)` — custo zero por quadro. Só o que anima (água, fogo, portas, personagens) vai no `desenharCenario`.
 - **Não repetir a mesma imagem perto dela mesma**: variar por cômodo e manter distância mínima entre repetições; alternar entre 3+ variantes quando a peça se repete (foi assim que as paredes da adega ganharam nicho / prateleira / lanterna alternados).
@@ -239,11 +269,12 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 1. **Sintaxe**: extrair o `<script>` do `castelo.html` e `node --check`.
 2. **Geometria**: `node testes/geometria.js` — flood-fill do spawn em todos os pisos. Acrescentar o piso novo ao array `PISOS` do teste com os alvos (`fala` para NPC, que pode estar atrás de grade; `alcanca` para região; `anda` + `selado` para a arena do chefe). O teste sai com código 1 se algo quebrar.
 3. **Navegador headless**: carregar `?piso=N`, checar `console --errors` vazio e tirar screenshots das regiões novas — olhar as imagens, não só o log.
-4. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
-5. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
-6. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
-7. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
-8. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
+4. **Chão inédito**: pôr lado a lado um screenshot do chão da fase nova e o de cada fase anterior — cor e forma têm de ser reconhecivelmente outras (etapa 1.5). Conferir também os números da `paleta` contra a tabela.
+5. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
+6. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
+7. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
+8. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
+9. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
 
 ## Armadilhas conhecidas
 
