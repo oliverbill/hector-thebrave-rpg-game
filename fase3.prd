@@ -65,6 +65,7 @@ Vale o bloco inteiro do template mais tudo que as fases 1–2 consolidaram: tran
 | # | Requisito | Origem |
 |---|---|---|
 | F3-RF-06 | Três velantes: **O Carpinteiro de Caixões** (chave `rastro`, na oficina — mede as pessoas com o olhar), **A Lavadeira dos Mortos** (chave `lanterna`, na sala de preparação) e **O Sacristão** (chave `mergulhos`, ~~no fundo do colombário~~ **ao lado da parede de nichos**, em 31,8/45,7, logo a leste da cornija — mudou em 09/08 a pedido do dono) | questionário 06/08 + pedido do dono 09/08 |
+| F3-RF-07b | **Estátuas do colombário** (pedido do dono, 09/08): **10 esculturas fúnebres** recortadas de um pin do Pinterest (`img/fase3/ref-estatuas.png`), PNG sem fundo, 520 px de altura — anjos de pé, figuras sentadas e uma pranteadora velada de bronze. Encostadas nas paredes do labirinto, nas fiadas y48 e y51 (fora da parede de nichos, onde tapariam os nomes); cada posição tem chão com PAREDE logo acima, para o corpo subir contra o muro. Desenhadas por ALTURA (1,60–1,80 tiles), não por largura, porque os recortes têm proporções diferentes | pedido do dono 09/08 |
 | F3-RF-07 | Retratos e sprites do Pinterest (`testes/pinterest.py`), PNG sem fundo, revisados pelo usuário antes de entrar; escala 1.5× | processo /fase-nova |
 
 
