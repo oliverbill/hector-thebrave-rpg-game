@@ -6798,7 +6798,7 @@ function construirFuneral(){
    [4,31.6],[3.6,36.5],[10,40.5],                   // a oficina, agora comprida, pede uma luz no meio
    [16,32.5],[27,32.5],[16.5,41.5],                 // margens da cripta
    [7.5,46.5],[25.5,49.5],[30.5,51.5],              // colombário
-   [15,45.4],[21,45.4],[27,45.4],                   // ao pé da parede de nichos: é o que deixa ler os nomes
+   [13,45.4],[21,45.4],[29,45.4],                   // ao pé da parede de nichos: é o que deixa ler os nomes
    [39.5,44],[40,48.6]                              // corredor leste e escada
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
 
@@ -8294,9 +8294,13 @@ function pintarFunOficinaColombario(cmx, T){
      É o único nicho do piso: as arcadas que enfeitavam toda face de parede do
      labirinto saíram em 09/08.
 
-     30 NICHOS: 10 colunas x 3 fiadas. Cada coluna tem a largura em dobro
-     pedida em 09/08 (LN = U*.92, com U = T*2), e o campo todo ficou com 18,4
-     tiles — quatro vezes a parede original.
+     14 NICHOS: 7 colunas x 2 fiadas. O nome foi para o DOBRO do corpo em
+     09/08 (pedido do dono), e num nicho de antes duas linhas de 16px não
+     cabiam nem em pé nem deitadas: a lápide tinha 77x17px. Dobrar a letra
+     obriga a dobrar o vão, e o vão só cresce tomando o lugar dos vizinhos —
+     daí 30 nichos virarem 14. Em troca a parede se espalha por toda a face
+     livre (x7,95..32,4, contra 18,4 tiles antes), começando depois da boca do
+     corredor oeste, em x5..6, que ela não pode tapar.
 
      A ALTURA é que manda, e ela é curta: acima desta face há no máximo 2 tiles
      de rocha, e o que vem depois é chão de gente ou água. Em x15..18, y41 e
@@ -8311,17 +8315,21 @@ function pintarFunOficinaColombario(cmx, T){
      DENTRO DO NICHO só existe o NOME (pedido do dono, 09/08): cada vão é
      fechado por uma lápide lavrada, batismo em cima e patronímico embaixo.
      Nada de urna, crânio, ossos ou teia na frente. */
-  const MON = {x0:11.8, y:44};
+  const MON = {x0:7.95, y:44};
   {
     const E = 2, U = T*E;                            // o tile virtual do monumento
     const PX = MON.x0*T, BASE = (MON.y + 1)*T;       // canto inferior esquerdo da parede
-    const COL = 10, FIA = 3, LN = U*.92, AN = U*.265;
+    /* AN = U*.4 é o teto: com 2 fiadas o campo mede 76,8px e a cornija ainda
+       pousa em y=43,02, sem encostar na margem da cripta */
+    const COL = 7, FIA = 2, LN = U*1.745, AN = U*.4;
     const larg = COL*LN, alt = FIA*AN;
     const topo = BASE - alt;
     /* os mortos do colombário: gente de verdade dos séculos XI-XV ibéricos —
        Egas Moniz o Aio, Mécia Lopes de Haro, Fuas Roupinho, Nuno Álvares
        Pereira o Condestável, Leonor Teles... Um nome por nicho, sem repetir
-       nome nem nome+sobrenome; uma palavra por linha, que é o que cabe. */
+       nome nem nome+sobrenome; uma palavra por linha, que é o que cabe.
+       A lista continua com os 30: a parede grava os 14 primeiros, e o resto
+       fica de reserva para quando outra face do piso pedir nichos. */
     const MORTOS = [
       ['Álvaro','Gonçalves'], ['Egas','Moniz'],      ['Mécia','Lopes'],
       ['Gonçalo','Mendes'],   ['Urraca','Afonso'],   ['Vasco','Martins'],
@@ -8336,7 +8344,7 @@ function pintarFunOficinaColombario(cmx, T){
     ];
     /* gravado na pedra: o sulco escuro por cima da luz que bate na borda de
        baixo — o mesmo truque de dois fillText do dano flutuante */
-    const FONTE = Math.round(U*.085);
+    const FONTE = Math.round(U*.17);                 // o dobro do corpo de antes
     const gravar = (txt, cx, cy) => {
       cmx.fillStyle = 'rgba(238,242,252,.28)'; cmx.fillText(txt, cx, cy + 1);
       cmx.fillStyle = 'rgba(16,18,26,.80)';    cmx.fillText(txt, cx, cy);
@@ -8367,7 +8375,10 @@ function pintarFunOficinaColombario(cmx, T){
     // os 30 nichos: um vão retangular, a lápide dentro e o nome nela
     for(let f=0; f<FIA; f++) for(let c=0; c<COL; c++){
       const nx = PX + c*LN + LN/2, ny = topo + f*AN;
-      const r = LN*.465, vT = ny + AN*.10, vH = AN*.80;   // o vão escavado
+      /* o vão escavado. Com a coluna larga do nicho novo, r caiu de .465 para
+         .35: a lápide fica pouco maior que o nome que carrega, e sobra pedra
+         lavrada entre um nicho e outro, em vez de vazio dentro da lápide */
+      const r = LN*.35, vT = ny + AN*.08, vH = AN*.84;
       // moldura de pedra em volta do vão
       cmx.fillStyle = '#666d82';
       cmx.fillRect(nx - r - U*.03, vT - U*.02, r*2 + U*.06, vH + U*.04);
@@ -8377,7 +8388,7 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.fillStyle = '#141721';
       cmx.fillRect(nx - r, vT, r*2, vH);
       // a lápide que sela o nicho: é ela que carrega o nome
-      const lapW = r*2 - U*.05, lapH = vH - U*.035, lapX = nx - lapW/2, lapY = vT + U*.018;
+      const lapW = r*2 - U*.05, lapH = vH - U*.03, lapX = nx - lapW/2, lapY = vT + U*.015;
       cmx.fillStyle = '#8a8fa2'; cmx.fillRect(lapX, lapY, lapW, lapH);
       cmx.fillStyle = 'rgba(236,242,255,.26)'; cmx.fillRect(lapX, lapY, lapW, 2);
       cmx.fillStyle = 'rgba(18,20,30,.45)';    cmx.fillRect(lapX, lapY + lapH - 2, lapW, 2);
@@ -8385,8 +8396,8 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.strokeStyle = 'rgba(24,27,38,.5)'; cmx.lineWidth = 1;
       cmx.strokeRect(lapX, lapY, lapW, lapH);
       const mo = MORTOS[(f*COL + c) % MORTOS.length];
-      gravar(mo[0], nx, lapY + lapH*.28);
-      gravar(mo[1], nx, lapY + lapH*.74);
+      gravar(mo[0], nx, lapY + lapH*.27);
+      gravar(mo[1], nx, lapY + lapH*.75);
       // a sombra que a lápide joga na fiada de baixo
       cmx.fillStyle = 'rgba(0,0,0,.35)';
       cmx.fillRect(nx - r - U*.03, vT + vH + U*.02, r*2 + U*.06, U*.02);
@@ -9329,9 +9340,10 @@ const PISO_FUNERAL = {
        sem vulto nenhum. A carpintaria continua de fora (pedido do dono) */
     criarZonasLuz([
       /* a janela: a faixa da parede de nichos, onde os 3 braseiros ardem sempre.
-         O escuro do ciclo não desce ali, e é o que deixa ler as 30 lápides */
+         O escuro do ciclo não desce ali, e é o que deixa ler as 14 lápides.
+         Acompanhou a parede quando ela se espalhou por x7..33,3 */
       {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3',
-       janela:{x:11, y:43, larg:20.4, alt:4}}
+       janela:{x:7, y:43, larg:26.3, alt:4}}
     ]);
     /* um vulto por punhado de celas, do primeiro nicho oeste ao fundo leste —
        cada um mora no miolo de uma cela 2x2 do labirinto */
