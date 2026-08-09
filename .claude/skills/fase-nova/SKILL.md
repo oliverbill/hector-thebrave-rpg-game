@@ -5,7 +5,7 @@ description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta —
 
 # Criar uma fase nova
 
-Processo fechado depois da Fase 2 (as Cozinhas). As dez etapas abaixo rodam **em ordem**, com paradas explícitas para revisão do usuário. Nada de pular etapa: cada uma existe porque a Fase 2 pagou o preço de não tê-la.
+Processo fechado depois da Fase 2 (as Cozinhas). As etapas abaixo rodam **em ordem**, com paradas explícitas para revisão do usuário. Nada de pular etapa: cada uma existe porque a Fase 2 pagou o preço de não tê-la.
 
 **Regra que atravessa tudo:** ao fim de cada entrega de código, abrir o jogo no navegador do usuário para ele testar (`open "http://127.0.0.1:PORTA/castelo.html?piso=N"`, servindo com `python3 -m http.server` o checkout onde a mudança está). Ele nunca deve ter que pedir.
 
@@ -218,49 +218,56 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 
 ---
 
-## 7. Espalhar as imagens pelo cenário
+## 7. A planta inteira — mapa cru, uma revisão só
 
-> **PORTEIRA: o cenário é a ÚLTIMA coisa a ser construída.** As etapas 7 e 8
-> (espalhar imagens, alto-relevo, coadjuvantes) só podem começar quando **todos os
-> componentes da fase estiverem prontos**:
->
-> 1. **Todas** as levas de imagens revisadas e escolhidas pelo usuário — cenário,
->    personagens, coadjuvantes e chefão (etapas 2–4, incluindo levas extras);
-> 2. A máquina de estados do chefão fechada (etapa 5);
-> 3. **As vozes gravadas, normalizadas e instaladas (etapa 6)** — todas, não parte.
->
-> Construir o cenário com componente pendente obriga a retrofitar tudo quando ele
-> chega (aconteceu na fase 3: os 4 passes de pintura foram feitos com a leva de
-> imagens ainda em revisão e os sprites tiveram de ser amarrados por cima depois).
-> Enquanto algo estiver pendente do usuário (revisão de imagens, gravação de voz),
-> a espera é dele — não adiantar o cenário para "ganhar tempo".
+O cenário se fecha **um cômodo por vez** (etapa 8), mas a planta **não**: parede, chão, porta e passagem são globais, a caminhabilidade é testada por flood-fill do mapa inteiro, e cômodo decorado contra uma parede que depois se move é retrabalho garantido. Então a planta vem antes, inteira, e leva **uma** revisão só.
 
-- **O passe de chão vem primeiro e é escrito do zero** com a cor e a forma decididas na etapa 1.5 — nada de copiar o passe de laje da fase anterior e trocar a cor.
-- Fatiar folhas de itens em PNGs individuais (`img/faseN/itens/iRC.png`) e carregá-las sob demanda, repintando o cache uma vez quando a leva chega.
-- Pintar tudo no **cache do mapa** pelo gancho `pintarCache(cmx, T)` — custo zero por quadro. Só o que anima (água, fogo, portas, personagens) vai no `desenharCenario`.
-- **Não repetir a mesma imagem perto dela mesma**: variar por cômodo e manter distância mínima entre repetições; alternar entre 3+ variantes quando a peça se repete (foi assim que as paredes da adega ganharam nicho / prateleira / lanterna alternados).
-- Sombra elíptica sob cada móvel; objetos assentados **no tampo** quando vão sobre mesas (na Fase 2 os pratos foram parar nas prateleiras de baixo e sumiram — conferir na tela, não no código).
+1. Construir só os **tiles**: parede, chão, chão2, fosso, ponte, grade, portas e passagens. Nenhuma arte, nenhum móvel.
+2. Declarar a lista de cômodos como **dado**, com caixa, nome e subtítulo — é a mesma lista que anuncia o nome na primeira entrada e que o atalho `?sala=` usa para nascer dentro do cômodo (etapa 8). Pendurá-la no objeto do piso como `comodos`:
+
+```js
+const COMODOS_FASEN = [
+  {x1:3, y1:5, x2:16, y2:16, nome:'A capela do velório', sub:'rezam por alguém que ainda não foi enterrado'},
+  …
+];
+// no objeto do piso:  comodos: COMODOS_FASEN,
+```
+
+3. `node testes/geometria.js` com o piso novo no array `PISOS` — spawn alcança NPC, região e arena.
+4. **PARE e peça revisão da planta**: screenshot do mapa inteiro, ainda em cinza, com os nomes dos cômodos. O usuário aprova o desenho das salas e das passagens. Barato, porque não há arte para jogar fora.
+
+> **Esta etapa não depende de imagem nem de voz** — pode rodar enquanto as levas da etapa 2 ainda estão em revisão e as gravações não chegaram. A porteira do cenário é da etapa 8, e agora é **por cômodo**, não global.
 
 ---
 
-## 8. Cenário em alto-relevo + coadjuvantes
+## 8. O cenário, um cômodo por vez
 
-**Alto-relevo, sempre** (perspectiva 3/4, nunca topo puro):
+**O ciclo, repetido até acabarem os cômodos:** pintar um cômodo → abrir o jogo já dentro dele → o usuário revisa e pede alterações → iterar → ele diz "fechado" → próximo cômodo. Cômodo fechado não se mexe mais.
+
+Para isso funcionar, cada cômodo é uma **função de pintura própria** (`pintarCapela(cmx,T)`, `pintarOficina(cmx,T)`…), chamada em ordem pelo `pintarFaseNCache` e recortada pela caixa daquele cômodo. Mexer na capela não pode alcançar a cripta — é isso que faz "fechado" significar fechado. Os passes que são de fato globais (paredes 3/4 e sombras, e o passe de chão da etapa 1.5) rodam antes de todos, uma vez.
+
+**Porteira, agora por cômodo:** um cômodo só entra no ciclo quando **a arte dele** está aprovada (etapa 2–4). Não é preciso esperar a fase inteira — a capela pode ser construída com as imagens da oficina ainda em revisão. O que continua valendo: nunca pintar um cômodo com a arte dele pendente, senão o sprite tem de ser amarrado por cima depois (foi o que aconteceu na fase 3).
+
+**Abrir o jogo direto no cômodo** — `?piso=N&sala=<nome ou número>`: o jogador nasce no chão livre mais perto do centro daquele cômodo. Aceita pedaço do nome, sem acento (`?piso=3&sala=colombario`) ou o número na lista (`?piso=3&sala=8`); nome errado imprime os válidos no console. Do console dá para pular de cômodo sem recarregar: `irAoComodo('cripta')`. Sem esse atalho, atravessar o piso a pé a cada rodada é o que torna o ciclo cansativo.
+
+**A receita de cada cômodo** — alto-relevo, sempre (perspectiva 3/4, nunca topo puro):
 
 - Parede com chão ao sul mostra a **face frontal** (fiadas de tijolo, rodapé de cantaria); o resto é **topo de muro** em pedra bruta.
 - A face projeta **sombra em degradê** no chão logo abaixo.
 - Móveis, balcões, parapeitos e pilares: superfície iluminada em cima + **face lateral sombreada** embaixo + sombra no chão.
 - Aparar arestas: remendo de chão sob estruturas sólidas, e o passe de paredes **ignora** os tiles delas, senão sobram cantos escuros nas bordas.
-- **O nome do cômodo na tela, na primeira entrada**: cada região do §3.1 anuncia o próprio nome com `avisar(nome, subtítulo)` quando o jogador pisa nela **pela primeira vez** (uma vez só na partida — guardar num conjunto de vistos, como o `vistoCripta` da fase 3). O subtítulo diz o que aquele cômodo cobra do jogador ("água parada — pise só nas passarelas"). Sem isso o piso vira um borrão de corredores: o jogador não sabe que chegou à capela, à oficina ou ao colombário.
-- **Janelas pelo cenário, sempre**: espalhar janelas (com a arte aprovada) pelas faces de parede das salas — a fase 2 tem gelosias por toda parte e uma grande na cozinha; fase sem janela parece porão por acidente.
-- **Portas internas com efeito de abertura, sempre**: cada passagem entre cômodos ganha porta (com a arte aprovada) que **abre quando o jogador passa**, como na fase 2. A porta abre **inteira, girando na dobradiça — NUNCA partida ao meio** com o jogador passando entre duas bandas (foi retrabalho na fase 2: a porta dupla teve de virar folha única).
-
-**Coadjuvantes:**
-
-- 3 estações/cômodos **sólidos** subdividindo a área principal — o jogador contorna e vê por cima do balcão, nunca entra.
-- **Sempre povoar MAIS cômodos além das estações**: cada sala relevante ganha seu grupo temático de coadjuvantes (na fase 3: o velório na capela, com o corpo no esquife e choro por proximidade). Grupo sem som é cenário morto — cada um tem sua camada em `piso.ambientes`, e eventos pontuais ganham one-shot próprio (ex.: o grito quando um vulto surge).
-- ~5 coadjuvantes por estação, **menores que o informante** daquele tema, que andam entre a bancada e o fundo, param, trabalham e viram para onde caminham (loop de 8 quadros, como `desenharInformante`).
-- **Som ambiente por proximidade**: declarar em `piso.ambientes` os focos de som — o motor toca em loop, sobe o volume conforme o jogador chega e pausa o clipe ao se afastar:
+- Pintar tudo no **cache do mapa** pelo gancho `pintarCache(cmx, T)` — custo zero por quadro. Só o que anima (água, fogo, portas, personagens) vai no `desenharCenario`.
+- Fatiar folhas de itens em PNGs individuais (`img/faseN/itens/iRC.png`) e carregá-las sob demanda, repintando o cache uma vez quando a leva chega.
+- **Não repetir a mesma imagem perto dela mesma**: variar por cômodo e manter distância mínima entre repetições; alternar entre 3+ variantes quando a peça se repete (foi assim que as paredes da adega ganharam nicho / prateleira / lanterna alternados).
+- Sombra elíptica sob cada móvel; objetos assentados **no tampo** quando vão sobre mesas (na Fase 2 os pratos foram parar nas prateleiras de baixo e sumiram — conferir na tela, não no código).
+- **O nome do cômodo na tela, na primeira entrada**: `avisar(nome, subtítulo)` quando o jogador pisa nele **pela primeira vez** (uma vez só na partida — conjunto de vistos). O subtítulo diz o que aquele cômodo cobra do jogador ("água parada — pise só nas passarelas"). Sem isso o piso vira um borrão de corredores.
+- **Janela**, sempre: espalhar janelas (com a arte aprovada) pelas faces de parede — a fase 2 tem gelosias por toda parte; fase sem janela parece porão por acidente.
+- **Porta interna com efeito de abertura**, em cada passagem: **abre inteira, girando na dobradiça — NUNCA partida ao meio** com o jogador passando entre duas bandas (retrabalho da fase 2).
+- **O grupo de coadjuvantes do cômodo, com o som dele** — o cômodo não fecha sem isso:
+  - 3 estações/cômodos **sólidos** subdividindo a área principal — o jogador contorna e vê por cima do balcão, nunca entra.
+  - **Toda sala relevante ganha seu grupo temático**, não só as estações (na fase 3: o velório na capela, com o corpo no esquife e choro por proximidade).
+  - ~5 coadjuvantes por estação, **menores que o informante** daquele tema, que andam entre a bancada e o fundo, param, trabalham e viram para onde caminham (loop de 8 quadros, como `desenharInformante`).
+  - Grupo sem som é cenário morto: cada um declara sua camada em `piso.ambientes`, e eventos pontuais ganham one-shot próprio (ex.: o grito quando um vulto surge).
 
 ```js
 ambientes:[
@@ -270,6 +277,8 @@ ambientes:[
 ```
 
   Nas estações, empilhar **grupo conversando + utensílios batendo** (na cozinha: facas e martelos de carne). Buscar os clipes com `/buscar-sfx-prd` e normalizar para **−20 LUFS** (ambiente fica abaixo de voz).
+
+**O que NÃO entra no ciclo, e fica para um passe final** depois do último cômodo fechado: a arena do chefe (depende da máquina de estados, etapa 5), a mixagem entre camadas de ambiente vizinhas (só dá para julgar andando o piso inteiro) e a partida completa da verificação. Esses três dependem do conjunto, não de um cômodo.
 
 ---
 
@@ -284,7 +293,7 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 - **Diálogo com botão PULAR**, que vale como ouvir por inteiro (segredo + contador + callback).
 - **Ducking**: BGM cai para `.08` enquanto há fala **e enquanto a legenda estiver aberta** — quem devolve o volume é fechar a fala, não o áudio acabar.
 - **Item do chefe** vai à bolsa com popup e serve contra o chefe seguinte.
-- **Atalhos de teste**: `?piso=N`, `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena) e `?piso=N&transicao=1` (cai na vitória do piso, para rever a subida ao seguinte). Implementar os três na fase nova.
+- **Atalhos de teste**: `?piso=N`, `?piso=N&chefe=1` (gancho `irAoChefe()` — segredos ouvidos, caminho liberado, jogador na soleira da arena), `?piso=N&transicao=1` (cai na vitória do piso, para rever a subida ao seguinte) e `?piso=N&sala=X` (nasce dentro do cômodo X — genérico no motor, basta o piso declarar `comodos`). Implementar `irAoChefe()` e a lista `comodos` na fase nova; os outros três já vêm de graça.
 - Escala de personagem por `escala` no informante; vozes e som de batida do chefe pelo `cfg` (`sons`, `somBatida`, `tremorPasso`).
 - **Pose da arma empunhada** (`desenharArmaNaMao`, fechada na fase 3): em repouso o cabo fica em **diagonal ao lado do olhar** — cabeça da lâmina erguida na altura do ombro, base descendo, com dois punhos no cabo e **nenhum braço desenhado** ligando corpo e arma. O deslocamento acompanha o olhar (`px + lado*tam*.42`); inverter esse sinal faz a diagonal atravessar o torso e a arma parecer colada. Durante o golpe, o arco por ângulo de sempre.
 
@@ -294,7 +303,7 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 
 1. **Sintaxe**: extrair o `<script>` do `castelo.html` e `node --check`.
 2. **Geometria**: `node testes/geometria.js` — flood-fill do spawn em todos os pisos. Acrescentar o piso novo ao array `PISOS` do teste com os alvos (`fala` para NPC, que pode estar atrás de grade; `alcanca` para região; `anda` + `selado` para a arena do chefe). O teste sai com código 1 se algo quebrar.
-3. **Navegador headless**: carregar `?piso=N`, checar `console --errors` vazio e tirar screenshots das regiões novas — olhar as imagens, não só o log.
+3. **Navegador headless**: carregar `?piso=N`, checar `console --errors` vazio e tirar screenshots das regiões novas — olhar as imagens, não só o log. Um screenshot por cômodo sai de `?piso=N&sala=<nome>`, em laço pela lista `comodos`.
 4. **Chão inédito**: pôr lado a lado um screenshot do chão da fase nova e o de cada fase anterior — cor e forma têm de ser reconhecivelmente outras (etapa 1.5). Conferir também os números da `paleta` contra a tabela.
 5. **Itens inéditos**: percorrer a tabela da etapa 1.6 família por família e confirmar que nenhuma peça da fase nova repete uma anterior — cura, cura de arena, inimigo comum, obstáculo e mobília. Depois **jogar o piso anterior e subir a escada**: se um trapo, pão, ratazana ou barril do andar de baixo aparecer no de cima, faltou entrada na limpeza do `aoIniciar`.
 6. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.

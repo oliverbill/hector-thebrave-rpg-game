@@ -9212,6 +9212,7 @@ const PISO_FUNERAL = {
   },
   construir: construirFuneral,
   pintarCache: pintarFuneralCache,
+  comodos: COMODOS_FUN,        // a planta que o `?sala=` usa para nascer dentro de um cômodo
   spawn:{x:40, y:52},
   trapos:2,
   intro:{
@@ -9554,17 +9555,78 @@ const PISO_FUNERAL = {
 const PISOS = [PISO_CALABOUCO, PISO_COZINHAS, PISO_FUNERAL];
 let pisoAtual = 0;
 
+/* ---------- atalho de revisão: nascer dentro de um cômodo ----------
+   O cenário é fechado um cômodo por vez, cada um no seu ciclo de revisão; ir
+   até a cova grande a pé, desde a escada de chegada, a cada rodada, é o que
+   torna o processo cansativo. O piso oferece a planta em `comodos` (a mesma
+   lista que anuncia o nome na primeira entrada); sem ela o atalho só avisa.
+   Aceita o número na lista (`?sala=8`) ou um pedaço do nome (`?sala=cova`). */
+const semAcento = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+function acharComodo(alvo){
+  const lista = piso.comodos;
+  if(!lista || !lista.length) return null;
+  const n = parseInt(alvo, 10);
+  if(!isNaN(n) && String(n) === alvo.trim()) return lista[clamp(n, 1, lista.length) - 1];
+  const chave = semAcento(alvo);
+  return lista.find(c => semAcento(c.nome).includes(chave)) || null;
+}
+
+/* o centro geométrico do cômodo costuma cair numa mesa, num caixão ou na água:
+   procura em espiral, de dentro para fora, o chão livre mais perto do centro */
+function pontoAndavel(c){
+  const cx = (c.x1 + c.x2)/2 + .5, cy = (c.y1 + c.y2)/2 + .5;
+  const alcance = Math.ceil(Math.max(c.x2 - c.x1, c.y2 - c.y1)/2) + 1;
+  for(let d = 0; d <= alcance; d++){
+    for(let dy = -d; dy <= d; dy++) for(let dx = -d; dx <= d; dx++){
+      if(Math.max(Math.abs(dx), Math.abs(dy)) !== d) continue;       // só a casca do anel
+      const x = cx + dx, y = cy + dy;
+      if(x < c.x1 || x > c.x2 + 1 || y < c.y1 || y > c.y2 + 1) continue;
+      if(livre(x, y, jog.raio)) return {x, y};
+    }
+  }
+  return null;
+}
+
+function irAoComodo(alvo){
+  const lista = piso.comodos;
+  if(!lista || !lista.length){
+    avisar('Sem planta de cômodos', 'este piso ainda não declara `comodos`');
+    return false;
+  }
+  const c = acharComodo(alvo);
+  if(!c){
+    console.log('?sala= não encontrou "' + alvo + '". Cômodos deste piso:',
+      lista.map((s,i) => (i+1) + '. ' + s.nome).join('  ·  '));
+    avisar('Cômodo desconhecido', 'os nomes válidos saíram no console');
+    return false;
+  }
+  const pt = pontoAndavel(c);
+  if(!pt){
+    avisar(c.nome, 'nenhum chão livre neste cômodo — geometria a conferir');
+    return false;
+  }
+  jog.x = pt.x; jog.y = pt.y; jog.vx = jog.vy = 0;
+  camX = jog.x; camY = jog.y;
+  if(typeof vistos !== 'undefined' && vistos.add) vistos.add(c.nome);   // o nome já vem no aviso abaixo
+  avisar(c.nome, c.sub);
+  return true;
+}
+window.irAoComodo = irAoComodo;      // dá para pular de cômodo pelo console, sem recarregar
+
 /* ---------- arranque ---------- */
 /* ?piso=N   pula direto a um piso, herdando as recompensas dos anteriores
    &chefe=1  vai direto à luta do chefe, com os segredos já ouvidos
-   &transicao=1  cai na vitória do piso, para rever a subida ao piso seguinte */
-let atalhoChefe = false, atalhoTransicao = false;
+   &transicao=1  cai na vitória do piso, para rever a subida ao piso seguinte
+   &sala=X   nasce dentro do cômodo X (número na lista ou pedaço do nome) */
+let atalhoChefe = false, atalhoTransicao = false, atalhoSala = null;
 (() => {
   const q = new URLSearchParams(location.search);
   const n = parseInt(q.get('piso') || '1', 10);
   pisoAtual = clamp((isNaN(n) ? 1 : n) - 1, 0, PISOS.length - 1);
   atalhoChefe = q.get('chefe') === '1';
   atalhoTransicao = q.get('transicao') === '1';
+  atalhoSala = q.get('sala');
   for(let i = 0; i < pisoAtual; i++)
     if(PISOS[i].recompensa) adicionarAoInventario(PISOS[i].recompensa);   // já vestido, se for de vestir
 })();
@@ -9599,6 +9661,7 @@ if(atalhoTransicao && pisoAtual + 1 < PISOS.length){
     const sub = piso.intro.texto.replace(/<[^>]+>/g, '').split(/(?<=\.)\s/)[0];
     avisar(tit, sub);
     if(atalhoChefe && piso.irAoChefe) piso.irAoChefe();
+    if(atalhoSala) irAoComodo(atalhoSala);      // por último: o cômodo manda no lugar de nascer
   });
 }
 requestAnimationFrame(quadro);
