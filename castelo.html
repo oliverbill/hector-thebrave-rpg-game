@@ -7526,54 +7526,106 @@ function desenharAguaCripta(ox, oy){
   ctx.restore();
 }
 
-/* --- coadjuvantes: o velório na capela, com os rezadores recortados --- */
-/* o velório cheio: cada figura com sua roupa (matiz), seu tamanho e seu
-   jeito — sentada nos bancos ou de pé junto ao esquife (pedido do dono).
-   `tom` gira a cor da veste; `sentado` encolhe as pernas contra o banco. */
-const COADJ_FUN = [
-  /* de pé, velando o corpo — em roda POR FORA da pegada do caixão (x 7.95 a
-     11.05, y 8.27 a 11.42), senão o desenhado por cima passa na frente dele */
-  {img:'rezador-4', x:6.8,  y:10.9, esc:1.14, tom:0},
-  {img:'rezador-4', x:12.2, y:11.15, esc:1.02, tom:-38, flip:true},
-  {img:'rezador-2', x:9.5,  y:7.9,  esc:.95,  tom:26},
-  {img:'rezador-3', x:8.3,  y:13.3, esc:1.06, tom:52},
-  {img:'rezador-1', x:10.9, y:13.5, esc:.9,   tom:-18, flip:true},
-  // sentados no flanco oeste (bancos em x 3.85 e 5.35, filas y 6.8 / 9.2 / 11.9)
-  {img:'rezador-2', x:4.15, y:6.95, esc:.82, tom:14,  sentado:true},
-  {img:'rezador-1', x:5.62, y:7.05, esc:.78, tom:-52, sentado:true},
-  {img:'rezador-3', x:4.15, y:9.35, esc:.86, tom:70,  sentado:true},
-  {img:'rezador-4', x:5.62, y:12.05, esc:.8, tom:-8,  sentado:true},
-  // sentados no flanco leste (bancos em x 14.05 e 15.5), virados para o esquife
-  {img:'rezador-1', x:14.35, y:6.95, esc:.84, tom:38,  sentado:true, flip:true},
-  {img:'rezador-3', x:15.8,  y:9.35, esc:.79, tom:-30, sentado:true, flip:true},
-  {img:'rezador-2', x:14.35, y:12.05, esc:.88, tom:88, sentado:true, flip:true},
-  {img:'rezador-4', x:15.8,  y:6.95, esc:.76, tom:110, sentado:true, flip:true},
-  // pelos cantos, de pé, esperando a vez
-  {img:'rezador-3', x:3.9,  y:15.2, esc:.92, tom:-64},
-  {img:'rezador-1', x:15.4, y:15.1, esc:.97, tom:20, flip:true}
+/* --- coadjuvantes: o velório na capela, com os rezadores recortados ---------
+   Duas populações. Nos bancos, os rezadores de joelhos: oito recortes que se
+   repetem por todos os assentos, cada um com o seu matiz e o seu tamanho. Em
+   volta do esquife, o cortejo: figuras de luto que dão a volta ao caixão sem
+   parar. `tom` gira a cor da veste. --- */
+const REZADORES = ['rezador-1','rezador-2','rezador-3','rezador-4',
+                   'rezador-5','rezador-6','rezador-7','rezador-8'];
+/* tinge cada recorte uma vez por matiz e guarda o resultado. Pôr ctx.filter a
+   cada quadro tira o desenho do caminho rápido do canvas — com trinta figuras
+   em cena isso custava o piso inteiro, e a cor nunca muda mesmo. */
+const tintos = new Map();
+function recorteTinto(nome, tom, brilho){
+  const im = funImg(nome);
+  if(!im.complete || !im.naturalWidth) return null;
+  const chave = nome + '|' + tom + '|' + brilho;
+  const guardado = tintos.get(chave);
+  if(guardado && guardado.w === im.naturalWidth) return guardado.cv;
+  const cv = document.createElement('canvas');
+  cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+  const g = cv.getContext('2d');
+  /* velório não tem cor: dessatura quase tudo e varia só o brilho e um sopro de
+     matiz. Girar a cor à larga fazia nascer veste verde-limão e rosa-choque no
+     meio do luto — as pinturas de origem trazem ouro e malha clara. */
+  g.filter = 'saturate(.34) brightness(' + brilho + ') hue-rotate(' + tom + 'deg)';
+  g.drawImage(im, 0, 0);
+  tintos.set(chave, {cv, w:im.naturalWidth});
+  return cv;
+}
+/* todos os bancos ocupados: quatro fileiras (x 3,85 e 5,35 encaram o leste,
+   x 14,05 e 15,5 encaram o oeste) por três filas, dois joelhos em cada banco.
+   O rezador ajoelha no lado por onde o banco é usado, virado para o esquife. */
+const COADJ_FUN = [];
+[[3.85, 1], [5.35, 1], [14.05, -1], [15.5, -1]].forEach(([bx, olha], b) => {
+  [6.8, 9.2, 11.9].forEach((by, fila) => {
+    [.40, 1.06].forEach((dy, k) => {
+      const n = b*6 + fila*2 + k;
+      COADJ_FUN.push({
+        img: REZADORES[(n*3 + b) % REZADORES.length],
+        x: bx + olha*.44, y: by + dy,
+        esc: .68 + ((n*7) % 10)*.028,          // ninguém do mesmo tamanho
+        tom: ((n*5) % 9 - 4)*5,                // um sopro de matiz, não mais
+        brilho: .62 + ((n*3) % 7)*.038,
+        flip: olha < 0
+      });
+    });
+  });
+});
+/* o cortejo: dá a volta ao caixão numa elipse que nunca entra na pegada dele
+   (x 7,95 a 11,05, y 8,27 a 11,42) — no ponto mais alto os pés param em y 8,07,
+   acima da tampa, e nos extremos a elipse já passou por fora das laterais */
+const CORTEJO = {x:9.5, y:10.35, rx:3.3, ry:2.28, volta:52};   // 52 s por volta
+const VELANDO = [
+  {img:'velando-1', esc:1.02, tom:0,   brilho:.80},
+  {img:'velando-2', esc:.94,  tom:-8,  brilho:.72},
+  {img:'velando-3', esc:.88,  tom:10,  brilho:.86},
+  {img:'velando-4', esc:.97,  tom:-14, brilho:.76},
+  {img:'velando-5', esc:.91,  tom:6,   brilho:.90}
 ];
 function desenharCoadjuvantesFun(ox, oy){
-  COADJ_FUN.forEach((c2, i) => {
-    const im = funImg(c2.img);
-    if(!im.complete || !im.naturalWidth) return;
-    const px = ox + c2.x*tam, py = oy + c2.y*tam;
-    if(foraDaVista(px, py, tam*2.5)) return;
-    const q = Math.floor((tempo + i*.7)*8)/8;               // 8 quadros/s, como os informantes
-    const sentado = !!c2.sentado;
-    const alt = tam*1.35*(c2.esc || 1)*(sentado ? .78 : 1);  // sentado, o corpo encolhe
-    const lar = im.naturalWidth*(tam*1.35*(c2.esc || 1)/im.naturalHeight);
-    const gira = Math.sin(q*1.8 + i)*(sentado ? .015 : .03); // quem senta balança menos
-    const sopro = 1 + Math.sin(q*2.6 + i*2)*.018;
-    ctx.fillStyle = 'rgba(0,0,0,' + (sentado ? .22 : .3) + ')';
+  /* uma figura só: recebe já a posição no mundo e o tamanho em tiles */
+  const figura = (nome, tom, brilho, px, py, altT, flip, gira, sombra) => {
+    const cv = recorteTinto(nome, tom, brilho);
+    if(!cv) return;
+    const alt = altT*tam, lar = cv.width*(alt/cv.height);
+    ctx.fillStyle = 'rgba(0,0,0,' + sombra + ')';
     ctx.beginPath(); ctx.ellipse(px, py + tam*.06, lar*.38, tam*.09, 0, 0, TAU); ctx.fill();
     ctx.save();
     ctx.translate(px, py + tam*.08);
     ctx.rotate(gira);
-    ctx.scale((c2.flip ? -1 : 1)*(2 - sopro), sopro);
-    if(c2.tom) ctx.filter = 'hue-rotate(' + c2.tom + 'deg) saturate(1.15)';
-    ctx.drawImage(im, -lar/2, -alt, lar, alt);
-    ctx.filter = 'none';
+    ctx.scale(flip ? -1 : 1, 1);
+    ctx.drawImage(cv, -lar/2, -alt, lar, alt);
     ctx.restore();
+  };
+
+  COADJ_FUN.forEach((c2, i) => {
+    const px = ox + c2.x*tam, py = oy + c2.y*tam;
+    if(foraDaVista(px, py, tam*2.5)) return;
+    const q = Math.floor((tempo + i*.7)*8)/8;               // 8 quadros/s, como os informantes
+    figura(c2.img, c2.tom, c2.brilho, px, py, 1.16*c2.esc, c2.flip,
+           Math.sin(q*1.8 + i)*.016, .24);
+  });
+
+  /* o cortejo, do mais ao fundo para o mais à frente: quem está ao sul tapa
+     quem está ao norte, senão a roda se atravessa */
+  const roda = VELANDO.map((v, i) => {
+    const a = (tempo/CORTEJO.volta)*TAU + i*TAU/VELANDO.length;
+    return {v, a, i,
+            x: CORTEJO.x + Math.cos(a)*CORTEJO.rx,
+            y: CORTEJO.y + Math.sin(a)*CORTEJO.ry};
+  }).sort((p, q2) => p.y - q2.y);
+  roda.forEach(({v, a, i, x, y}) => {
+    const px = ox + x*tam, py = oy + y*tam;
+    if(foraDaVista(px, py, tam*3)) return;
+    const q = Math.floor((tempo + i*.5)*8)/8;
+    const fundo = (Math.sin(a) + 1)/2;                       // 0 ao norte, 1 ao sul
+    const passo = Math.abs(Math.sin(q*4.4 + i))*.02;         // o corpo sobe a cada passo
+    figura(v.img, v.tom, v.brilho, px, py - passo*tam,
+           1.34*v.esc*(.86 + fundo*.16),                     // encolhe ao fundo
+           Math.sin(a) < 0,                                  // vira para onde caminha
+           Math.sin(q*1.6 + i)*.022, .2 + fundo*.12);
   });
 }
 
