@@ -429,7 +429,7 @@ function aventalVisivel(){
   if(aventalCv) return aventalCv;
   if(!(imgAvental.complete && imgAvental.naturalWidth > 0)) return null;
   const iw = imgAvental.naturalWidth, ih = imgAvental.naturalHeight;
-  const m = Math.round(iw*.16);                       // folga para o contorno caber
+  const m = Math.round(iw*.20);                       // folga para o contorno caber
   const c = document.createElement('canvas');
   c.width = iw + m*2; c.height = ih + m*2;
   const g = c.getContext('2d');
@@ -446,11 +446,17 @@ function aventalVisivel(){
   };
   const esticar = (cv, f) => g.drawImage(cv, -(c.width*(f-1))/2, -(c.height*(f-1))/2,
                                          c.width*f, c.height*f);
-  esticar(silhueta('#100c14'), 1.16);                 // o vulto escuro, que separa do corpo
-  esticar(silhueta('#c2a06a'), 1.045);                // o filete claro do couro no reflexo
-  g.filter = 'brightness(1.55) saturate(1.1)';
+  esticar(silhueta('#07050b'), 1.20);                 // o vulto escuro, que separa do corpo
+  esticar(silhueta('#e6ecf5'), 1.075);                // o filete de aço, frio e claro
+  g.filter = 'brightness(1.75) saturate(.9) contrast(1.12)';
   g.drawImage(imgAvental, m, m);                      // o couro, clareado
   g.filter = 'none';
+  /* banho de aço só onde há couro: o marrom do avental sumia dentro do marrom
+     do corpo, e a peça precisa se ler de longe como armadura */
+  g.globalCompositeOperation = 'source-atop';
+  g.fillStyle = 'rgba(158,186,220,.22)';
+  g.fillRect(0, 0, c.width, c.height);
+  g.globalCompositeOperation = 'source-over';
   aventalCv = c;
   return c;
 }
@@ -2816,14 +2822,16 @@ function desenharCorpoJogador(ox, oy){
     ctx.scale(1, 1 + respira);
     ctx.drawImage(f.tronco, -sW/2, -(f.corte + 2)*esc, sW, (f.corte + 2)*esc);
     /* o que ele veste por cima do tronco. Medidas em pixels da foto do avatar
-       (64x159): ombro em y 52, quadril em 99 — o avental cai do peito à coxa */
+       (64x159): ombro em y 52, quadril em 99, joelho em 129 — a peça desce do
+       colo ao joelho e cobre o corpo inteiro, que é o que se espera de uma
+       armadura: encolhida no peito ela sumia dentro do tronco */
     if(vestido === 'avental-acougueiro'){
       const av = aventalVisivel();
       if(av){
-        /* a moldura carrega a folga do contorno: o couro em si continua com a
-           medida do corpo, 30 de largura por 62 de altura */
-        const aw = 30*esc, ah = 62*esc, f = av.width/imgAvental.naturalWidth;
-        ctx.drawImage(av, 3*esc - aw*f/2, (52 - 101 + 2)*esc - ah*(f-1)/2, aw*f, ah*f);
+        /* a moldura carrega a folga do contorno: o couro em si mede 40 de
+           largura por 82 de altura, em pixels da foto */
+        const aw = 40*esc, ah = 82*esc, f = av.width/imgAvental.naturalWidth;
+        ctx.drawImage(av, 3*esc - aw*f/2, (46 - 101 + 2)*esc - ah*(f-1)/2, aw*f, ah*f);
       }
     }
     ctx.restore();
@@ -2979,8 +2987,11 @@ function renderizarListaInv(){
 el('invAcao').addEventListener('click', () => {
   if(!invModoLista || !invSelecionado) return;
   const it = invSelecionado;
+  /* vestir é de mão única: o que foi ao peito fica lá até o piso acabar, e
+     atravessa a morte junto com o resto do progresso */
   if(it.veste && vestido !== it.id && horaDeVestir()){
     vestido = it.id;
+    if(piso.aoVestir) piso.aoVestir(it);
     fecharPopupInventario();
     avisar('No peito', it.nome);
     return;
@@ -3034,6 +3045,9 @@ function iniciarPiso(p){
   particulas = []; riscos = []; destrocos = [];
   chefe = null; dialogo = null; interacao = null;
   ofertaVestirFeita = false; ofertaVestirEspera = 0;   // a oferta da peça é uma por piso
+  /* a peça vestida some ao trocar de piso — mas não ao morrer: a morte com
+     progresso passa por `retomar()`, que nem chega aqui */
+  vestido = null;
   el('dialogo').classList.remove('on'); calarVoz();   // nada do piso anterior fica na tela
   intel = {};
   jog = {x:p.spawn.x, y:p.spawn.y, vx:0, vy:0, raio:.30, hp:100, hpMax:100, dano:10,
@@ -6283,10 +6297,18 @@ function criarMaos(pontos){
     vel:p.vel != null ? p.vel : 1.4, fase:Math.random()*TAU, flash:0,
     passo:Math.random()*15, olhar:-1}));
 }
+/* o Avental de Aço protege no peito, não na bolsa: a pazada cai de 34 para 14
+   e o agarrão encurta só enquanto ele estiver vestido (F3-RF-13). Vale sempre
+   o estado do momento — tirar a peça devolve o dano cheio na hora. */
+function aventalNoPeito(){ return vestido === 'avental-acougueiro'; }
+function ajustarPazada(){
+  const pazada = aventalNoPeito() ? 14 : 34;
+  PISO_FUNERAL.chefe.cfg.comboDano =
+    PISO_FUNERAL.chefe.cfg.comboAlcance.map(() => pazada);
+}
 function agarrar(m){
   agarrao = {mao:m, x:jog.x, y:jog.y, apertos:0, tique:0,
-    /* o avental de aço encurta o agarrão (F3-RF-13) */
-    precisa: inventario.some(i => i.id === 'avental-acougueiro') ? 2 : 3,
+    precisa: aventalNoPeito() ? 2 : 3,
     dashOffAntes: jog.dashOff};
   jog.dashOff = true;                 // nem anda nem rola enquanto preso
   jog.vx = jog.vy = 0;
@@ -9252,14 +9274,9 @@ const PISO_FUNERAL = {
     const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
     jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
     jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
-    /* o Avental de Aço amortece a pazada: 34 -> 14 (F3-RF-13) */
-    const temAvental = inventario.some(i => i.id === 'avental-acougueiro');
     /* um valor por golpe do combo: a lista curta deixava o 2º talho com dano
        undefined, a vida do jogador virava NaN e ele ficava imortal */
-    const pazada = temAvental ? 14 : 34;
-    PISO_FUNERAL.chefe.cfg.comboDano =
-      PISO_FUNERAL.chefe.cfg.comboAlcance.map(() => pazada);
-    if(temAvental) avisar('O Avental de Aço no peito', 'a pá dele vai doer bem menos');
+    ajustarPazada();
     etapa = 'livre';
     avisar('As salas de funeral', 'o frio sobe do chão');
   },
@@ -9377,6 +9394,11 @@ const PISO_FUNERAL = {
   falarLiberado(){ return etapa === 'livre'; },
   /* a cova aberta já é a hora do chefe: dali em diante dá para vestir o avental */
   horaDoChefe(){ return !!(porta3 && porta3.aberta); },
+  /* vestiu: a pazada do Coveiro é recalculada na hora */
+  aoVestir(){
+    ajustarPazada();
+    avisar('Aço no peito', 'a pá dele vai doer bem menos');
+  },
   acaoGolpe: golpeFase3,
   pegarItem(item){
     if(!ARMAS[item.id]) return;
