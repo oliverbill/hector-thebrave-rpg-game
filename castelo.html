@@ -3220,7 +3220,27 @@ function sairDoJogo(){
       + '<p>Até a próxima, bravo Hector. Já pode fechar esta aba.</p>';
     document.body.appendChild(d);
   }
-  try{ window.close(); }catch(e){}                   // só funciona em janela aberta por script
+  /* a aba fecha sozinha: close() direto vale para aba de histórico curto;
+     se o navegador recusar, open('','_self') marca a aba como aberta por
+     script e destrava o close() seguinte */
+  try{ window.close(); }catch(e){}
+  setTimeout(() => {
+    try{ const w = window.open('', '_self'); w && w.close(); }catch(e){}
+    /* recusou os dois: o truque acima pode ter trocado o documento por um em
+       branco — reescreve o adeus para o convite manual não se perder */
+    setTimeout(() => {
+      try{
+        if(!document.getElementById('adeus')){
+          document.open();
+          document.write('<body style="margin:0;background:#07050c;color:#d8cfc0;'
+            + 'font-family:Georgia,serif;display:flex;align-items:center;justify-content:center;'
+            + 'min-height:100vh;text-align:center"><div><h1 style="font-weight:normal">O portão se fecha</h1>'
+            + '<p style="color:#8b8299">Até a próxima, bravo Hector. Já pode fechar esta aba.</p></div></body>');
+          document.close();
+        }
+      }catch(e){}
+    }, 180);
+  }, 180);
 }
 const botaoSistema = (id, fn) => {
   const b = el(id);
