@@ -1511,7 +1511,6 @@ function desenharDecorCache(d, T){
   const cx = d.x*T, cy = d.y*T, h = hash(d.x*13.7, d.y*7.3);
   switch(d.tipo){
     case 'palha': dPalha(cx, cy, T, h); break;
-    case 'caveira': dCaveira(cx, cy, T, h); break;
     case 'tigela': dTigela(cx, cy, T); break;
     case 'barril': dBarril(cx, cy, T); break;
     case 'caixote': dCaixote(cx, cy, T, h); break;
@@ -1536,19 +1535,6 @@ function dPalha(cx, cy, T, h){
     cmx.lineTo(cx + Math.cos(a)*r2, cy + Math.sin(a)*r2*.6);
     cmx.stroke();
   }
-}
-function dCaveira(cx, cy, T, h){
-  const s = T*.28;
-  cmx.fillStyle = '#000'; cmx.beginPath(); cmx.ellipse(cx+1, cy+s*.6+2, s*.9, s*.35, 0, 0, TAU); cmx.fill();
-  cmx.fillStyle = '#dcd3bf';
-  cmx.beginPath(); cmx.arc(cx, cy, s, 0, TAU); cmx.fill();
-  cmx.beginPath(); cmx.ellipse(cx, cy+s*.55, s*.7, s*.35, 0, 0, TAU); cmx.fill();
-  cmx.fillStyle = '#1a120e';
-  cmx.beginPath(); cmx.ellipse(cx-s*.35, cy-s*.05, s*.22, s*.28, 0, 0, TAU); cmx.fill();
-  cmx.beginPath(); cmx.ellipse(cx+s*.35, cy-s*.05, s*.22, s*.28, 0, 0, TAU); cmx.fill();
-  cmx.fillRect(cx-s*.08, cy+s*.35, s*.16, s*.28);
-  cmx.strokeStyle = '#5a4a38'; cmx.lineWidth = 1;
-  for(let i=0;i<4;i++) cmx.strokeRect(cx-s*.5+i*s*.25, cy+s*.55, s*.22, s*.15);
 }
 function dTigela(cx, cy, T){
   cmx.fillStyle = '#000'; cmx.beginPath(); cmx.ellipse(cx+1, cy+T*.14, T*.2, T*.06, 0, 0, TAU); cmx.fill();
@@ -3406,7 +3392,7 @@ function construirCalabouco(){
   /* ---- decoração ---- */
   // celas habitadas
   [[13.8,20.6],[5.2,24.8]].forEach(([x,y]) => { dec.push({tipo:'palha',x,y}); dec.push({tipo:'tigela',x:x+.8,y:y+.9}); });
-  dec.push({tipo:'caveira', x:6.6, y:16.6}); dec.push({tipo:'palha', x:5.4, y:16.8});
+  dec.push({tipo:'palha', x:5.4, y:16.8});
   dec.push({tipo:'corrente_parede', x:5.5, y:20.3});     // a do jogador
   dec.push({tipo:'palha', x:6.4, y:21.6});
   dec.push({tipo:'rachadura', x:10, y:20}); dec.push({tipo:'poca', x:10.4, y:26.4});
@@ -3417,7 +3403,7 @@ function construirCalabouco(){
   dec.push({tipo:'bau', x:8.5, y:31.6}); dec.push({tipo:'teia', x:3.5, y:28.5, flip:false});
   // torre: marcas das lutas antigas
   dec.push({tipo:'sangue', x:9, y:6.5}); dec.push({tipo:'sangue', x:12, y:9.8});
-  dec.push({tipo:'osso', x:7.2, y:10.6}); dec.push({tipo:'caveira', x:13.2, y:5.8});
+  dec.push({tipo:'osso', x:7.2, y:10.6});
   dec.push({tipo:'rachadura', x:10.5, y:8.2});
   // caserna e gabinete
   dec.push({tipo:'caixote', x:23, y:5}); dec.push({tipo:'caixote', x:23.9, y:5.2});
@@ -3436,15 +3422,14 @@ function construirCalabouco(){
   dec.push({tipo:'rachadura', x:18, y:29.6});
   // fosso e pontes: quem caiu, ficou
   dec.push({tipo:'poca', x:17, y:35.6}); dec.push({tipo:'rachadura', x:5, y:35.4});
-  dec.push({tipo:'osso', x:6.5, y:36.8}); dec.push({tipo:'caveira', x:11, y:39.4});
+  dec.push({tipo:'osso', x:6.5, y:36.8});
   dec.push({tipo:'osso', x:14.8, y:39.3}); dec.push({tipo:'rachadura', x:21, y:43.4});
   dec.push({tipo:'rachadura', x:41, y:35.4}); dec.push({tipo:'osso', x:39.5, y:39.3});
   dec.push({tipo:'sangue', x:38.5, y:43.6});
   // labirinto das catacumbas
   dec.push({tipo:'teia', x:4.4, y:45.4, flip:false});
-  dec.push({tipo:'caveira', x:13.5, y:48.5}); dec.push({tipo:'sangue', x:19.5, y:48.6});
+  dec.push({tipo:'sangue', x:19.5, y:48.6});
   dec.push({tipo:'osso', x:31.5, y:51.5}); dec.push({tipo:'teia', x:41.5, y:45.4, flip:true});
-  dec.push({tipo:'caveira', x:34.5, y:54.6});
   // câmara da Ladra
   dec.push({tipo:'palha', x:5, y:55.2}); dec.push({tipo:'tigela', x:6.2, y:55.3});
   dec.push({tipo:'teia', x:4.3, y:54.3, flip:false});
@@ -4410,7 +4395,7 @@ function construirCozinhas(){
   [[33,4.3],[35,4.3],[37,4.3],[39,4.3],[41,4.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
   dec.push({tipo:'sangue', x:34, y:8}); dec.push({tipo:'sangue', x:39, y:12});
   dec.push({tipo:'sangue', x:36.5, y:6.5}); dec.push({tipo:'poca', x:40, y:8.5});
-  dec.push({tipo:'caveira', x:42.5, y:15.5}); dec.push({tipo:'osso', x:32.5, y:14.5});
+  dec.push({tipo:'osso', x:32.5, y:14.5});
   dec.push({tipo:'caixote', x:37, y:12.6});                   // a mesa de corte dele
   // escada de chegada
   dec.push({tipo:'rachadura', x:39, y:49}); dec.push({tipo:'teia', x:37.4, y:47.4, flip:false});
@@ -4419,7 +4404,7 @@ function construirCozinhas(){
   [[5,46],[6,45.6],[11,48.5],[14,45.5],[23,51.5],[26,48.5],[31,45.5],[8,51.5],[29,51.8],[17,48.4],[20,45.6]]
     .forEach(([x,y]) => dec.push({tipo:'barril',x,y}));
   dec.push({tipo:'teia', x:4.4, y:45.4, flip:false}); dec.push({tipo:'teia', x:31.5, y:45.4, flip:true});
-  dec.push({tipo:'caveira', x:27.5, y:51.5}); dec.push({tipo:'osso', x:12.5, y:51.5});
+  dec.push({tipo:'osso', x:12.5, y:51.5});
 
   return {larg:COZ.LARG, alt:COZ.ALT, tiles:t, braseiros:bra, decor:dec};
 }
@@ -6793,10 +6778,10 @@ function construirFuneral(){
   // cova grande: correntes, ossos de quem já desceu e um esquife à beira
   [[33,1.3],[38,1.3],[41,1.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
   dec.push({tipo:'caixote', x:30.5, y:3.5}); dec.push({tipo:'caixote', x:31.5, y:3.5});
-  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:43.5, y:14.5});
+  dec.push({tipo:'osso', x:43.5, y:14.5});
   dec.push({tipo:'poca', x:35, y:7.5}); dec.push({tipo:'poca', x:40, y:12});
   /* as faixas novas da arena, para o tamanho a mais não virar chão pelado */
-  dec.push({tipo:'osso', x:30.4, y:8.5}); dec.push({tipo:'caveira', x:43.4, y:6.5});
+  dec.push({tipo:'osso', x:30.4, y:8.5});
   dec.push({tipo:'poca', x:31.5, y:12.5}); dec.push({tipo:'osso', x:36.5, y:2.8});
   // escada desmoronada: o aviso de quem não voltou
   dec.push({tipo:'rachadura', x:31.5, y:19.2}); dec.push({tipo:'osso', x:32.4, y:18.6});
@@ -6819,8 +6804,7 @@ function construirFuneral(){
   dec.push({tipo:'poca', x:17.5, y:41.5}); dec.push({tipo:'osso', x:15.5, y:42.3});
   // colombário: os nichos guardam o que sobrou
   dec.push({tipo:'teia', x:4.4, y:45.4, flip:false}); dec.push({tipo:'teia', x:32.5, y:45.4, flip:true});
-  dec.push({tipo:'caveira', x:13.5, y:48.5}); dec.push({tipo:'caveira', x:27.5, y:51.5});
-  dec.push({tipo:'caveira', x:4.5, y:52.5}); dec.push({tipo:'osso', x:20.5, y:45.5});
+  dec.push({tipo:'osso', x:20.5, y:45.5});
   dec.push({tipo:'osso', x:31.5, y:48.5});
   // escada de chegada
   dec.push({tipo:'teia', x:36.4, y:48.4, flip:false}); dec.push({tipo:'rachadura', x:39, y:51});
