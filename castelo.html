@@ -6828,7 +6828,7 @@ function criarPortasFun(){
     {x:6,  y:30, vert:false},    // salão -> oficina de caixões
     {x:6,  y:36, vert:false},    // divisória oficina/depósito
     {x:40, y:25, vert:false},    // o quarto do Coveiro
-    {x:16, y:44, vert:false}     // a boca do colombário, descendo da margem sul da cripta
+    {x:5,  y:44, vert:false}     // a boca do colombário, a oeste: a descida que vem do depósito
   ].map(p => ({...p, ab:0, rangeu:false}));
 }
 function desenharPortasFun(ox, oy){
@@ -6915,7 +6915,7 @@ function criarVelasCaminho(){
     {x:22.5, y:21.5},   // salão, centro
     {x:16.5, y:33},     // margem noroeste da cripta
     {x:17,   y:41.5},   // margem sul da cripta
-    {x:6,    y:44}      // descida do colombário
+    {x:5.5,  y:45.6}    // descida do colombário: fora da soleira, para não subir na folha da porta
   ].map(v => ({...v, acesa:false}));
 }
 /* o castiçal apagado, pintado uma única vez: aplicar ctx.filter por quadro
