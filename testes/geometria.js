@@ -88,7 +88,6 @@ const PISOS = [
       ['cripta margem leste (27,32)', 27, 32, 'alcanca'],
       ['cripta margem sul (16,41)', 16, 41, 'alcanca'],
       ['colombário oeste (4,51)', 4, 51, 'alcanca'],
-      ['escada desmoronada (31,18)', 31, 18, 'alcanca'],
       ['soleira da cova (37,19)', 37, 19, 'alcanca'],
       ['cova grande — arena (37,9)', 37, 9, 'anda']
     ],

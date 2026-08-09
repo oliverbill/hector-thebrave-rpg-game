@@ -6706,9 +6706,10 @@ function construirFuneral(){
   cavar(5,20,41,23);
   cavar(8,17,9,19);             // corredor capela -> salão
   cavar(22,14,23,19);           // corredor preparação -> salão
-  /* a ESCADA DESMORONADA: parte do salão rumo à arena e morre num buraco (travessia falsa) */
-  cavar(31,18,32,19);
-  cavar(31,17,32,17,FOSSO);     // o buraco onde a escada ruiu
+  /* a ESCADA DESMORONADA foi murada em 09/08 (pedido do dono): o cotoco em
+     x31..32 saía do salão rumo à arena e morria num FOSSO — de longe lia como
+     buraco na parede, não como travessia falsa. A parede norte do salão é
+     inteira de novo entre o corredor da preparação e a soleira da cova */
   /* ---- quarto do Coveiro: pequeno e trancável, a leste do salão ---- */
   cavar(38,26,43,30);
   cavar(40,24,41,25);           // porta do quarto
@@ -6783,8 +6784,7 @@ function construirFuneral(){
   /* as faixas novas da arena, para o tamanho a mais não virar chão pelado */
   dec.push({tipo:'osso', x:30.4, y:8.5});
   dec.push({tipo:'poca', x:31.5, y:12.5}); dec.push({tipo:'osso', x:36.5, y:2.8});
-  // escada desmoronada: o aviso de quem não voltou
-  dec.push({tipo:'rachadura', x:31.5, y:19.2}); dec.push({tipo:'osso', x:32.4, y:18.6});
+  // (a rachadura e o osso da escada desmoronada saíram com ela — caíam dentro da parede)
   // salão: pedra gasta e goteiras
   dec.push({tipo:'poca', x:18, y:22}); dec.push({tipo:'poca', x:30, y:21.5});
   dec.push({tipo:'rachadura', x:25, y:22.6});
