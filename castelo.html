@@ -6883,6 +6883,23 @@ function desenharPortasFun(ox, oy){
   });
 }
 
+/* --- o portão do Coveiro: o vão da cova não é um vão, é um portão selado.
+   A arte fica de pé enquanto a terra está fechada e se desfaz quando ela abre —
+   depois disso nada pode tapar a arena, e o monumento tem 6 tiles de altura. --- */
+const imgPortaCoveiro = new Image(); imgPortaCoveiro.src = 'img/fase3/porta-coveiro.png';
+function desenharPortaoCova(ox, oy){
+  if(!porta3 || porta3.quebra >= 1) return;
+  if(!(imgPortaCoveiro.complete && imgPortaCoveiro.naturalWidth > 0)) return;
+  const cx = ox + (FUN.PORTA.x + FUN.PORTA.larg/2)*tam;
+  const base = oy + (FUN.PORTA.y + 1)*tam;             // os degraus pousam no chão da soleira
+  const larg = tam*4.2, alt = larg*(imgPortaCoveiro.naturalHeight/imgPortaCoveiro.naturalWidth);
+  if(foraDaVista(cx, base - alt/2, alt)) return;
+  ctx.save();
+  ctx.globalAlpha = 1 - porta3.quebra;
+  ctx.drawImage(imgPortaCoveiro, cx - larg/2, base - alt, larg, alt);
+  ctx.restore();
+}
+
 /* --- o piso, montado (esqueleto: F3-RF-01..05 na geometria; o resto vem depois) --- */
 /* --- as velas do caminho (t-velas): apagadas até o jogador ACENDER com E --- */
 let velasCaminho = [], aguaBenta = [], cirios = [];
@@ -9297,6 +9314,8 @@ const PISO_FUNERAL = {
     if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
     anunciarComodo();
     atualizarPortasInternas(dt);      // as mesmas dobradiças do piso 2, na lista do piso 3
+    /* a cova aberta desfaz o portão: some em pouco menos de um segundo */
+    if(porta3.aberta && porta3.quebra < 1) porta3.quebra = Math.min(1, porta3.quebra + dt*1.4);
     atualizarMaos(dt);
     atualizarZonasLuz(dt);
     atualizarVultos(dt);
@@ -9375,6 +9394,7 @@ const PISO_FUNERAL = {
     desenharAguaCripta(ox, oy);
     desenharCoadjuvantesFun(ox, oy);
     desenharPortasFun(ox, oy);
+    desenharPortaoCova(ox, oy);
     desenharVelasCaminho(ox, oy);
     desenharAguaBenta(ox, oy);
     if(etapa === 'chefe') desenharCirios(ox, oy);
@@ -9391,7 +9411,7 @@ const PISO_FUNERAL = {
     marcarTarefa(tid); marcarTarefa('t-cripta'); marcarTarefa('t-velas');
     velasCaminho.forEach(v => { v.acesa = true; });
     const vc = el('t-velas-cont'); if(vc) vc.textContent = velasCaminho.length + '/' + velasCaminho.length;
-    porta3.aberta = true;
+    porta3.aberta = true; porta3.quebra = 1;      // atalho: o portão já nem existe
     for(let x = FUN.PORTA.x; x < FUN.PORTA.x + FUN.PORTA.larg; x++) mapa[idx(x, FUN.PORTA.y)] = CHAO;
     desenharCache();
     jog.x = FUN.PORTA.x + 1.5; jog.y = FUN.PORTA.y + 1.6;
