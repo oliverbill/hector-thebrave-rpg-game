@@ -6535,11 +6535,21 @@ function atualizarVultos(dt){
       case 'ativo': {
         if(!escuro){ v.estado = 'afunda'; break; }
         const dx = jog.x-v.x, dy = jog.y-v.y, d = Math.max(.01, Math.hypot(dx,dy));
-        if(d < 8){
+        /* a coleira: sombra é do columbário, não persegue o piso inteiro */
+        const longe = Math.hypot(v.x-v.hx, v.y-v.hy) > 13;
+        if(d < 8 && !longe){
           v.vx += (dx/d*v.vel - v.vx)*Math.min(1, dt*3);
           v.vy += (dy/d*v.vel - v.vy)*Math.min(1, dt*3);
+        } else if(longe){                          // volta flutuando para o nicho
+          const hx = v.hx-v.x, hy = v.hy-v.y, dh = Math.max(.01, Math.hypot(hx,hy));
+          v.vx += (hx/dh*v.vel - v.vx)*Math.min(1, dt*3);
+          v.vy += (hy/dh*v.vel - v.vy)*Math.min(1, dt*3);
         } else { v.vx -= v.vx*2*dt; v.vy -= v.vy*2*dt; }
-        mover(v, v.vx*dt, v.vy*dt);
+        /* vulto é sombra: atravessa nicho e parede. `mover` é a colisão dos
+           vivos e prendia o bando atrás da fileira de nichos, sem nunca chegar
+           no jogador do outro lado (F3-RF-12) */
+        v.x = Math.max(.5, Math.min(LARG-.5, v.x + v.vx*dt));
+        v.y = Math.max(.5, Math.min(ALT-.5,  v.y + v.vy*dt));
         if(d < v.raio + jog.raio + .1 && v.morde <= 0){
           v.morde = .9;
           tocarSfx('audio/fase3/sons/sussurro-vulto-1.mp3', .8);
