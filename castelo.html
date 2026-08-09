@@ -2607,7 +2607,9 @@ function desenhar(){
 
   /* luz: ambiente do piso + poças quentes dos braseiros */
   lcx.setTransform(1,0,0,1,0,0);
-  lcx.fillStyle = piso.paleta.luzAmbiente;
+  /* o piso pode clarear o ambiente por cômodo (a arena do chefe, que no
+     sombrio geral virava adivinhação); sem o gancho, vale a paleta */
+  lcx.fillStyle = (piso.luzAgora && piso.luzAgora()) || piso.paleta.luzAmbiente;
   lcx.fillRect(0,0,luzCv.width, luzCv.height);
   lcx.globalCompositeOperation = 'lighter';
   const k = dpr/2;
@@ -2615,7 +2617,7 @@ function desenhar(){
     const bx = ox + b.x*tam, by = oy + b.y*tam;
     if(foraDaVista(bx, by, tam*4)) return;
     const tr = .88 + Math.sin(tempo*7 + b.fase)*.07 + Math.sin(tempo*16 + b.fase)*.04;
-    luzRadial(bx*k, by*k, tam*3.6*tr*k, 'rgba(226,146,58,.85)');
+    luzRadial(bx*k, by*k, tam*(b.raio || 3.6)*tr*k, 'rgba(226,146,58,.85)');
   });
   informantes.forEach(p => {   // facho dourado sobre quem ainda tem segredo para contar
     if(p.feito || (piso.falarLiberado && !piso.falarLiberado())) return;
@@ -6873,7 +6875,6 @@ function construirFuneral(){
   /* ---- luzes: poucas e espaçadas — o piso é sombrio ---- */
   [[9.5,5.6],[4,15.6],[15,15.6],                    // capela
    [23,5.6],[26.5,12.5],                            // preparação
-   [30,2.6],[43,2.6],[30,15.5],[43,15.5],[37,15.5], // cova grande: um fogo em cada canto da arena maior
    [37,19],                                         // soleira da cova
    [10,20.5],[22,20.5],[34,20.5],                   // salão
    [40.5,26.5],                                     // quarto do Coveiro
@@ -6883,6 +6884,13 @@ function construirFuneral(){
    [13,45.4],[21,45.4],[29,45.4],                   // ao pé da parede de nichos: é o que deixa ler os nomes
    [39.5,44],[40,48.6]                              // corredor leste e escada
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
+  /* a COVA GRANDE tem lume à parte: são 16x15 tiles de luta, e o fogo comum,
+     de 3,6 tiles de alcance, deixava o miolo às escuras. Aqui são oito fogos
+     com o dobro do alcance, e o ambiente da arena clareia junto (luzAgora) */
+  [[30,2.6],[36.5,2.4],[43,2.6],
+   [29.8,9],[43.4,9],
+   [30,15.5],[37,15.5],[43,15.5]
+  ].forEach(([x,y]) => bra.push({x, y, raio:7.2, fase:Math.random()*TAU}));
 
   /* ---- decoração ---- */
   // capela: esquifes (pares de caixote), teias e a água que escorre
@@ -7717,7 +7725,9 @@ function atualizarCorvos(dt){
 }
 function desenharCorvos(ox, oy){
   corvos.forEach(c => {
-    const px = ox + c.x*tam, py = oy + (c.y - c.alto)*tam, r = tam*.26;
+    /* r subiu de .26 para .42 em 09/08: a meio quarteirão de cova o corvo
+       antigo era um ponto, e ninguém via que havia bicho ali */
+    const px = ox + c.x*tam, py = oy + (c.y - c.alto)*tam, r = tam*.42;
     if(foraDaVista(px, py, tam*2)) return;
     /* a sombra fica no chão e encolhe conforme ele sobe: é o que vende o voo */
     const som = 1 - Math.min(.8, c.alto*.4);
@@ -9111,6 +9121,69 @@ function pintarFunCriptaSalao(cmx, T){
    [33.8,15.4,1.0,.08],[42.2,12.1,.9,-.05],[30.9,4.9,.8,.18]]
     .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,a,g]) => pCruz(x, y, a, g));
 
+  /* AS DUAS ÁRVORES DA COVA (pedido do dono, 09/08): uma em cada canto do
+     fundo, seco e sem uma folha — cemitério velho não tem copa, tem galho.
+     Ficam no fundo porque é para onde o jogador olha a luta inteira, e
+     porque os cantos da frente são a boca da soleira e o caminho de fuga.
+     `lado` espelha os galhos, para as duas não saírem gêmeas. */
+  const pArvore = (x, y, alt2, lado) => {
+    const px = x*T, py = y*T, h2 = T*alt2, tr = Math.max(3.4, T*.16);
+    cmx.fillStyle = 'rgba(0,0,0,.42)';                     // a sombra no barro
+    cmx.beginPath(); cmx.ellipse(px + T*.12, py + T*.08, T*.52, T*.17, 0, 0, TAU); cmx.fill();
+    cmx.save(); cmx.translate(px, py); cmx.scale(lado, 1);
+    /* as raízes que saem da terra, e o tronco que afina subindo */
+    cmx.strokeStyle = '#3b3026'; cmx.lineCap = 'round';
+    [[-.42,-.03],[-.2,.02],[.24,.01],[.46,-.04]].forEach(([rx, ry], i) => {
+      cmx.lineWidth = tr*(.34 - i*.03);
+      cmx.beginPath(); cmx.moveTo(0, -tr*.2);
+      cmx.quadraticCurveTo(T*rx*.6, T*ry - tr*.1, T*rx, T*ry);
+      cmx.stroke();
+    });
+    cmx.fillStyle = '#43372a';
+    cmx.beginPath();
+    cmx.moveTo(-tr*.62, 0); cmx.lineTo(-tr*.30, -h2*.62); cmx.lineTo(tr*.30, -h2*.62);
+    cmx.lineTo(tr*.62, 0); cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(206,190,158,.16)';               // a face que pega a luz do fogo
+    cmx.beginPath();
+    cmx.moveTo(-tr*.62, 0); cmx.lineTo(-tr*.30, -h2*.62); cmx.lineTo(-tr*.02, -h2*.62);
+    cmx.lineTo(-tr*.14, 0); cmx.closePath(); cmx.fill();
+    cmx.fillStyle = 'rgba(12,9,6,.35)';                    // e a que fica na sombra
+    cmx.fillRect(tr*.18, -h2*.6, tr*.3, h2*.6);
+    /* os galhos: dois níveis de forquilha, cada um mais fino e mais aberto */
+    const galho = (bx, by, ang, comp, esp) => {
+      cmx.strokeStyle = '#43372a'; cmx.lineWidth = esp;
+      cmx.beginPath(); cmx.moveTo(bx, by);
+      const ex = bx + Math.cos(ang)*comp, ey = by + Math.sin(ang)*comp;
+      cmx.quadraticCurveTo(bx + Math.cos(ang)*comp*.55, by + Math.sin(ang)*comp*.75, ex, ey);
+      cmx.stroke();
+      cmx.strokeStyle = 'rgba(206,190,158,.13)'; cmx.lineWidth = Math.max(1, esp*.34);
+      cmx.beginPath(); cmx.moveTo(bx, by);
+      cmx.quadraticCurveTo(bx + Math.cos(ang)*comp*.55, by + Math.sin(ang)*comp*.75, ex, ey);
+      cmx.stroke();
+      return [ex, ey];
+    };
+    /* três níveis: a forquilha grossa, o galho e o graveto. Dois bastavam
+       para dizer "árvore", mas de longe a copa saía rala demais */
+    const tronco = -h2*.62;
+    [[-2.45, .40], [-2.05, .30], [-1.55, .36], [-1.25, .24], [-1.05, .30], [-.72, .34]]
+      .forEach(([ang, cp], i) => {
+        const [gx, gy] = galho(0, tronco + (i%2)*h2*.07, ang, h2*cp, tr*(.5 - i*.045));
+        [-.45 + (i%2)*.9, .38 - (i%2)*.8].forEach((giro, j) => {
+          const [sx, sy] = galho(gx, gy, ang + giro, h2*cp*(j ? .42 : .52), tr*(.26 - i*.025));
+          galho(sx, sy, ang + giro*1.9, h2*cp*.26, Math.max(1, tr*(.13 - i*.012)));
+        });
+      });
+    /* o nó da casca e o corte de quem já tirou lenha dali */
+    cmx.fillStyle = 'rgba(14,10,7,.5)';
+    cmx.beginPath(); cmx.ellipse(-tr*.1, -h2*.34, tr*.2, tr*.13, .2, 0, TAU); cmx.fill();
+    cmx.restore();
+  };
+  /* o pé desce até y=6: a copa sobe 3,7 tiles a partir dele, e mais acima
+     começa a parede norte da cova — galho pintado por cima de muro é o que
+     denuncia o desenho */
+  pArvore(30.9, 6.0, 3.3, 1);      // canto noroeste da cova
+  pArvore(42.6, 6.2, 3.1, -1);     // canto nordeste, espelhada
+
   const pCaveira = (x, y, esc2) => {
     const px = x*T, py = y*T, r2 = T*.16*esc2;
     cmx.fillStyle = 'rgba(0,0,0,.4)';
@@ -9796,6 +9869,15 @@ const PISO_FUNERAL = {
     avisar('Atalho de teste', 'a cova grande está aberta');
   },
   falarLiberado(){ return etapa === 'livre'; },
+  /* DENTRO DA COVA o ambiente clareia. O sombrio do piso é regra em corredor
+     e cômodo pequeno, onde a luz é recurso disputado; na arena de 16x15, com
+     o Coveiro correndo por baixo e a mão irrompendo, ele virava adivinhação.
+     Vale pela posição do jogador, não pela etapa: a cova já se enxerga
+     quando ele espia da soleira, antes de a luta selar. */
+  luzAgora(){
+    return (jog && jog.x > 28.2 && jog.x < 44.8 && jog.y > 1.2 && jog.y < 17.4)
+      ? '#a3abc4' : null;
+  },
   /* a cova aberta já é a hora do chefe: dali em diante dá para vestir o avental */
   horaDoChefe(){ return !!(porta3 && porta3.aberta); },
   /* vestiu: a pazada do Coveiro é recalculada na hora */
