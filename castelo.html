@@ -6763,6 +6763,7 @@ function construirFuneral(){
    [4,31.6],[3.6,36.5],[10,40.5],                   // a oficina, agora comprida, pede uma luz no meio
    [16,32.5],[27,32.5],[16.5,41.5],                 // margens da cripta
    [7.5,46.5],[25.5,49.5],[30.5,51.5],              // colombário
+   [15,45.4],[21,45.4],[27,45.4],                   // ao pé da parede de nichos: é o que deixa ler os nomes
    [39.5,44],[40,48.6]                              // corredor leste e escada
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
 
@@ -8356,20 +8357,12 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.fillRect(nx - r - U*.03, vT + vH + U*.02, r*2 + U*.06, U*.02);
     }
     cmx.textAlign = 'left'; cmx.textBaseline = 'alphabetic';   // o cache não escreve mais nada
-    /* velas pingadas no chão, NA FRENTE do monumento — com a parede baixa elas
-       não cabem mais encostadas nela: subiam por cima da fiada de baixo e
-       comiam os nomes. Agora ficam abaixo da base, no piso. */
+    /* a sombra que o monumento joga no chão. As 14 velas pingadas que ficavam
+       aqui saíram em 09/08 (pedido do dono): eram pintura no cache, não davam
+       luz nenhuma, e ainda subiam na frente da fiada de baixo. Quem ilumina os
+       nomes agora são 3 braseiros de verdade, na lista de luzes do piso. */
     cmx.fillStyle = 'rgba(0,0,0,.34)';
     cmx.fillRect(PX - U*.44, BASE, larg + U*.88, U*.14);
-    for(let k=0; k<14; k++){
-      const vx = PX + U*.4 + k*(larg - U*.8)/13, vp = BASE + U*.21;   // o pé da vela, no chão
-      cmx.fillStyle = 'rgba(255,190,110,.09)';
-      cmx.beginPath(); cmx.ellipse(vx, vp, U*.30, U*.12, 0, 0, TAU); cmx.fill();
-      cmx.fillStyle = '#d8d2c0';
-      cmx.fillRect(vx - U*.045, vp - U*.17, U*.09, U*.17);
-      cmx.fillStyle = 'rgba(255,206,130,.55)';
-      cmx.beginPath(); cmx.ellipse(vx, vp - U*.20, U*.045, U*.07, 0, 0, TAU); cmx.fill();
-    }
   }
 
   /* As arcadas escavadas em cada face de parede do colombário saíram em
