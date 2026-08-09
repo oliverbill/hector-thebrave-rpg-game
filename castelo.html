@@ -6665,7 +6665,7 @@ const COMODOS_FUN = [
   {x1:12.5, y1:30.5, x2:31, y2:43, nome:'A cripta alagada',  sub:'água parada — pise só nas passarelas'},
   {x1:3,  y1:44, x2:34, y2:54, nome:'O colombário',          sub:'um labirinto de nichos; o Sacristão está no fundo'},
   {x1:38, y1:26, x2:43, y2:30, nome:'O quarto do Coveiro',   sub:'ele dorme ao lado da pá'},
-  {x1:30, y1:4,  x2:43, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'},
+  {x1:29, y1:2,  x2:44, y2:16, nome:'A cova grande',         sub:'fundo o bastante para nunca mais subir'},
   {x1:36, y1:48, x2:43, y2:54, nome:'A escada de chegada',  sub:'a câmara de carnes ficou lá atrás'}
 ];
 const vistos = new Set();
@@ -6696,8 +6696,11 @@ function construirFuneral(){
   /* ---- sala de preparação dos corpos, a leste da capela ---- */
   cavar(19,5,27,13);
   cavar(17,8,18,9);             // porta capela <-> preparação
-  /* ---- cova grande: a arena do Coveiro, SELADA (FUN.PORTA fica PAREDE) ---- */
-  cavar(30,4,43,16,CHAO2);
+  /* ---- cova grande: a arena do Coveiro, SELADA (FUN.PORTA fica PAREDE) ----
+     Cresceu para caber o portão: 16x15 tiles, o máximo que a planta permite —
+     ao sul a porta cola em y=17, a oeste a preparação acaba em x=27 e a leste
+     e ao norte só há a borda do mapa. */
+  cavar(29,2,44,16,CHAO2);
   cavar(36,18,38,19);           // a soleira: corredor curto até o salão
 
   /* ---- salão central, ligando tudo ---- */
@@ -6753,7 +6756,7 @@ function construirFuneral(){
   /* ---- luzes: poucas e espaçadas — o piso é sombrio ---- */
   [[9.5,5.6],[4,15.6],[15,15.6],                    // capela
    [23,5.6],[26.5,12.5],                            // preparação
-   [31,4.6],[42,4.6],[37,15.5],                     // cova grande
+   [30,2.6],[43,2.6],[30,15.5],[43,15.5],[37,15.5], // cova grande: um fogo em cada canto da arena maior
    [37,19],                                         // soleira da cova
    [10,20.5],[22,20.5],[34,20.5],                   // salão
    [40.5,26.5],                                     // quarto do Coveiro
@@ -6774,10 +6777,13 @@ function construirFuneral(){
   dec.push({tipo:'poca', x:22, y:9.5}); dec.push({tipo:'poca', x:24.5, y:11.8});
   dec.push({tipo:'osso', x:26.5, y:6.5});
   // cova grande: correntes, ossos de quem já desceu e um esquife à beira
-  [[33,3.3],[38,3.3],[41,3.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
-  dec.push({tipo:'caixote', x:31.5, y:5.5}); dec.push({tipo:'caixote', x:32.5, y:5.5});
-  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:42.5, y:14.5});
+  [[33,1.3],[38,1.3],[41,1.3]].forEach(([x,y]) => dec.push({tipo:'corrente_parede',x,y}));
+  dec.push({tipo:'caixote', x:30.5, y:3.5}); dec.push({tipo:'caixote', x:31.5, y:3.5});
+  dec.push({tipo:'caveira', x:32.5, y:15.2}); dec.push({tipo:'osso', x:43.5, y:14.5});
   dec.push({tipo:'poca', x:35, y:7.5}); dec.push({tipo:'poca', x:40, y:12});
+  /* as faixas novas da arena, para o tamanho a mais não virar chão pelado */
+  dec.push({tipo:'osso', x:30.4, y:8.5}); dec.push({tipo:'caveira', x:43.4, y:6.5});
+  dec.push({tipo:'poca', x:31.5, y:12.5}); dec.push({tipo:'osso', x:36.5, y:2.8});
   // escada desmoronada: o aviso de quem não voltou
   dec.push({tipo:'rachadura', x:31.5, y:19.2}); dec.push({tipo:'osso', x:32.4, y:18.6});
   // salão: pedra gasta e goteiras
@@ -7009,7 +7015,7 @@ function desenharAguaBenta(ox, oy){
 /* --- círios da cova: a cura da arena (25%), repostos a cada tentativa --- */
 /* a cura da cova: uma água benta no canto, grande e sem nada em volta que
    atrapalhe a vista (pedido do dono) */
-const CANTOS_AGUA = [[42.0, 14.8]];
+const CANTOS_AGUA = [[43.0, 14.8]];
 function criarCirios(){
   cirios = CANTOS_AGUA.map(([x, y]) => ({x, y, pego:false}));
 }
@@ -8671,11 +8677,11 @@ function pintarFunCriptaSalao(cmx, T){
     cmx.beginPath(); cmx.ellipse(px, py, T*.1, T*.055, .3, 0, TAU); cmx.stroke();
   });
 
-  /* ============ 3. COVA GRANDE: a arena do Coveiro (x30..43, y4..16) ============
+  /* ============ 3. COVA GRANDE: a arena do Coveiro (x29..44, y2..16) ============
      terra revolvida sobre a pedra, covas abertas com o monte de terra ao lado,
      lápides tortas e o sulco circular de quem cava andando em roda */
   const longeDaAgua = (x, y) => CANTOS_AGUA.every(([ax, ay]) => Math.hypot(x - ax, y - ay) > 2.6);
-  for(let y=4; y<=16; y++) for(let x=30; x<=43; x++){
+  for(let y=2; y<=16; y++) for(let x=29; x<=44; x++){
     if(tf(x,y) !== CHAO2) continue;
     const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
     /* o chão da cova é TERRA, não pedra: cobre a laje inteira antes de tudo */
@@ -8713,7 +8719,7 @@ function pintarFunCriptaSalao(cmx, T){
     }
   }
   // o sulco circular no centro da arena, com as pegadas em roda
-  const ccx = 37.2*T, ccy = 10.4*T, rC = T*2.05;
+  const ccx = 37.2*T, ccy = 9.8*T, rC = T*2.45;   // o centro subiu e a roda abriu com a arena
   cmx.strokeStyle = 'rgba(14,12,16,.3)'; cmx.lineWidth = T*.16;
   cmx.beginPath(); cmx.ellipse(ccx, ccy, rC, rC*.72, 0, 0, TAU); cmx.stroke();
   cmx.strokeStyle = 'rgba(190,180,155,.1)'; cmx.lineWidth = 2;
@@ -9197,8 +9203,8 @@ const PISO_FUNERAL = {
       desespero:{
         abaixoDe:.18, alcance:6.5, enterradoT:5,
         danoPorSegundo:0, danoArremesso:0, comoPazada:true, pazadas:1,
-        arremesso:26, distancia:9,                    // cospe o jogador do outro lado da cova
-        area:{x1:30.6, y1:4.6, x2:42.6, y2:15.6},     // sem passar da terra da arena
+        arremesso:26, distancia:11,                   // cospe o jogador do outro lado da cova
+        area:{x1:29.6, y1:2.6, x2:44.4, y2:15.6},     // sem passar da terra da arena
         aviso:['Ele te agarra', 'se você desce, desce comigo!']
       },
       cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
