@@ -8774,31 +8774,8 @@ function pintarFunCriptaSalao(cmx, T){
   };
   [[33.5,6.3,-.07,1],[39.8,7.9,.05,-1],[33.8,12.8,.09,1],[38.9,13.6,-.04,1]]
     .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,a,l]) => pCova(x, y, a, l));
-  // lápides toscas, tortas, com o pé enterrado na terra
-  const pLapide = (x, y, ang) => {
-    const px = x*T, py = y*T;
-    cmx.fillStyle = 'rgba(0,0,0,.4)';                    // a sombra no chão
-    cmx.beginPath(); cmx.ellipse(px + T*.1, py + T*.34, T*.34, T*.11, 0, 0, TAU); cmx.fill();
-    cmx.save(); cmx.translate(px, py + T*.3); cmx.rotate(ang);
-    const w = T*.44, hL = T*.78;
-    cmx.fillStyle = '#565c6e';
-    cmx.beginPath();
-    cmx.moveTo(-w/2, 0); cmx.lineTo(-w/2, -hL + w/2);
-    cmx.arc(0, -hL + w/2, w/2, Math.PI, 0);
-    cmx.lineTo(w/2, 0); cmx.closePath(); cmx.fill();
-    cmx.fillStyle = 'rgba(10,8,14,.35)';                 // o flanco na sombra
-    cmx.fillRect(w/2 - w*.22, -hL + w/2, w*.22, hL - w/2);
-    cmx.strokeStyle = 'rgba(215,225,240,.3)'; cmx.lineWidth = 2;   // o topo pega luz
-    cmx.beginPath(); cmx.arc(0, -hL + w/2, w/2 - 1, Math.PI*1.05, Math.PI*1.8); cmx.stroke();
-    cmx.strokeStyle = 'rgba(14,12,18,.5)'; cmx.lineWidth = 1.4;    // gravação tosca
-    cmx.beginPath(); cmx.moveTo(-w*.24, -hL*.52); cmx.lineTo(w*.2, -hL*.52); cmx.stroke();
-    cmx.beginPath(); cmx.moveTo(-w*.2, -hL*.36); cmx.lineTo(w*.14, -hL*.36); cmx.stroke();
-    cmx.fillStyle = '#3a332e';                           // a terra segurando o pé
-    cmx.beginPath(); cmx.ellipse(0, 0, w*.62, T*.09, 0, 0, TAU); cmx.fill();
-    cmx.restore();
-  };
-  [[35.2,5.2,-.14],[41.8,10.6,.11],[31.4,11.9,-.2],[38.6,4.8,.16],[40.2,15.6,-.09]]
-    .filter(([x,y]) => longeDaAgua(x, y)).forEach(([x,y,g]) => pLapide(x, y, g));
+  /* as lápides deixaram de ser vetor tosco: agora são arte recortada, e vivem
+     no passe 5 (pintarFunImagens), junto dos outros itens assentados pelo pé */
 
   /* a cova é um cemitério inteiro: cruzes fincadas, caveiras, caixões
      empilhados e as oferendas de quem veio despedir-se — menos em volta das
@@ -9023,6 +9000,27 @@ function pintarFunImagens(cmx, T){
   pImg('item-mesa', 39.6, 28.3, 1.8);              // quarto do Coveiro
   pImg('item-banco', 41.7, 29.7, 1.1);
   pImg('item-lamparina', 42.8, 26.7, .7);
+
+  /* ---- as lápides da cova grande ----
+     Uma folha de 16 recortes, células de mesmo tamanho com o pé no rodapé —
+     assim a cruz céltica continua mais alta que as pedras, sem cada uma
+     precisar da sua medida. Todas encostam nas paredes: o miolo fica livre,
+     que é onde o Coveiro cava em roda e a luta acontece. */
+  const LAP_QL = 157, LAP_QA = 313;                // uma célula da folha
+  const pLapide = (x, y, larg, quadro) => {
+    const im = funImg('lapides');
+    if(!im.complete || !im.naturalWidth) return;
+    const w = larg*T, h = LAP_QA*(w/LAP_QL);
+    cmx.fillStyle = 'rgba(0,0,0,.32)';             // a sombra segue o pé, não a célula
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.30, T*.13, 0, 0, TAU); cmx.fill();
+    cmx.drawImage(im, quadro*LAP_QL, 0, LAP_QL, LAP_QA, x*T - w/2, y*T - h + T*.12, w, h);
+  };
+  [[29.4, 4.2, .86,  7], [29.4, 7.0, .82, 12], [29.4, 10.2, .88,  4],   // parede oeste
+   [29.5, 13.6, .80, 15],
+   [34.5, 3.0, .92,  0], [39.8, 3.0, .84,  6], [41.5, 3.2, .78,  3],    // parede norte
+   [43.6, 3.8, .86,  9], [43.7, 5.2, .80,  2], [43.6, 9.9, .85, 11],    // parede leste
+   [31.4, 15.8, .83, 14], [34.9, 15.9, .86,  5]                          // parede sul
+  ].forEach(([x, y, g, q]) => pLapide(x, y, g, q));
 
   /* vitrais: só a sala de velório os tem, e são os três da foto — cada recorte
      no seu lugar (esquerdo, lanceta alta do meio, direito). Nenhuma outra
