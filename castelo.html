@@ -9003,10 +9003,13 @@ function pintarFunCriptaSalao(cmx, T){
   for(let y=2; y<=16; y++) for(let x=29; x<=44; x++){
     if(tf(x,y) !== CHAO2) continue;
     const px = x*T, py = y*T, h = rnd(x + 3, y + 9);
-    /* o chão da cova é TERRA, não pedra: cobre a laje inteira antes de tudo */
+    /* o chão da cova é TERRA, não pedra: cobre a laje inteira antes de tudo.
+       A terra escureceu um terço em 09/08: no tom antigo ela batia com o
+       madeirame das cruzes e das duas árvores, e quem estava na arena não
+       enxergava a silhueta delas — barro e tronco eram o mesmo marrom */
     const gT = cmx.createLinearGradient(px, py, px, py + T);
-    gT.addColorStop(0, h > .5 ? '#4a4034' : '#443a2f');
-    gT.addColorStop(1, h > .5 ? '#3a3129' : '#352d26');
+    gT.addColorStop(0, h > .5 ? '#322c23' : '#2e2720');
+    gT.addColorStop(1, h > .5 ? '#27211c' : '#241f1a');
     cmx.fillStyle = gT; cmx.fillRect(px, py, T, T);
     cmx.fillStyle = 'rgba(120,104,80,' + (.05 + h*.07) + ')';   // poeira levantada
     cmx.fillRect(px, py, T, T*.3);
@@ -9020,7 +9023,7 @@ function pintarFunCriptaSalao(cmx, T){
     if(h > .3){                                          // terra revolvida em manchas miúdas
       for(let k=0; k<3; k++){
         const hx = hash(x*7 + k, y*5), hy = hash(x*5, y*7 + k);
-        cmx.fillStyle = 'rgba(58,51,46,' + (.14 + hx*.26) + ')';
+        cmx.fillStyle = 'rgba(40,35,31,' + (.14 + hx*.26) + ')';
         cmx.beginPath();
         cmx.ellipse(px + T*hx, py + T*hy, T*(.12 + hy*.18), T*(.08 + hx*.13), hx*5, 0, TAU);
         cmx.fill();
@@ -9143,7 +9146,7 @@ function pintarFunCriptaSalao(cmx, T){
     cmx.beginPath();
     cmx.moveTo(-tr*.62, 0); cmx.lineTo(-tr*.30, -h2*.62); cmx.lineTo(tr*.30, -h2*.62);
     cmx.lineTo(tr*.62, 0); cmx.closePath(); cmx.fill();
-    cmx.fillStyle = 'rgba(206,190,158,.16)';               // a face que pega a luz do fogo
+    cmx.fillStyle = 'rgba(214,198,166,.24)';               // a face que pega a luz do fogo
     cmx.beginPath();
     cmx.moveTo(-tr*.62, 0); cmx.lineTo(-tr*.30, -h2*.62); cmx.lineTo(-tr*.02, -h2*.62);
     cmx.lineTo(-tr*.14, 0); cmx.closePath(); cmx.fill();
@@ -9156,7 +9159,7 @@ function pintarFunCriptaSalao(cmx, T){
       const ex = bx + Math.cos(ang)*comp, ey = by + Math.sin(ang)*comp;
       cmx.quadraticCurveTo(bx + Math.cos(ang)*comp*.55, by + Math.sin(ang)*comp*.75, ex, ey);
       cmx.stroke();
-      cmx.strokeStyle = 'rgba(206,190,158,.13)'; cmx.lineWidth = Math.max(1, esp*.34);
+      cmx.strokeStyle = 'rgba(214,198,166,.20)'; cmx.lineWidth = Math.max(1, esp*.34);
       cmx.beginPath(); cmx.moveTo(bx, by);
       cmx.quadraticCurveTo(bx + Math.cos(ang)*comp*.55, by + Math.sin(ang)*comp*.75, ex, ey);
       cmx.stroke();
