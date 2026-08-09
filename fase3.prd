@@ -194,9 +194,11 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 
 **Sprites recortados da leva aprovada.** Além do que o Apêndice A previa: o **Coveiro**, o **vulto** (capuz de olhos acesos e garras-foice), a **mão dos mortos**, o **castiçal** das velas do caminho, o **círio** da arena, os **rezadores**, a **cabeça do cadáver** e **17 itens de cenário** (caixão com corrente, caixão cinza, caixão escuro, carroça, bancada de ferramentas, cocho, barris, feno, potes, mesa, banco, lamparina, mais a leva de velório: o **caixão de dossel** do centro do mosaico, o **altar de cálices** ao norte da capela, o **sepulcro de pedra** encostado na parede, o **esquife de brocado** da sala de preparação e o **esquife negro** do salão). Os itens carregam **sob demanda** (`funImg`) e, quando um PNG chega tarde, **o cache se repinta sozinho** — 150 ms de espera para agrupar as chegadas.
 
+**As portas do piso, espalhadas nos vãos** (`criarPortasFun`, `desenharPortasFun`). A arte recortada `porta.png` — arco de pedra com folha de tábuas — pagou o débito que morava no §8. O arco fica de pé para sempre em cinco vãos de frente (capela→salão, preparação→salão, salão→oficina, divisória oficina/depósito e o quarto do Coveiro); a folha de madeira, recortada de dentro do próprio PNG, gira para dentro quando o jogador chega — rangendo — e fecha quando ele se afasta. A passagem capela↔preparação, na parede vertical, leva uma folha de tábuas vista de cima, na palheta da arte. As dobradiças são as do piso 2 (`atualizarPortasInternas`), rodando sobre a lista própria do piso. (A janela já tinha saído deste débito antes: a sala de velório — e só ela — leva os três **vitrais** recortados da foto do dono, `vitral-esq.png`, `vitral-centro.png` e `vitral-dir.png`.)
+
 **Rezadores animados na capela** (`COADJ_FUN`, `desenharCoadjuvantesFun`): 6 figuras a 8 quadros por segundo, com o balanço miúdo e o sopro de quem reza. Fazem também o papel do grupo que vela o corpo (F3-RF-25) — não há carpideiras separadas.
 
-**Limpeza anti-vazamento no `aoIniciar`**: zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas, ajudantes e portas internas antes de montar o piso 3. Nada dos pisos 1–2 sobrevive à subida.
+**Limpeza anti-vazamento no `aoIniciar`**: zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas e ajudantes antes de montar o piso 3 — e repovoa as portas internas com as do próprio piso (§7). Nada dos pisos 1–2 sobrevive à subida.
 
 **A arma vem da bolsa**: machado do Gladiador se estiver no inventário (13 de dano), senão o facão das catacumbas (10). Com o Avental no peito, o piso avisa na entrada: *"a pá dele vai doer bem menos"*.
 
@@ -218,7 +220,6 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 
 **Arte recortada e ainda não instalada**
 
-- **Porta** (`img/fase3/porta.png`): recortada na leva aprovada, **não aparece no cenário**. O piso 2 já tem porta que abre ao passar; o piso 3 ainda não espalhou a sua. (A janela saiu deste débito: a sala de velório — e só ela — leva os três **vitrais** recortados da foto do dono, `vitral-esq.png`, `vitral-centro.png` e `vitral-dir.png`.)
 - **Ajudantes de carpintaria** (`img/fase3/ajudante-carpinteiro.png`): recortado e **não instalado**. F3-RF-28 continua em aberto — hoje o serrote e o martelo tocam num cômodo sem ninguém trabalhando.
 - **Rezadores 2, 3 e 4 faltam como PNG.** `COADJ_FUN` pede seis figuras (`rezador-1`, `rezador-2`, `rezador-3`, `rezador-4`), mas `img/fase3/` só tem `rezador-1.png` recortado — as outras estão em `.jpg` com fundo, e `rezador-4` não existe. Na prática **só uma das seis figuras aparece na capela**.
 - **A Lanterna dos Mortos não tem arte**: `recompensa.img = null`, o popup da bolsa entra sem ícone.
@@ -240,7 +241,7 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 | Tipo | Item | Formato | Status |
 |---|---|---|---|
 | Cenário | 17 itens recortados (caixões, carroça, bancada, cocho, barris, feno, potes, mesa, banco, lamparina, caixão de dossel, altar de cálices, sepulcro de pedra, dois esquifes), castiçal, círio | Pinterest → revisão → PNG | **pronto e no cenário** |
-| Cenário | porta | PNG sem fundo | **recortada, não instalada** (§8) |
+| Cenário | porta (arco de pedra + folha de tábuas) | PNG sem fundo | **pronto e no cenário** — 6 vãos, folha que abre ao passar (§7) |
 | Cenário | os 3 vitrais da sala de velório (esq, centro, dir) | foto do dono → homografia de endireitamento → recorte com fundo transparente | **pronto e no cenário**, só na capela (`vitrais.jpg` é a foto de origem) |
 | Retrato NPC | Carpinteiro, Lavadeira, Sacristão | PNG sem fundo | **pronto** (`velante-*.png`, escala 1.5) |
 | Coadjuvantes | rezadores da capela | PNG sem fundo | **parcial**: só `rezador-1.png`; faltam 2, 3 e 4 (§8) |

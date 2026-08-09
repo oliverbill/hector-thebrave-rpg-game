@@ -6753,6 +6753,79 @@ function construirFuneral(){
   return {larg:FUN.LARG, alt:FUN.ALT, tiles:t, braseiros:bra, decor:dec};
 }
 
+/* --- as portas do piso: a arte recortada (porta.png) enfim espalhada nos vãos.
+   O arco de pedra fica de pé para sempre; a folha de tábuas abre sozinha quando
+   o jogador chega e fecha quando ele se afasta, no padrão do piso 2 --- */
+const imgPorta3 = new Image(); imgPorta3.src = 'img/fase3/porta.png';
+const P3_FOLHA = {x1:.175, x2:.825, y:.12};   // onde a folha de madeira vive dentro do PNG
+function criarPortasFun(){
+  portasInternas = [
+    {x:17.5, y:8,  vert:true},   // capela <-> sala de preparação
+    {x:8,  y:19, vert:false},    // capela -> salão dos enterros
+    {x:22, y:19, vert:false},    // preparação -> salão
+    {x:6,  y:30, vert:false},    // salão -> oficina de caixões
+    {x:6,  y:36, vert:false},    // divisória oficina/depósito
+    {x:40, y:25, vert:false}     // o quarto do Coveiro
+  ].map(p => ({...p, ab:0, rangeu:false}));
+}
+function desenharPortasFun(ox, oy){
+  const pronta = imgPorta3.complete && imgPorta3.naturalWidth > 0;
+  portasInternas.forEach(p => {
+    if(foraDaVista(ox + (p.x + .5)*tam, oy + (p.y + .5)*tam, tam*4)) return;
+    if(p.vert){
+      /* parede vertical: uma folha de tábuas na palheta da arte, girando na dobradiça norte */
+      if(p.ab > .98) return;
+      const esp = tam*.2, folha = tam*2.0, giro = p.ab*1.8;
+      ctx.save();
+      ctx.translate(ox + (p.x + .5)*tam, oy + p.y*tam);
+      ctx.rotate(Math.PI/2 + giro);
+      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, esp*.25, folha, esp);
+      ctx.fillStyle = '#6f6152'; ctx.fillRect(0, -esp/2, folha, esp);      // tábuas cinzentas gastas
+      ctx.fillStyle = '#26231f';                                           // ferragens
+      ctx.fillRect(0, -esp/2, folha*.1, esp); ctx.fillRect(folha*.9, -esp/2, folha*.1, esp);
+      ctx.fillRect(folha*.44, -esp/2, folha*.07, esp);
+      ctx.fillStyle = 'rgba(20,14,8,.5)'; ctx.fillRect(folha*.1, -esp/2 + esp*.46, folha*.8, 1.5);
+      ctx.fillStyle = 'rgba(235,228,214,.14)'; ctx.fillRect(folha*.1, -esp/2, folha*.8, 1.6);
+      ctx.fillStyle = '#55534e';
+      ctx.beginPath(); ctx.arc(0, 0, esp*.32, 0, TAU); ctx.fill();
+      ctx.restore();
+      return;
+    }
+    if(!pronta) return;
+    /* vão de frente: o arco de pedra inteiro, a folha girando para dentro */
+    const iw = imgPorta3.naturalWidth, ih = imgPorta3.naturalHeight;
+    const w = tam*2.7, h = w*1.32;
+    const x0 = ox + (p.x + 1)*tam - w/2, yTopo = oy + (p.y + .95)*tam - h;
+    const fx = P3_FOLHA.x1*w, fw = (P3_FOLHA.x2 - P3_FOLHA.x1)*w;
+    const fy = P3_FOLHA.y*h, fh = h - fy;
+    /* o vão escuro atrás da folha */
+    ctx.fillStyle = 'rgba(8,6,12,.6)';
+    ctx.fillRect(x0 + fx, yTopo + fy, fw, fh);
+    /* a folha, encolhendo rumo à ombreira esquerda e escurecendo */
+    if(p.ab < .98){
+      const esc = Math.max(.05, 1 - p.ab*1.02);
+      ctx.fillStyle = 'rgba(0,0,0,' + (.28*(1 - p.ab)) + ')';
+      ctx.beginPath();
+      ctx.ellipse(x0 + fx + fw*esc*.5, yTopo + h + tam*.04, fw*esc*.5, tam*.13, 0, 0, TAU);
+      ctx.fill();
+      ctx.save();
+      ctx.translate(x0 + fx, yTopo + fy);
+      ctx.scale(esc, 1);
+      ctx.drawImage(imgPorta3,
+        iw*P3_FOLHA.x1, ih*P3_FOLHA.y, iw*(P3_FOLHA.x2 - P3_FOLHA.x1), ih*(1 - P3_FOLHA.y),
+        0, 0, fw, fh);
+      ctx.fillStyle = 'rgba(0,0,0,' + (p.ab*.6) + ')'; ctx.fillRect(0, 0, fw, fh);
+      ctx.restore();
+    }
+    /* o arco de pedra por cima, inteiro mesmo de porta escancarada */
+    ctx.drawImage(imgPorta3, 0, 0, iw*P3_FOLHA.x1, ih, x0, yTopo, fx, h);
+    ctx.drawImage(imgPorta3, iw*P3_FOLHA.x2, 0, iw*(1 - P3_FOLHA.x2), ih,
+      x0 + P3_FOLHA.x2*w, yTopo, (1 - P3_FOLHA.x2)*w, h);
+    ctx.drawImage(imgPorta3, iw*P3_FOLHA.x1, 0, iw*(P3_FOLHA.x2 - P3_FOLHA.x1), ih*P3_FOLHA.y,
+      x0 + fx, yTopo, fw, fy);
+  });
+}
+
 /* --- o piso, montado (esqueleto: F3-RF-01..05 na geometria; o resto vem depois) --- */
 /* --- as velas do caminho (t-velas): apagadas até o jogador ACENDER com E --- */
 let velasCaminho = [], aguaBenta = [], cirios = [];
@@ -9116,7 +9189,8 @@ const PISO_FUNERAL = {
     /* limpa o que é dos pisos anteriores, para nada vazar de um piso ao outro */
     espinhos = []; trapos = []; facao = null; esparadrapos = [];
     labaredas = []; paes = []; caldos = []; ratazanas = [];
-    ajudantes = []; portasInternas = [];
+    ajudantes = [];
+    criarPortasFun();          // os vãos ganham a porta recortada (era o débito do §8)
     porta3 = {aberta:false, quebra:0};
     vistos.clear();
     criarVelasCaminho();
@@ -9163,6 +9237,7 @@ const PISO_FUNERAL = {
     /* a travessia da cripta conta quando o jogador pisa na margem sul */
     if(jog.y > 40.5 && jog.x > 14 && jog.x < 19) marcarTarefa('t-cripta');
     anunciarComodo();
+    atualizarPortasInternas(dt);      // as mesmas dobradiças do piso 2, na lista do piso 3
     atualizarMaos(dt);
     atualizarZonasLuz(dt);
     atualizarVultos(dt);
@@ -9240,6 +9315,7 @@ const PISO_FUNERAL = {
   desenharCenario(ox, oy){
     desenharAguaCripta(ox, oy);
     desenharCoadjuvantesFun(ox, oy);
+    desenharPortasFun(ox, oy);
     desenharVelasCaminho(ox, oy);
     desenharAguaBenta(ox, oy);
     if(etapa === 'chefe') desenharCirios(ox, oy);
