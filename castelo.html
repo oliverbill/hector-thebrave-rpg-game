@@ -8982,6 +8982,29 @@ function pintarFunImagens(cmx, T){
   pImg('item-banco', 41.7, 29.7, 1.1);
   pImg('item-lamparina', 42.8, 26.7, .7);
 
+  /* ---- as estátuas do colombário (pedido do dono, 09/08) ----
+     Dez esculturas fúnebres encostadas nas paredes do labirinto, cada uma num
+     encosto conferido no mapa: chão com PAREDE logo acima, para o corpo subir
+     contra o muro em vez de flutuar no corredor. Ficam nas duas fiadas de
+     dentro (y48 e y51) — a fiada de cima é a parede de nichos, e lá elas
+     tapariam os nomes. Medidas pela ALTURA: os recortes vêm com proporções
+     diferentes, e é a altura que precisa bater entre vizinhas. */
+  const estatua = (nome, x, y, alt) => {
+    const im = funImg(nome);
+    if(!im.complete || !im.naturalWidth) return;
+    const h = alt*T, w = im.naturalWidth*(h/im.naturalHeight);
+    cmx.fillStyle = 'rgba(0,0,0,.34)';
+    cmx.beginPath(); cmx.ellipse(x*T, y*T, w*.40, T*.14, 0, 0, TAU); cmx.fill();
+    cmx.drawImage(im, x*T - w/2, y*T - h + T*.10, w, h);
+  };
+  [['estatua-1',  9.5, 48.9, 1.75], ['estatua-2',  14.5, 48.9, 1.60],
+   ['estatua-3', 19.5, 48.9, 1.80], ['estatua-4',  23.5, 48.9, 1.65],
+   ['estatua-5', 29.5, 48.9, 1.70],
+   ['estatua-6',  7.5, 51.9, 1.70], ['estatua-7',  11.5, 51.9, 1.62],
+   ['estatua-8', 16.5, 51.9, 1.78], ['estatua-9',  21.5, 51.9, 1.66],
+   ['estatua-10', 31.5, 51.9, 1.72]
+  ].forEach(([n, x, y, a]) => estatua(n, x, y, a));
+
   /* ---- as lápides da cova grande ----
      Uma folha de 16 recortes, células de mesmo tamanho com o pé no rodapé —
      assim a cruz céltica continua mais alta que as pedras, sem cada uma
