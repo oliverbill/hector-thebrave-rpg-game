@@ -3043,6 +3043,7 @@ function iniciarPiso(p){
   etapa = 'inicio'; vivo = true; pausado = false;
   pausaMenu = false; pausadoAntes = false; el('pausaVeu').classList.add('oculto');
   particulas = []; riscos = []; destrocos = [];
+  carpinteiros = [];        // a carpintaria fica no piso 3; não sobe escada com ninguém
   chefe = null; dialogo = null; interacao = null;
   ofertaVestirFeita = false; ofertaVestirEspera = 0;   // a oferta da peça é uma por piso
   /* a peça vestida some ao trocar de piso — mas não ao morrer: a morte com
@@ -7346,6 +7347,100 @@ function desenharCoadjuvantesFun(ox, oy){
   });
 }
 
+/* --- os dois ajudantes de carpintaria (F3-RF-28) ---------------------------
+   A oficina não para: dois rapazes rodam pelas estações do cômodo — serram na
+   bancada, martelam o caixão dos cavaletes, aplainam o que já está de pé,
+   molham tábua no cocho e voltam à pilha buscar madeira. Nunca dividem a mesma
+   estação: quem chega primeiro toma o posto, o outro procura serviço em outro
+   canto. São figurantes — não machucam nem barram o caminho de ninguém. */
+const imgAjCarp = new Image(); imgAjCarp.src = 'img/fase3/ajudante-carpinteiro.png';
+/* os postos de trabalho, espalhados pelo retângulo todo da carpintaria
+   (x3..11, y31..41): o ponto é onde o corpo do ajudante para, um passo à
+   frente do móvel, para o gesto cair em cima da peça */
+const POSTOS_CARP = [
+  {x:4.6,  y:32.5, gesto:'serrar',   olha:1},   // a bancada da parede norte
+  {x:8.3,  y:33.9, gesto:'martelar', olha:-1},  // o caixão meio montado nos cavaletes
+  {x:10.1, y:33.2, gesto:'aplainar', olha:-1},  // o caixão pronto, de pé no canto
+  {x:4.0,  y:35.3, gesto:'molhar',   olha:1},   // o cocho de molhar tábuas
+  {x:7.9,  y:38.1, gesto:'carregar', olha:1}    // a pilha de tábuas do antigo depósito
+];
+let carpinteiros = [];
+function criarCarpinteiros(){
+  /* um começa na bancada, outro lá embaixo na pilha: já nascem separados */
+  carpinteiros = [{p:0, tom:0, esc:1.02}, {p:4, tom:-34, esc:.94}].map((c, i) => {
+    const e = POSTOS_CARP[c.p];
+    return {x:e.x, y:e.y, vx:0, vy:0, raio:.28, alvo:c.p, fase:'trabalhando',
+            tempo:1.4 + i*1.1, tom:c.tom, esc:c.esc, flip:e.olha < 0,
+            bal:Math.random()*TAU, teima:0, dist:0};
+  });
+}
+/* escolhe outro posto — nunca o que o companheiro já tomou ou está tomando */
+function outroPostoCarp(a){
+  const livres = POSTOS_CARP.map((_, k) => k)
+    .filter(k => k !== a.alvo && !carpinteiros.some(o => o !== a && o.alvo === k));
+  return livres.length ? livres[irand(livres.length)] : a.alvo;
+}
+function atualizarCarpinteiros(dt){
+  carpinteiros.forEach(a => {
+    a.bal += dt;
+    const e = POSTOS_CARP[a.alvo];
+    if(a.fase === 'trabalhando'){
+      a.tempo -= dt;
+      if(a.tempo <= 0){ a.alvo = outroPostoCarp(a); a.fase = 'indo'; a.teima = 0; a.dist = 99; }
+      return;
+    }
+    const dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy);
+    if(d < .14){                       // chegou: larga o passo e pega no serviço
+      a.fase = 'trabalhando';
+      a.tempo = 3.5 + Math.random()*3.5;
+      a.flip = e.olha < 0;
+      a.vx = a.vy = 0;
+      return;
+    }
+    const vel = .85;                   // passo de quem trabalha, bem mais lento que o jogador
+    a.vx = dx/d*vel; a.vy = dy/d*vel;
+    mover(a, a.vx*dt, a.vy*dt);        // parede é parede: nem eles atravessam
+    if(Math.abs(dx) > .05) a.flip = dx < 0;
+    /* se a madeira empacar num canto e ele não encurtar caminho, desiste do
+       posto e vai procurar serviço em outro lugar */
+    if(d < a.dist - .05){ a.dist = d; a.teima = 0; }
+    else { a.teima += dt; if(a.teima > 2.5){ a.alvo = outroPostoCarp(a); a.teima = 0; a.dist = 99; } }
+  });
+}
+function desenharCarpinteiros(ox, oy){
+  if(!(imgAjCarp.complete && imgAjCarp.naturalWidth > 0)) return;
+  carpinteiros.forEach((a, i) => {
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    if(foraDaVista(px, py, tam*2.2)) return;
+    const q = Math.floor((a.bal + i*.6)*8)/8;            // 8 quadros/s, como os rezadores
+    const alt = tam*1.3*a.esc;
+    const lar = imgAjCarp.naturalWidth*(alt/imgAjCarp.naturalHeight);
+    let gira = Math.sin(q*2.2 + i)*.035, sopro = 1 + Math.sin(q*3.2 + i*2)*.02;
+    let quica = Math.abs(Math.sin(q*2.4 + i))*tam*.05, arrasta = 0;
+    if(a.fase === 'trabalhando'){
+      /* o esforço do gesto: a serra vai e vem no braço, o martelo desce em
+         batida seca, a plaina corre o comprimento da tábua */
+      const g = POSTOS_CARP[a.alvo].gesto;
+      if(g === 'serrar'){       arrasta = Math.sin(q*9)*tam*.09;  gira = Math.sin(q*9)*.05;  quica = 0; }
+      else if(g === 'martelar'){ quica = Math.max(0, Math.sin(q*7))*tam*.13; gira = Math.sin(q*7)*.07; }
+      else if(g === 'aplainar'){ arrasta = Math.sin(q*4.4)*tam*.13; gira = Math.sin(q*4.4)*.04; quica = 0; }
+      else if(g === 'molhar'){   gira = Math.sin(q*2.6)*.1; quica = Math.abs(Math.sin(q*2.6))*tam*.03; }
+      else {                     quica = Math.abs(Math.sin(q*3.4))*tam*.06; gira = Math.sin(q*1.8)*.05; }
+      sopro = 1 + Math.sin(q*5 + i)*.03;
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px + arrasta, py + tam*.08, lar*.36, tam*.085, 0, 0, TAU); ctx.fill();
+    ctx.save();
+    ctx.translate(px + arrasta, py + tam*.1 - quica);
+    ctx.rotate(gira);
+    ctx.scale((a.flip ? -1 : 1)*(2 - sopro), sopro);
+    if(a.tom) ctx.filter = 'hue-rotate(' + a.tom + 'deg) saturate(1.12)';
+    ctx.drawImage(imgAjCarp, -lar/2, -alt, lar, alt);
+    ctx.filter = 'none';
+    ctx.restore();
+  });
+}
+
 /* === PINTURA DO CENÁRIO DO PISO 3 (gancho pintarCache) ==================
    Mesma receita da fase 2: perspectiva 3/4 (paredes com FACE de tijolo onde
    olham para o sul, TOPO de pedra bruta no resto), sombra em degradê no chão
@@ -9256,6 +9351,7 @@ const PISO_FUNERAL = {
     vistos.clear();
     criarVelasCaminho();
     criarAguaBenta();
+    criarCarpinteiros();       // a oficina de caixões ganha os dois ajudantes (F3-RF-28)
     cirios = [];
     /* as ameaças da fase (mecânicas da frente do motor) */
     criarMaos([
@@ -9297,6 +9393,7 @@ const PISO_FUNERAL = {
     atualizarMaos(dt);
     atualizarZonasLuz(dt);
     atualizarVultos(dt);
+    atualizarCarpinteiros(dt);        // o serviço da carpintaria não para
     /* água benta: cura 15% e vira ração */
     aguaBenta.forEach(a => {
       if(a.pego || Math.hypot(a.x-jog.x, a.y-jog.y) > .6) return;
@@ -9371,6 +9468,7 @@ const PISO_FUNERAL = {
   desenharCenario(ox, oy){
     desenharAguaCripta(ox, oy);
     desenharCoadjuvantesFun(ox, oy);
+    desenharCarpinteiros(ox, oy);
     desenharPortasFun(ox, oy);
     desenharVelasCaminho(ox, oy);
     desenharAguaBenta(ox, oy);
