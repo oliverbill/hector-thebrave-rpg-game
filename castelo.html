@@ -6820,7 +6820,7 @@ const imgPorta3 = new Image(); imgPorta3.src = 'img/fase3/porta.png';
 const P3_FOLHA = {x1:.175, x2:.825, y:.12};   // onde a folha de madeira vive dentro do PNG
 function criarPortasFun(){
   portasInternas = [
-    {x:17.5, y:8,  vert:true},   // capela <-> sala de preparação
+    {x:17,  y:9, vert:false},    // capela do velório <-> sala de preparação
     {x:8,  y:19, vert:false},    // capela -> salão dos enterros
     {x:22, y:19, vert:false},    // preparação -> salão
     {x:6,  y:30, vert:false},    // salão -> oficina de caixões
@@ -6835,25 +6835,6 @@ function desenharPortasFun(ox, oy){
   const pronta = imgPorta3.complete && imgPorta3.naturalWidth > 0;
   portasInternas.forEach(p => {
     if(foraDaVista(ox + (p.x + .5)*tam, oy + (p.y + .5)*tam, tam*4)) return;
-    if(p.vert){
-      /* parede vertical: uma folha de tábuas na palheta da arte, girando na dobradiça norte */
-      if(p.ab > .98) return;
-      const esp = tam*.2, folha = tam*2.0, giro = p.ab*1.8;
-      ctx.save();
-      ctx.translate(ox + (p.x + .5)*tam, oy + p.y*tam);
-      ctx.rotate(Math.PI/2 + giro);
-      ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fillRect(0, esp*.25, folha, esp);
-      ctx.fillStyle = '#6f6152'; ctx.fillRect(0, -esp/2, folha, esp);      // tábuas cinzentas gastas
-      ctx.fillStyle = '#26231f';                                           // ferragens
-      ctx.fillRect(0, -esp/2, folha*.1, esp); ctx.fillRect(folha*.9, -esp/2, folha*.1, esp);
-      ctx.fillRect(folha*.44, -esp/2, folha*.07, esp);
-      ctx.fillStyle = 'rgba(20,14,8,.5)'; ctx.fillRect(folha*.1, -esp/2 + esp*.46, folha*.8, 1.5);
-      ctx.fillStyle = 'rgba(235,228,214,.14)'; ctx.fillRect(folha*.1, -esp/2, folha*.8, 1.6);
-      ctx.fillStyle = '#55534e';
-      ctx.beginPath(); ctx.arc(0, 0, esp*.32, 0, TAU); ctx.fill();
-      ctx.restore();
-      return;
-    }
     if(!pronta) return;
     /* vão de frente: o arco de pedra inteiro, a folha girando para dentro */
     const iw = imgPorta3.naturalWidth, ih = imgPorta3.naturalHeight;
