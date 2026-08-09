@@ -8294,13 +8294,18 @@ function pintarFunOficinaColombario(cmx, T){
      É o único nicho do piso: as arcadas que enfeitavam toda face de parede do
      labirinto saíram em 09/08.
 
-     14 NICHOS: 7 colunas x 2 fiadas. O nome foi para o DOBRO do corpo em
-     09/08 (pedido do dono), e num nicho de antes duas linhas de 16px não
-     cabiam nem em pé nem deitadas: a lápide tinha 77x17px. Dobrar a letra
-     obriga a dobrar o vão, e o vão só cresce tomando o lugar dos vizinhos —
-     daí 30 nichos virarem 14. Em troca a parede se espalha por toda a face
-     livre (x7,95..32,4, contra 18,4 tiles antes), começando depois da boca do
-     corredor oeste, em x5..6, que ela não pode tapar.
+     10 NICHOS: 10 colunas x UMA fiada. Três coisas pedidas em 09/08 brigam
+     pelo mesmo espaço — nome no dobro do corpo (16px), linha em branco no
+     meio e puxador dentro dela. Cada linha de 16px come 15,3px (ascendente
+     8,0 + descendente 7,3, com acento e cedilha), então nome + branco +
+     sobrenome pedem 46px de lápide. Com duas fiadas a lápide tinha 31px:
+     não cabia. A fiada única dá 65px de lápide, e ainda sobram 26px de
+     folga em volta do puxador. Em largura a face inteira comporta 10
+     colunas de 117px — a lápide fica com 100px, e o nome mais comprido da
+     lista ("Gonçalves") mede 87px.
+
+     A parede toma toda a face livre, x7,95..32,4, começando depois da boca
+     do corredor oeste, em x5..6, que ela não pode tapar.
 
      A ALTURA é que manda, e ela é curta: acima desta face há no máximo 2 tiles
      de rocha, e o que vem depois é chão de gente ou água. Em x15..18, y41 e
@@ -8310,18 +8315,19 @@ function pintarFunOficinaColombario(cmx, T){
      isso, com o jogador andando na frente dela. Por isso o monumento inteiro
      (nichos + cornija) cabe em 2 tiles, com o topo em y=43,03: fica todo em
      alvenaria e não invade um dedo de cripta — nem o que a versão anterior,
-     estreita e alta, já invadia. A fiada é achatada; a coluna, não.
+     estreita e alta, já invadia. Esses 2 tiles são a fiada única de agora.
 
      DENTRO DO NICHO só existe o NOME (pedido do dono, 09/08): cada vão é
-     fechado por uma lápide lavrada, batismo em cima e patronímico embaixo.
-     Nada de urna, crânio, ossos ou teia na frente. */
+     fechado por uma lápide lavrada, batismo em cima, o puxador de ferro na
+     linha em branco do meio e patronímico embaixo. Nada de urna, crânio,
+     ossos ou teia na frente. */
   const MON = {x0:7.95, y:44};
   {
     const E = 2, U = T*E;                            // o tile virtual do monumento
     const PX = MON.x0*T, BASE = (MON.y + 1)*T;       // canto inferior esquerdo da parede
-    /* AN = U*.4 é o teto: com 2 fiadas o campo mede 76,8px e a cornija ainda
-       pousa em y=43,02, sem encostar na margem da cripta */
-    const COL = 7, FIA = 2, LN = U*1.745, AN = U*.4;
+    /* AN = U*.8 é o teto: a fiada única come os 76,8px inteiros e a cornija
+       ainda pousa em y=43,02, sem encostar na margem da cripta */
+    const COL = 10, FIA = 1, LN = U*1.2215, AN = U*.8;
     const larg = COL*LN, alt = FIA*AN;
     const topo = BASE - alt;
     /* os mortos do colombário: gente de verdade dos séculos XI-XV ibéricos —
@@ -8349,6 +8355,27 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.fillStyle = 'rgba(238,242,252,.28)'; cmx.fillText(txt, cx, cy + 1);
       cmx.fillStyle = 'rgba(16,18,26,.80)';    cmx.fillText(txt, cx, cy);
     };
+    /* o puxador de ferro chumbado na linha em branco do meio da lápide, entre
+       o batismo e o patronímico: duas chumbadas nas pontas e a barra
+       atravessada, com a folga da linha inteira em volta — nenhuma letra
+       chega perto dele */
+    const puxador = (cx, cy, larg2) => {
+      const e2 = Math.max(2, larg2*.11);               // grossura da barra
+      cmx.fillStyle = 'rgba(10,12,20,.45)';            // a sombra que ele joga na pedra
+      cmx.fillRect(cx - larg2/2, cy + e2*.6, larg2, e2*.7);
+      cmx.fillStyle = '#3d4252';                       // as chumbadas das pontas
+      cmx.fillRect(cx - larg2/2, cy - e2*1.3, e2*1.2, e2*2.6);
+      cmx.fillRect(cx + larg2/2 - e2*1.2, cy - e2*1.3, e2*1.2, e2*2.6);
+      cmx.fillStyle = 'rgba(228,236,255,.22)';         // a quina de cima das chumbadas
+      cmx.fillRect(cx - larg2/2, cy - e2*1.3, e2*1.2, 1);
+      cmx.fillRect(cx + larg2/2 - e2*1.2, cy - e2*1.3, e2*1.2, 1);
+      cmx.fillStyle = '#5c6376';                       // a barra atravessada
+      cmx.fillRect(cx - larg2/2, cy - e2*.5, larg2, e2);
+      cmx.fillStyle = 'rgba(230,238,255,.5)';          // a luz que pega no alto dela
+      cmx.fillRect(cx - larg2/2, cy - e2*.5, larg2, Math.max(1, e2*.3));
+      cmx.fillStyle = 'rgba(8,10,18,.4)';              // e a sombra na barriga
+      cmx.fillRect(cx - larg2/2, cy + e2*.2, larg2, e2*.3);
+    };
     cmx.font = '600 ' + FONTE + 'px ui-monospace, Menlo, monospace';
     cmx.textAlign = 'center'; cmx.textBaseline = 'middle';
     // o paredão de fundo, mais claro que o muro comum: pedra lavrada
@@ -8372,13 +8399,13 @@ function pintarFunOficinaColombario(cmx, T){
     cmx.fillRect(PX - U*.44, topo - U*.19, larg + U*.88, 3);
     cmx.fillStyle = 'rgba(0,0,0,.42)';
     cmx.fillRect(PX - U*.44, topo - U*.09, larg + U*.88, U*.04);
-    // os 30 nichos: um vão retangular, a lápide dentro e o nome nela
+    // os 10 nichos: um vão retangular, a lápide dentro e o nome nela
     for(let f=0; f<FIA; f++) for(let c=0; c<COL; c++){
       const nx = PX + c*LN + LN/2, ny = topo + f*AN;
-      /* o vão escavado. Com a coluna larga do nicho novo, r caiu de .465 para
-         .35: a lápide fica pouco maior que o nome que carrega, e sobra pedra
-         lavrada entre um nicho e outro, em vez de vazio dentro da lápide */
-      const r = LN*.35, vT = ny + AN*.08, vH = AN*.84;
+      /* o vão escavado. r = .45 deixa a lápide com 100px — quatorze a mais
+         que o nome mais comprido —, e sobra pedra lavrada entre um nicho e
+         outro em vez de vazio dentro da lápide */
+      const r = LN*.45, vT = ny + AN*.06, vH = AN*.88;
       // moldura de pedra em volta do vão
       cmx.fillStyle = '#666d82';
       cmx.fillRect(nx - r - U*.03, vT - U*.02, r*2 + U*.06, vH + U*.04);
@@ -8388,7 +8415,7 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.fillStyle = '#141721';
       cmx.fillRect(nx - r, vT, r*2, vH);
       // a lápide que sela o nicho: é ela que carrega o nome
-      const lapW = r*2 - U*.05, lapH = vH - U*.03, lapX = nx - lapW/2, lapY = vT + U*.015;
+      const lapW = r*2 - U*.05, lapH = vH - U*.028, lapX = nx - lapW/2, lapY = vT + U*.014;
       cmx.fillStyle = '#8a8fa2'; cmx.fillRect(lapX, lapY, lapW, lapH);
       cmx.fillStyle = 'rgba(236,242,255,.26)'; cmx.fillRect(lapX, lapY, lapW, 2);
       cmx.fillStyle = 'rgba(18,20,30,.45)';    cmx.fillRect(lapX, lapY + lapH - 2, lapW, 2);
@@ -8396,8 +8423,9 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.strokeStyle = 'rgba(24,27,38,.5)'; cmx.lineWidth = 1;
       cmx.strokeRect(lapX, lapY, lapW, lapH);
       const mo = MORTOS[(f*COL + c) % MORTOS.length];
-      gravar(mo[0], nx, lapY + lapH*.27);
-      gravar(mo[1], nx, lapY + lapH*.75);
+      gravar(mo[0], nx, lapY + lapH*.18);
+      puxador(nx, lapY + lapH*.50, lapW*.30);   // a linha em branco do meio
+      gravar(mo[1], nx, lapY + lapH*.82);
       // a sombra que a lápide joga na fiada de baixo
       cmx.fillStyle = 'rgba(0,0,0,.35)';
       cmx.fillRect(nx - r - U*.03, vT + vH + U*.02, r*2 + U*.06, U*.02);
