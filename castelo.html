@@ -2162,6 +2162,28 @@ function atualizarChefe(dt){
   }
   atualizarBarraChefe();
 }
+/* --- a coleira do chefe: quem tem arena declarada não sai dela --------------
+   O Coveiro cava a cova dele e é ali que ele morre. Com a soleira aberta, o vão
+   do portão (x36..38, y17) virava porta de saída: bastava o jogador correr para
+   o sul e o chefe ia embora passear pelo salão, arrastando a luta para um
+   cenário que não é arena. Aqui a posição é grampeada no retângulo da cova
+   DEPOIS de todo o passo dele — esperar, aproximar, combo, cavar, perseguir,
+   irromper, atordoar, abraçar, enterrar e cuspir passam por este único ponto,
+   então nenhum estado da máquina escapa.
+   A folga é a mesma que o `mover` usa para a parede (raio*.9), de propósito:
+   dentro da cova o grampo nunca encosta e não briga com a colisão — ele só
+   morde na boca da passagem. E vale só para o corpo do chefe: o jogador entra
+   e sai da arena como sempre. Chefe sem cfg.arena anda o piso inteiro. */
+function prenderChefeNaArena(c){
+  const a = c && c.cfg && c.cfg.arena;
+  if(!a) return;
+  const m = c.raio*.9;
+  const nx = Math.min(Math.max(c.x, a.x1 + m), a.x2 - m);
+  const ny = Math.min(Math.max(c.y, a.y1 + m), a.y2 - m);
+  // zera a velocidade que empurrava contra a coleira: sem isso ele treme na borda
+  if(nx !== c.x){ c.x = nx; c.vx = 0; }
+  if(ny !== c.y){ c.y = ny; c.vy = 0; }
+}
 /* entra na terra: o começo do ciclo cava -> persegue -> irrompe */
 function entrarCava(c, f){
   c.estado = 'cava'; c.t = f.cavaT;
@@ -2574,6 +2596,7 @@ function atualizar(dt){
       jog.vx *= .6; jog.vy *= .6;
     }
     atualizarChefe(dt);
+    prenderChefeNaArena(chefe);   // o funil único: nenhum estado dele sai da arena
   }
 
   if(piso.atualizar) piso.atualizar(dt);
@@ -6826,6 +6849,10 @@ const FUN = {                      // geografia do piso (planta: capela e cova a
   /* passagem SELADA da cova grande: 3 tiles de PAREDE na linha y=17,
      x36..38 — abre como a porta da câmara do piso 2 (tiles viram CHAO) */
   PORTA:{x:36, y:17, larg:3},
+  /* o retângulo caminhável da COVA GRANDE em coordenadas de mundo: os tiles
+     cavados vão de x29..44 e y2..16, o que em mundo dá x29..45 e y2..17.
+     É a coleira do Coveiro — ele nasce, luta e morre aqui dentro. */
+  COVA:{x1:29, y1:2, x2:45, y2:17},
   MOSAICO:{x:9.5, y:10.5, raio:3.4}    // o mosaico circular da capela (geometria; a pintura vem depois)
 };
 let porta3 = null;
@@ -9725,9 +9752,15 @@ const PISO_FUNERAL = {
     cfg:{
       nome:'O Coveiro', x:37, y:9, hp:850, raio:1.0,
       retrato:'img/fase3/coveiro.png',
-      /* ele não deixa ninguém chegar perto: mal respira entre um golpe e outro,
-         anda depressa e ataca de longe, com dois talhos de pá seguidos */
-      esperaT:.35, aproximaT:2.6, velAproxima:3.6,
+      /* ele não deixa ninguém chegar perto: mal respira entre um golpe e outro
+         e ataca com dois talhos de pá seguidos — mas os pés dele pesam.
+         11/08: o dono achou a luta dura demais e as DUAS velocidades de
+         locomoção caíram pela metade (velAproxima 3.6 -> 1.8). A pazada, o
+         dano, o alcance e a cadência ficaram como estavam: só o passo mudou */
+      esperaT:.35, aproximaT:2.6, velAproxima:1.8,
+      /* a cova é dele e ele não sai dela: com a soleira aberta, o vão do portão
+         virava porta de saída e a luta escorria para o salão (F3) */
+      arena:FUN.COVA,
       comboDist:3.4, comboIntervalo:.42, comboGolpes:2,
       comboDano:[34, 34], comboAlcance:[3.0, 3.0],   // a pazada (o Avental derruba p/ 14 no aoIniciar)
       /* só se pode feri-lo quando volta do mergulho: atordoado ou sem fôlego */
@@ -9743,7 +9776,11 @@ const PISO_FUNERAL = {
         area:{x1:29.6, y1:2.6, x2:44.4, y2:15.6},     // sem passar da terra da arena
         aviso:['Ele te agarra', 'se você desce, desce comigo!']
       },
-      cavaT:.45, persegueVel:6.8, persegueT:2.2,     // por baixo ele corre mais que o jogador
+      /* o rastro também afrouxou: persegueVel caiu de 6.8 para 3.4 na mesma
+         poda. Antes ele corria mais que o jogador por baixo da terra e a
+         emersão era carta marcada; agora quem não fica parado escapa — e a pá
+         volta atordoada, que é a janela de dano */
+      cavaT:.45, persegueVel:3.4, persegueT:2.2,
       irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
       atordoadoT:2.0, mergulhosAteExausto:2, exaustoT:2.0,   // a janela de dano: 2s e ele fecha a guarda
       tremorPasso:7,
