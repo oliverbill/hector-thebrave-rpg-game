@@ -92,7 +92,26 @@ estatuas.filter(NO_COLOMBARIO).forEach(([x, y]) => {
   lista.filter(NO_COLOMBARIO).forEach(([x, y]) => cobrar(eChao(x, y), `${nome} ${x},${y} está dentro de parede`)));
 console.log(`  conferidos: ${estatuas.filter(NO_COLOMBARIO).length} estátuas, ${luzes.filter(NO_COLOMBARIO).length} braseiros, ${vultos.filter(NO_COLOMBARIO).length} vultos, ${maos.filter(NO_COLOMBARIO).length} mãos`);
 
-// 6. a parede de nichos: 40 vãos, 40 mortos, nenhum nome repetido
+/* 6. os vultos da galeria: desde 11/08 a sombra sobe entre as lápides também.
+      Quem mora dentro de uma janela de zona nunca se ergue — é o que fazia a
+      faixa acesa das três velas —, e quem mora perto demais do Sacristão sobe
+      no meio da conversa com ele. */
+const zona = js.match(/\{x:3, y:44, larg:31[^}]*\}/)[0];
+const janela = js.match(/\{x:3, y:44, larg:31[\s\S]{0,200}?janela:\{([^}]*)\}/);
+const naGaleria = vultos.filter(([x, y]) => y >= 45 && y <= 46 && x >= 7 && x <= 32);
+cobrar(!/janela:/.test(zona) && !janela, 'a zona do colombário voltou a ter janela: onde há fogo o vulto afunda, e a galeria fica sem sombra nenhuma');
+cobrar(naGaleria.length >= 3, `só ${naGaleria.length} vulto(s) moram na galeria dos nichos — o pedido foi que eles acessassem o corredor`);
+/* a conversa em si está a salvo — abrir diálogo põe `pausado = true` e o mundo
+   inteiro congela. O que não pode é uma sombra MORAR em cima do Sacristão: casa
+   é para onde o vulto sempre volta, e uma delas ali tornaria impossível chegar
+   perto dele na metade escura. Vulto que sobe no labirinto e vem atrás de você
+   até as lápides é justamente o que se pediu — esse pode. */
+const [SX, SY] = [31.8, 45.7];                                   // onde o Sacristão reza
+const acampado = naGaleria.filter(([x, y]) => Math.hypot(x - SX, y - SY) < 7);
+cobrar(!acampado.length, `vulto morando em ${acampado.map(p => p.join(',')).join(' / ')}: acampou em cima do Sacristão`);
+console.log(`  galeria: ${naGaleria.length} vultos entre as lápides, nenhum com casa em cima do Sacristão`);
+
+// 7. a parede de nichos: 40 vãos, 40 mortos, nenhum nome repetido
 const COL = +js.match(/const COL = (\d+), FIA = (\d+)/)[1], FIA = +js.match(/const COL = \d+, FIA = (\d+)/)[1];
 const mortos = [...js.match(/const MORTOS = \[[\s\S]*?\n    \];/)[0].matchAll(/\['([^']+)','([^']+)'\]/g)].map(m => m[1] + ' ' + m[2]);
 cobrar(COL * FIA === 40, `a parede tem ${COL}x${FIA} = ${COL * FIA} nichos, e o pedido foi 40 (os antigos 10 pela metade)`);

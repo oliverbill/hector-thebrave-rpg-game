@@ -6638,9 +6638,11 @@ function atualizarZonasLuz(dt){
   });
 }
 function zonaDe(v){ return zonasLuz[v.zona]; }
-/* a JANELA da zona: uma faixa onde o escuro não desce, porque ali há fogo
-   aceso de verdade (os braseiros da parede de nichos). Vale para a pintura do
-   véu e para o vulto, que não se ergue em cima da luz (F3-RF-12) */
+/* a JANELA da zona: uma faixa onde o escuro não desce, porque ali há fogo aceso
+   de verdade. Vale para a pintura do véu e para o vulto, que não se ergue em
+   cima da luz (F3-RF-12). Desde 11/08 nenhuma zona declara janela — a da parede
+   de nichos caiu junto com as três velas —, mas o mecanismo fica de pé: é o que
+   qualquer piso futuro vai usar para abrir um respiro de luz no meio do breu. */
 function naJanela(z, x, y){
   const j = z && z.janela;
   return !!j && x > j.x && x < j.x + j.larg && y > j.y && y < j.y + j.alt;
@@ -6704,8 +6706,9 @@ function atualizarVultos(dt){
     v.fase += dt;
     v.flash = Math.max(0, v.flash - dt*4);
     v.morde = Math.max(0, v.morde - dt);
-    /* a faixa acesa na frente da parede de nichos afugenta o vulto como a luz
-       do ciclo afugenta: quem entra nela afunda */
+    /* fogo aceso afugenta o vulto como a luz do ciclo afugenta: quem entra numa
+       janela de zona afunda. A galeria dos nichos era a única, e desde 11/08 não
+       é mais — lá a sombra sobe como sobe no resto do colombário */
     const z = zonaDe(v), escuro = z && z.escura && !naJanela(z, v.x, v.y);
     switch(v.estado){
       case 'submerso':               // afundado e invulnerável, deriva de volta pra casa
@@ -6991,7 +6994,11 @@ function construirFuneral(){
    [4,31.6],[3.6,36.5],[10,40.5],                   // a oficina, agora comprida, pede uma luz no meio
    [16,32.5],[27,32.5],[16.5,41.5],                 // margens da cripta
    [7.5,46.5],[25.5,49.5],[29.5,51.5],              // colombário (o do fundo saiu de 30,5: é onde a estátua 10 foi parar)
-   [13,45.4],[21,45.4],[29,45.4],                   // ao pé da parede de nichos: é o que deixa ler os nomes
+   /* as três velas ao pé da parede de nichos (13, 21 e 29) foram apagadas em
+      11/08, a pedido do dono: eram elas que faziam da galeria o único canto
+      sempre aceso do colombário, e o vulto não sobe onde há fogo. Sobrou o
+      braseiro de 7,5, na boca oeste da galeria — o resto da parede agora só
+      se lê na metade clara do ciclo. */
    [39.5,44],[40,48.6]                              // corredor leste e escada
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
   /* a COVA GRANDE tem lume à parte: são 16x15 tiles de luta, e o fogo comum,
@@ -8900,8 +8907,10 @@ function pintarFunOficinaColombario(cmx, T){
     cmx.textAlign = 'left'; cmx.textBaseline = 'alphabetic';   // o cache não escreve mais nada
     /* a sombra que o monumento joga no chão. As 14 velas pingadas que ficavam
        aqui saíram em 09/08 (pedido do dono): eram pintura no cache, não davam
-       luz nenhuma, e ainda subiam na frente da fiada de baixo. Quem ilumina os
-       nomes agora são 3 braseiros de verdade, na lista de luzes do piso. */
+       luz nenhuma, e ainda subiam na frente da fiada de baixo. Os 3 braseiros
+       de verdade que as substituíram também se apagaram, em 11/08 — a galeria
+       agora escurece junto com o colombário, e é nesse breu que os vultos
+       sobem entre as lápides. */
     cmx.fillStyle = 'rgba(0,0,0,.34)';
     cmx.fillRect(PX - U*.44, BASE, larg + U*.88, U*.14);
   }
@@ -9918,11 +9927,13 @@ const PISO_FUNERAL = {
        (x3..34) — antes só a metade leste apagava e o labirinto oeste ficava
        sem vulto nenhum. A carpintaria continua de fora (pedido do dono) */
     criarZonasLuz([
-      /* a janela: a faixa da parede de nichos, onde os 3 braseiros ardem sempre.
-         O escuro do ciclo não desce ali, e é o que deixa ler as 40 lápides.
-         Acompanhou a parede quando ela se espalhou por x7..33,3 */
-      {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3',
-       janela:{x:7, y:43, larg:26.3, alt:4}}
+      /* SEM JANELA (pedido do dono, 11/08). A faixa da parede de nichos era o
+         único lugar do colombário onde o escuro do ciclo não descia — as três
+         velas ardiam sempre e o vulto que encostasse ali afundava na hora.
+         As velas saíram e a janela com elas: agora a galeria apaga junto com o
+         resto, 6s de luz para 4s de breu, e a sombra sobe entre as lápides como
+         sobe no labirinto. Ler os nomes virou coisa da metade clara do ciclo. */
+      {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3'}
     ]);
     /* um vulto por punhado de celas, do primeiro nicho oeste ao fundo leste —
        cada um mora no miolo de uma cela 2x2 do labirinto */
@@ -9933,7 +9944,12 @@ const PISO_FUNERAL = {
       {x:11.5, y:48.5, zona:0}, {x:14,  y:49.5, zona:0},  // miolo oeste
       {x:17,  y:51.5, zona:0},                            // o miolo, na fileira do fundo
       {x:19.5, y:48.5, zona:0}, {x:22, y:48, zona:0},     // metade leste (as de antes)
-      {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0}   // o fundo do labirinto
+      {x:25.5, y:51.5, zona:0}, {x:31.5, y:51.5, zona:0},  // o fundo do labirinto
+      /* os três da GALERIA, no lugar exato onde ardiam as três velas: agora que
+         o escuro desce ali, moram entre as lápides. O mais a leste para em 23,5
+         de propósito — o Sacristão reza em 31,8, e a 8,3 tiles nenhum deles se
+         ergue enquanto você conversa com ele (o susto exige o jogador a 7) */
+      {x:9.5, y:45.5, zona:0}, {x:16.5, y:45.5, zona:0}, {x:23.5, y:45.5, zona:0}
     ]);
     /* a arma vem da bolsa: o machado do Gladiador se você o tiver, senão o facão */
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
