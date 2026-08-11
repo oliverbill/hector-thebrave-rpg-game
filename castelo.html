@@ -491,7 +491,7 @@ const veuCv = document.createElement('canvas'), vcx = veuCv.getContext('2d');
 
 /* ---------- som (síntese realista via Web Audio) ---------- */
 let ac = null, somOk = true;
-let masterGain = null, reverbConv = null, reverbGain = null;
+let masterGain = null, reverbConv = null, reverbGain = null, mp3Bus = null;
 let bufRuido = null, bufBrown = null;
 
 function iniAudio(){
@@ -506,11 +506,54 @@ function iniAudio(){
     reverbConv.buffer = criarImpulso(1.6, 2.6);
     reverbGain = ac.createGain(); reverbGain.gain.value = 0.22;
     reverbConv.connect(reverbGain); reverbGain.connect(masterGain);
+    /* barramento dos mp3 (efeitos, ambientes, trilha) — ganho 1 para o clipe sair
+       exatamente com a força que já saía quando o volume era do próprio elemento */
+    mp3Bus = ac.createGain(); mp3Bus.gain.value = 1;
+    mp3Bus.connect(ac.destination);
     bufRuido = criarRuido(2, false);
     bufBrown = criarRuido(2, true);
     return true;
   }catch(e){ somOk = false; return false; }
 }
+/* ---------- volume de mp3 que também funciona no iPad ----------
+   No Safari móvel (iPhone e iPad) `audio.volume` é só-leitura: escrever nele não
+   dá erro, simplesmente não faz nada. Era por isso que no iPad os efeitos, os
+   ambientes e a trilha continuavam no volume cheio enquanto alguém falava.
+   Onde a propriedade não pega, o elemento sai pelo Web Audio e quem manda no
+   volume é um GainNode — lá o ganho vale em qualquer navegador. */
+let volumeNativoOk = null;
+function volumeManual(){
+  if(volumeNativoOk === null){
+    try{ const t = new Audio(); t.volume = .5; volumeNativoOk = Math.abs(t.volume - .5) < .01; }
+    catch(e){ volumeNativoOk = true; }
+  }
+  return !volumeNativoOk;
+}
+/* liga o elemento ao grafo e devolve o gain dele (null = seguir no volume nativo).
+   Só roteia com o contexto já rodando: um contexto suspenso emudeceria o clipe,
+   e ficar alto é menos ruim que ficar mudo. */
+function ganhoDe(a, destino){
+  if(a.__ganho) return a.__ganho;
+  if(!iniAudio()) return null;
+  if(ac.state !== 'running'){ try{ ac.resume(); }catch(e){} return null; }
+  try{
+    const fonte = ac.createMediaElementSource(a);
+    const g = ac.createGain();
+    fonte.connect(g); g.connect(destino || mp3Bus);
+    a.__ganho = g;
+    return g;
+  }catch(e){ return null; }
+}
+/* único ponto do jogo que escreve volume de mp3 */
+function volumeAudio(a, v){
+  const vol = Math.max(0, Math.min(1, v));
+  a.__vol = vol;
+  if(!volumeManual()){ try{ a.volume = vol; }catch(e){} return; }
+  const g = ganhoDe(a);
+  if(g){ try{ g.gain.value = vol; }catch(e){} }
+}
+function volumeAtual(a){ return a.__vol != null ? a.__vol : a.volume; }
+
 function criarImpulso(dur, decai){
   const sr = ac.sampleRate, n = Math.floor(sr*dur);
   const b = ac.createBuffer(2, n, sr);
@@ -1074,8 +1117,24 @@ function sFala(){
 /* dano genérico — usa dor do jogador */
 function sDano(){ sDorJog(); }
 
-/* efeitos em arquivo (mp3): clones para sobrepor golpes rápidos; cai na síntese se falhar */
-const sfxCache = {};
+/* efeitos em arquivo (mp3): um punhado de cópias por som, para sobrepor golpes
+   rápidos; cai na síntese se falhar. As cópias são reaproveitadas em vez de
+   clonadas a cada golpe — clone novo perderia o roteamento de volume (e o iOS
+   cobra caro por cada elemento de áudio vivo). */
+const sfxPool = {};
+function pegarSfx(url){
+  const pool = sfxPool[url] || (sfxPool[url] = []);
+  for(let i = 0; i < pool.length; i++){
+    const a = pool[i];
+    if(a.paused || a.ended){ try{ a.currentTime = 0; }catch(e){} return a; }
+  }
+  if(pool.length >= 8){                        // oito cópias do mesmo som já é ruído: reusa a mais velha
+    const a = pool[0]; try{ a.currentTime = 0; }catch(e){} return a;
+  }
+  const a = new Audio(url); a.preload = 'auto';
+  pool.push(a);
+  return a;
+}
 /* efeitos em curso: enquanto alguém fala, o mundo inteiro se abaixa — inclusive
    o grito que já estava no ar quando a legenda abriu (um grito de vulto dura
    uns 2,5s e cobria a voz do Sacristão do começo ao fim) */
@@ -1083,10 +1142,9 @@ const sfxVivos = [];
 const SFX_DUCK = .16;
 function tocarSfx(url, vol, reserva){
   try{
-    if(!sfxCache[url]){ sfxCache[url] = new Audio(url); sfxCache[url].preload = 'auto'; }
-    const a = sfxCache[url].cloneNode();
+    const a = pegarSfx(url);
     const base = vol != null ? vol : 1;
-    a.volume = Math.min(1, base*(dialogo ? SFX_DUCK : 1));
+    volumeAudio(a, base*(dialogo ? SFX_DUCK : 1));
     const reg = {a, base};
     sfxVivos.push(reg);
     const solta = () => { const i = sfxVivos.indexOf(reg); if(i >= 0) sfxVivos.splice(i, 1); };
@@ -1104,7 +1162,7 @@ function atualizarDuckSfx(){
     const r = sfxVivos[i];
     if(r.a.ended || r.a.paused){ sfxVivos.splice(i, 1); continue; }
     const alvo = Math.min(1, r.base*f);
-    if(Math.abs(r.a.volume - alvo) > .02) r.a.volume = alvo;
+    if(Math.abs(volumeAtual(r.a) - alvo) > .02) volumeAudio(r.a, alvo);
   }
 }
 const SFX_CLASH = 'audio/fase1/espada-clash.mp3';   // as lâminas se encontram
@@ -1168,11 +1226,8 @@ function falarVoz(texto, voz, url){
     /* voz.ganho > 1 empurra a gravação acima do teto do HTMLAudio (volume máx = 1),
        roteando o elemento pelo Web Audio — precisa para vozes que competem com a cozinha */
     if(voz.ganho && voz.ganho !== 1 && iniAudio()){
-      try{
-        const fonte = ac.createMediaElementSource(a);
-        const g = ac.createGain(); g.gain.value = voz.ganho;
-        fonte.connect(g); g.connect(masterGain);
-      }catch(e){}
+      const g = ganhoDe(a, masterGain);
+      if(g) try{ g.gain.value = voz.ganho; }catch(e){}
     }
     abaixarBgm(true);
     a.addEventListener('ended', () => { if(audioFala === a) abaixarBgm(false); }, {once:true});
@@ -1385,7 +1440,7 @@ function criarAmbientes(lista){
   ambientes.forEach(a => {
     try{
       a.audio = new Audio(a.url);
-      a.audio.loop = true; a.audio.preload = 'auto'; a.audio.volume = 0;
+      a.audio.loop = true; a.audio.preload = 'auto'; volumeAudio(a.audio, 0);
     }catch(e){}
   });
 }
@@ -1417,7 +1472,7 @@ function atualizarAmbientes(dt){
       try{ a.audio = new Audio(a.url); a.audio.loop = true; }catch(e){ return; }
     }
     const v = Math.min(1, a.vol);
-    if(Math.abs(v - a.volAplicado) > .004){ a.audio.volume = v; a.volAplicado = v; }
+    if(Math.abs(v - a.volAplicado) > .004){ volumeAudio(a.audio, v); a.volAplicado = v; }
     // histerese: só religa com folga acima do ponto de pausa, para não tremelicar
     if(a.audio.paused && a.vol > .012){ try{ a.audio.play().catch(() => {}); }catch(e){} }
   });
@@ -3107,14 +3162,14 @@ function tocarBgm(url, vol){
   bgmVolAtual = vol != null ? vol : BGM_VOL;
   if(!url || semMusica){ pararBgm(); return; }
   if(bgmSrc === url && bgmAudio){
-    try{ bgmAudio.volume = dialogo ? BGM_VOL_FALA : bgmVolAtual; bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
+    try{ volumeAudio(bgmAudio, dialogo ? BGM_VOL_FALA : bgmVolAtual); bgmAudio.currentTime = 0; bgmAudio.play(); }catch(e){}
     return;
   }
   pararBgm();
   try{
     bgmAudio = new Audio(url);
     bgmAudio.loop = true;
-    bgmAudio.volume = dialogo ? BGM_VOL_FALA : bgmVolAtual;
+    volumeAudio(bgmAudio, dialogo ? BGM_VOL_FALA : bgmVolAtual);
     bgmSrc = url;
     bgmAudio.play().catch(() => {});
   }catch(e){}
@@ -3124,9 +3179,9 @@ function fundirBgm(alvo){
   clearInterval(bgmFade);
   bgmFade = setInterval(() => {
     if(!bgmAudio){ clearInterval(bgmFade); return; }
-    const d = alvo - bgmAudio.volume;
-    if(Math.abs(d) < .02){ bgmAudio.volume = alvo; clearInterval(bgmFade); }
-    else bgmAudio.volume += d*.25;
+    const v = volumeAtual(bgmAudio), d = alvo - v;
+    if(Math.abs(d) < .02){ volumeAudio(bgmAudio, alvo); clearInterval(bgmFade); }
+    else volumeAudio(bgmAudio, v + d*.25);
   }, 50);
 }
 function pararBgm(){
