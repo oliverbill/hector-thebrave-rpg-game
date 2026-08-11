@@ -41,7 +41,7 @@ const ctx = {
   mapa: null, LARG: 0, ALT: 0, jog: { raio: .42 }
 };
 const src = [
-  pega(/function gerarLabirinto\(cols, linhas, semente\)\{[\s\S]*?\n\}/),
+  pega(/function gerarLabirinto\(cols, linhas, semente, braid\)\{[\s\S]*?\n\}/),
   pega(/const FUN = \{[\s\S]*?\n\};/),
   pega(/function construirFuneral\(\)\{[\s\S]*?\n\}/),
   pega(/const idx = \(x,y\) => .*/),
