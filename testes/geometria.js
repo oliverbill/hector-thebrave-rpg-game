@@ -23,7 +23,7 @@ const ctx = {
   Math, Uint8Array, console
 };
 const src = [
-  pega(/function gerarLabirinto\(cols, linhas, semente\)\{[\s\S]*?\n\}/),
+  pega(/function gerarLabirinto\(cols, linhas, semente, braid\)\{[\s\S]*?\n\}/),
   pega(/const CAL = \{[\s\S]*?\n\};/),
   pega(/function construirCalabouco\(\)\{[\s\S]*?\n\}/),
   pega(/const COZ = \{[\s\S]*?\n\};/),

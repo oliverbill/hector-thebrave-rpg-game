@@ -3552,7 +3552,13 @@ function construirCalabouco(){
 }
 
 /* --- labirinto determinístico: backtracker com semente fixa (o mapa é sempre o mesmo) --- */
-function gerarLabirinto(cols, linhas, semente){
+/* `braid` = quanto beco sem saída se abre no fim (padrão .8, como o piso 1 sempre
+   teve). Com braid = 0 nada se abre: sobra o labirinto perfeito, um caminho só
+   entre dois pontos quaisquer — é o que o colombário precisa para que chegar ao
+   Sacristão seja de fato uma travessia, e não uma reta. O sorteio é gasto de
+   qualquer jeito, para a semente do piso 1 continuar caindo no mesmo labirinto. */
+function gerarLabirinto(cols, linhas, semente, braid){
+  if(braid == null) braid = .8;
   let s = semente >>> 0;
   const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s/4294967296; };
   const cel = Array.from({length: cols*linhas}, () => ({v:false, portas:[false,false,false,false]}));
@@ -3575,7 +3581,7 @@ function gerarLabirinto(cols, linhas, semente){
   for(let i=0;i<cel.length;i++){
     const c = cel[i];
     if(c.portas.filter(Boolean).length !== 1) continue;
-    if(rnd() < .2) continue;                       // sobram uns poucos becos, para os tesouros
+    if(rnd() < 1 - braid) continue;                // sobram uns poucos becos, para os tesouros
     const cx = i%cols, cy = (i/cols)|0, ops = [];
     for(let d=0;d<4;d++){
       const nx = cx+dx[d], ny = cy+dy[d];
@@ -6935,14 +6941,36 @@ function construirFuneral(){
   cavar(22,36,22,39,PONTE);     // espigão que sobe do caminho sul e acaba no nada
   cavar(22,33,25,33,PONTE);     // espigão que sai da margem leste e acaba no nada
 
-  /* ---- colombário em LABIRINTO, no sul: celas 2x2 numa grade 10x3 ---- */
-  const lab = gerarLabirinto(10, 3, 20260806);
-  for(let ly=0; ly<3; ly++) for(let lx=0; lx<10; lx++){
-    const c = lab[ly*10+lx], gx = 4+lx*3, gy = 45+ly*3;
-    cavar(gx, gy, gx+1, gy+1);
+  /* ---- colombário, no sul: celas 2x2 numa grade 10x3 ----
+     A grade se reparte em duas coisas (pedido do dono, 11/08: "faça um
+     labirinto até chegar no sacristão"):
+
+     - a FIADA DE CIMA (y45..46) é a GALERIA, o chão corrido em frente à parede
+       de nichos, de x7 a x32. É ela que deixa andar rente às 40 lápides lendo
+       os nomes, e é onde o Sacristão reza, no fundo leste.
+     - as DUAS FIADAS DE BAIXO (y48..52) são o LABIRINTO de verdade: 10x2 celas
+       sem braiding nenhum, ou seja, UM caminho só entre a escada e a saída.
+
+     A escada de oeste cai na cela do canto (x4..5), que está murada da galeria:
+     de lá só se desce para o labirinto. E o labirinto só devolve o jogador à
+     galeria por UMA subida, lá no fundo leste — bem aos pés do Sacristão.
+     Resultado: são 15 celas de travessia com 10 curvas até ele, e a galeria
+     dos nomes continua inteira para quem já chegou.
+
+     A semente 20261335 não é enfeite: é a que dá o caminho mais longo e mais
+     torto entre as 300 mil testadas, e ainda deixa cada estátua com parede nas
+     costas e cada braseiro em cima de chão. Trocar a semente sem refazer essa
+     conta bota enfeite dentro de pedra — `testes/colombario.js` reprova. */
+  const lab = gerarLabirinto(10, 2, 20261335, 0);
+  for(let ly=0; ly<3; ly++) for(let lx=0; lx<10; lx++) cavar(4+lx*3, 45+ly*3, 5+lx*3, 46+ly*3);
+  for(let lx=1; lx<9; lx++) cavar(6+lx*3, 45, 6+lx*3, 46);      // a galeria, corrida de x7 a x32
+  for(let ly=0; ly<2; ly++) for(let lx=0; lx<10; lx++){
+    const c = lab[ly*10+lx], gx = 4+lx*3, gy = 48+ly*3;
     if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
     if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
   }
+  cavar(4,47,5,47);             // a escada desce direto para o labirinto, sem passar pela galeria
+  cavar(31,47,32,47);           // e a única volta à galeria é no fundo leste, aos pés do Sacristão
   /* a ÚNICA entrada do colombário: a descida a oeste, pela oficina.
      A boca do centro (x16..17, y43..44), que caía da margem sul da cripta
      direto nos nichos, foi murada — a margem sul acaba em pedra, e quem
@@ -6962,7 +6990,7 @@ function construirFuneral(){
    [40.5,26.5],                                     // quarto do Coveiro
    [4,31.6],[3.6,36.5],[10,40.5],                   // a oficina, agora comprida, pede uma luz no meio
    [16,32.5],[27,32.5],[16.5,41.5],                 // margens da cripta
-   [7.5,46.5],[25.5,49.5],[30.5,51.5],              // colombário
+   [7.5,46.5],[25.5,49.5],[29.5,51.5],              // colombário (o do fundo saiu de 30,5: é onde a estátua 10 foi parar)
    [13,45.4],[21,45.4],[29,45.4],                   // ao pé da parede de nichos: é o que deixa ler os nomes
    [39.5,44],[40,48.6]                              // corredor leste e escada
   ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
@@ -8719,15 +8747,16 @@ function pintarFunOficinaColombario(cmx, T){
      É o único nicho do piso: as arcadas que enfeitavam toda face de parede do
      labirinto saíram em 09/08.
 
-     10 NICHOS: 10 colunas x UMA fiada. Três coisas pedidas em 09/08 brigam
-     pelo mesmo espaço — nome no dobro do corpo (16px), linha em branco no
-     meio e puxador dentro dela. Cada linha de 16px come 15,3px (ascendente
-     8,0 + descendente 7,3, com acento e cedilha), então nome + branco +
-     sobrenome pedem 46px de lápide. Com duas fiadas a lápide tinha 31px:
-     não cabia. A fiada única dá 65px de lápide, e ainda sobram 26px de
-     folga em volta do puxador. Em largura a face inteira comporta 10
-     colunas de 117px — a lápide fica com 100px, e o nome mais comprido da
-     lista ("Gonçalves") mede 87px.
+     40 NICHOS: 20 colunas x DUAS fiadas. Os nichos foram cortados PELA METADE
+     em 11/08 (pedido do dono: "ficaram muito grandes") — metade da largura e
+     metade da altura, o que cabe quatro nichos onde antes cabia um. O
+     monumento não mexeu um dedo: os mesmos 1172px de face e os mesmos 76,8px
+     de altura, agora repartidos em vãos de 58,6 x 38,4px.
+     A lápide de cada vão ficou com 48 x 31px, e é ela que manda no resto:
+     o nome desceu para 8px de corpo (metade dos 16 de antes), o que dá 43px
+     no nome mais comprido da lista ("Gonçalves") — e, se algum nome ainda
+     estourar, `caber()` aperta a fonte dele até entrar, em vez de deixar a
+     letra passar por cima da moldura.
 
      A parede toma toda a face livre, x7,95..32,4, começando depois da boca
      do corredor oeste, em x5..6, que ela não pode tapar.
@@ -8745,22 +8774,26 @@ function pintarFunOficinaColombario(cmx, T){
      DENTRO DO NICHO só existe o NOME (pedido do dono, 09/08): cada vão é
      fechado por uma lápide lavrada, batismo em cima, o puxador de ferro na
      linha em branco do meio e patronímico embaixo. Nada de urna, crânio,
-     ossos ou teia na frente. */
+     ossos ou teia na frente. O puxador desenhado a retângulos saiu em 11/08:
+     agora é a argola de ferro fundido em chapa de estrela (puxador-gaveta),
+     pequena e sempre no centro da lápide. */
   const MON = {x0:7.95, y:44};
   {
     const E = 2, U = T*E;                            // o tile virtual do monumento
     const PX = MON.x0*T, BASE = (MON.y + 1)*T;       // canto inferior esquerdo da parede
-    /* AN = U*.8 é o teto: a fiada única come os 76,8px inteiros e a cornija
-       ainda pousa em y=43,02, sem encostar na margem da cripta */
-    const COL = 10, FIA = 1, LN = U*1.2215, AN = U*.8;
+    /* o teto continua sendo U*.8 (76,8px): é o que a cornija pode pousar em
+       y=43,02 sem encostar na margem da cripta. As duas fiadas de agora
+       repartem essa MESMA altura — o monumento não cresceu, os nichos é que
+       encolheram */
+    const COL = 20, FIA = 2, LN = U*.61075, AN = U*.4;
     const larg = COL*LN, alt = FIA*AN;
     const topo = BASE - alt;
     /* os mortos do colombário: gente de verdade dos séculos XI-XV ibéricos —
        Egas Moniz o Aio, Mécia Lopes de Haro, Fuas Roupinho, Nuno Álvares
        Pereira o Condestável, Leonor Teles... Um nome por nicho, sem repetir
        nome nem nome+sobrenome; uma palavra por linha, que é o que cabe.
-       A lista continua com os 30: a parede grava os 14 primeiros, e o resto
-       fica de reserva para quando outra face do piso pedir nichos. */
+       Com os nichos pela metade são 40 vãos, e a lista cresceu de 30 para 40
+       em 11/08 — cada vão tem o seu morto, nenhum nome se repete na parede. */
     const MORTOS = [
       ['Álvaro','Gonçalves'], ['Egas','Moniz'],      ['Mécia','Lopes'],
       ['Gonçalo','Mendes'],   ['Urraca','Afonso'],   ['Vasco','Martins'],
@@ -8771,37 +8804,42 @@ function pintarFunOficinaColombario(cmx, T){
       ['Inês','Pires'],       ['Teresa','Afonso'],   ['Fuas','Roupinho'],
       ['Gil','Eanes'],        ['Sancho','Nunes'],    ['Paio','Correia'],
       ['Egas','Fafes'],       ['Lopo','Dias'],       ['Duarte','Pacheco'],
-      ['Nuno','Álvares'],     ['Leonor','Teles'],    ['Constança','Manuel']
+      ['Nuno','Álvares'],     ['Leonor','Teles'],    ['Constança','Manuel'],
+      /* os dez que a segunda fiada trouxe */
+      ['Aldonça','Vaz'],      ['Brites','Coutinho'], ['Soeiro','Cabral'],
+      ['Maria','Meneses'],    ['Bento','Tavares'],   ['Violante','Sousa'],
+      ['Garcia','Osório'],    ['Isabel','Castro'],   ['Rodrigo','Aguiar'],
+      ['Joana','Barbosa']
     ];
     /* gravado na pedra: o sulco escuro por cima da luz que bate na borda de
        baixo — o mesmo truque de dois fillText do dano flutuante */
-    const FONTE = Math.round(U*.17);                 // o dobro do corpo de antes
-    const gravar = (txt, cx, cy) => {
+    const FONTE = Math.max(7, Math.round(U*.085));   // metade do corpo de antes, junto com o nicho
+    const fonte = f => cmx.font = '600 ' + f + 'px ui-monospace, Menlo, monospace';
+    /* na lápide pela metade o nome comprido raspa a moldura: aperta o corpo
+       até caber em vez de deixar a letra sair por cima da pedra lavrada */
+    const caber = (txt, maxW) => {
+      let f = FONTE; fonte(f);
+      while(f > 5 && cmx.measureText(txt).width > maxW){ f -= .5; fonte(f); }
+    };
+    const gravar = (txt, cx, cy, maxW) => {
+      caber(txt, maxW);
       cmx.fillStyle = 'rgba(238,242,252,.28)'; cmx.fillText(txt, cx, cy + 1);
       cmx.fillStyle = 'rgba(16,18,26,.80)';    cmx.fillText(txt, cx, cy);
     };
     /* o puxador de ferro chumbado na linha em branco do meio da lápide, entre
-       o batismo e o patronímico: duas chumbadas nas pontas e a barra
-       atravessada, com a folga da linha inteira em volta — nenhuma letra
-       chega perto dele */
-    const puxador = (cx, cy, larg2) => {
-      const e2 = Math.max(2, larg2*.11);               // grossura da barra
-      cmx.fillStyle = 'rgba(10,12,20,.45)';            // a sombra que ele joga na pedra
-      cmx.fillRect(cx - larg2/2, cy + e2*.6, larg2, e2*.7);
-      cmx.fillStyle = '#3d4252';                       // as chumbadas das pontas
-      cmx.fillRect(cx - larg2/2, cy - e2*1.3, e2*1.2, e2*2.6);
-      cmx.fillRect(cx + larg2/2 - e2*1.2, cy - e2*1.3, e2*1.2, e2*2.6);
-      cmx.fillStyle = 'rgba(228,236,255,.22)';         // a quina de cima das chumbadas
-      cmx.fillRect(cx - larg2/2, cy - e2*1.3, e2*1.2, 1);
-      cmx.fillRect(cx + larg2/2 - e2*1.2, cy - e2*1.3, e2*1.2, 1);
-      cmx.fillStyle = '#5c6376';                       // a barra atravessada
-      cmx.fillRect(cx - larg2/2, cy - e2*.5, larg2, e2);
-      cmx.fillStyle = 'rgba(230,238,255,.5)';          // a luz que pega no alto dela
-      cmx.fillRect(cx - larg2/2, cy - e2*.5, larg2, Math.max(1, e2*.3));
-      cmx.fillStyle = 'rgba(8,10,18,.4)';              // e a sombra na barriga
-      cmx.fillRect(cx - larg2/2, cy + e2*.2, larg2, e2*.3);
+       o batismo e o patronímico: a argola fundida em chapa de estrela, pequena
+       e SEMPRE no centro (pedido do dono, 11/08). A medida vem da altura, que
+       é o que aperta: `alt2` é o vão em branco entre as duas linhas de nome.
+       Se a arte ainda não chegou, a lápide fica lisa e funImg repinta o cache
+       quando ela chegar — nada de puxador desenhado a retângulos no lugar. */
+    const puxador = (cx, cy, alt2) => {
+      const im = funImg('puxador-gaveta');
+      if(!im.complete || !im.naturalWidth) return;
+      const h2 = alt2, w2 = im.naturalWidth*(h2/im.naturalHeight);
+      cmx.fillStyle = 'rgba(8,10,18,.34)';             // a sombra que ele joga na pedra
+      cmx.beginPath(); cmx.ellipse(cx, cy + h2*.42, w2*.42, h2*.13, 0, 0, TAU); cmx.fill();
+      cmx.drawImage(im, cx - w2/2, cy - h2/2, w2, h2);
     };
-    cmx.font = '600 ' + FONTE + 'px ui-monospace, Menlo, monospace';
     cmx.textAlign = 'center'; cmx.textBaseline = 'middle';
     // o paredão de fundo, mais claro que o muro comum: pedra lavrada
     cmx.fillStyle = '#4a5064';
@@ -8824,12 +8862,12 @@ function pintarFunOficinaColombario(cmx, T){
     cmx.fillRect(PX - U*.44, topo - U*.19, larg + U*.88, 3);
     cmx.fillStyle = 'rgba(0,0,0,.42)';
     cmx.fillRect(PX - U*.44, topo - U*.09, larg + U*.88, U*.04);
-    // os 10 nichos: um vão retangular, a lápide dentro e o nome nela
+    // os 40 nichos: um vão retangular, a lápide dentro e o nome nela
     for(let f=0; f<FIA; f++) for(let c=0; c<COL; c++){
       const nx = PX + c*LN + LN/2, ny = topo + f*AN;
-      /* o vão escavado. r = .45 deixa a lápide com 100px — quatorze a mais
-         que o nome mais comprido —, e sobra pedra lavrada entre um nicho e
-         outro em vez de vazio dentro da lápide */
+      /* o vão escavado. r = .45 deixa a lápide com 48px — cinco a mais que o
+         nome mais comprido no corpo de 8px —, e sobra pedra lavrada entre um
+         nicho e outro em vez de vazio dentro da lápide */
       const r = LN*.45, vT = ny + AN*.06, vH = AN*.88;
       // moldura de pedra em volta do vão
       cmx.fillStyle = '#666d82';
@@ -8848,9 +8886,13 @@ function pintarFunOficinaColombario(cmx, T){
       cmx.strokeStyle = 'rgba(24,27,38,.5)'; cmx.lineWidth = 1;
       cmx.strokeRect(lapX, lapY, lapW, lapH);
       const mo = MORTOS[(f*COL + c) % MORTOS.length];
-      gravar(mo[0], nx, lapY + lapH*.18);
-      puxador(nx, lapY + lapH*.50, lapW*.30);   // a linha em branco do meio
-      gravar(mo[1], nx, lapY + lapH*.82);
+      const folga = lapW - U*.02;               // a margem que a moldura deixa para a letra
+      gravar(mo[0], nx, lapY + lapH*.18, folga);
+      /* a linha em branco do meio: entre o pé do batismo (lapH*.18 + 4px) e o
+         alto do patronímico (lapH*.82 - 4px) sobram ~12px, e o puxador de 10
+         ocupa esse vão com um fio de folga dos dois lados */
+      puxador(nx, lapY + lapH*.50, lapH*.32);
+      gravar(mo[1], nx, lapY + lapH*.82, folga);
       // a sombra que a lápide joga na fiada de baixo
       cmx.fillStyle = 'rgba(0,0,0,.35)';
       cmx.fillRect(nx - r - U*.03, vT + vH + U*.02, r*2 + U*.06, U*.02);
@@ -8865,7 +8907,7 @@ function pintarFunOficinaColombario(cmx, T){
   }
 
   /* As arcadas escavadas em cada face de parede do colombário saíram em
-     09/08 (pedido do dono): sobra a PAREDE DE NICHOS, o monumento 5x5 da
+     09/08 (pedido do dono): sobra a PAREDE DE NICHOS, o monumento 20x2 da
      face norte. O muro do labirinto é pedra lisa, como o resto do piso. */
 
   /* placas de pedra caídas (nomes gastos, ilegíveis) e flores secas */
@@ -9560,7 +9602,10 @@ function pintarFunImagens(cmx, T){
    ['estatua-5', 29.5, 48.9, 1.70],
    ['estatua-6',  7.5, 51.9, 1.70], ['estatua-7',  11.5, 51.9, 1.62],
    ['estatua-8', 16.5, 51.9, 1.78], ['estatua-9',  21.5, 51.9, 1.66],
-   ['estatua-10', 31.5, 51.9, 1.72]
+   /* a décima recuou de 31,5 para 30,5: o labirinto de 11/08 sempre abre a
+      passagem entre as duas celas do canto leste, e sem parede nas costas ela
+      ficava de pé no meio do corredor */
+   ['estatua-10', 30.5, 51.9, 1.72]
   ].forEach(([n, x, y, a]) => estatua(n, x, y, a));
 
   /* ---- as lápides da cova grande ----
@@ -9863,7 +9908,10 @@ const PISO_FUNERAL = {
     criarMaos([
       {x:17.5, y:32.5}, {x:27.5, y:33},      // margens da cripta
       {x:16.5, y:40.5},                       // margem sul
-      {x:8.5,  y:47.5}, {x:25.5, y:49.5},     // colombário (a segunda estava dentro de parede)
+      /* a de 8,5/47,5 subiu para 13,5/51,5: y47 virou muro corrido quando a
+         galeria dos nichos se separou do labirinto, e ela ficou dentro da pedra.
+         O lugar novo fica na terceira curva do caminho até o Sacristão */
+      {x:13.5, y:51.5}, {x:25.5, y:49.5},     // colombário (a segunda estava dentro de parede)
       {x:26.5, y:21.5}                        // guarda o salão, fora do alcance da soleira
     ]);
     /* uma única zona de luz que morre, agora cobrindo o colombário INTEIRO
@@ -9871,7 +9919,7 @@ const PISO_FUNERAL = {
        sem vulto nenhum. A carpintaria continua de fora (pedido do dono) */
     criarZonasLuz([
       /* a janela: a faixa da parede de nichos, onde os 3 braseiros ardem sempre.
-         O escuro do ciclo não desce ali, e é o que deixa ler as 14 lápides.
+         O escuro do ciclo não desce ali, e é o que deixa ler as 40 lápides.
          Acompanhou a parede quando ela se espalhou por x7..33,3 */
       {x:3, y:44, larg:31, alt:10, claroT:6, escuroT:4, fase:3, grito:'audio/fase3/sons/grito-vulto-2.mp3',
        janela:{x:7, y:43, larg:26.3, alt:4}}
