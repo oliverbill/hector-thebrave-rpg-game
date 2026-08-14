@@ -114,6 +114,7 @@ Vale para toda fase, sem re-especificar:
 - Comando "olhar o inventário": lista todos os itens, o jogador escolhe qual empunhar
 - Item de cura espalhado pelo cenário, com percentual de vida definido por fase
 - Sangue jorrando e gemidos quando alguém é atingido
+- **A barra de saúde do jogador cresce 25% a cada piso**, composto sobre o anterior (1: 100 · 2: 125 · 3: 156 · 4: 195 · 5: 244 · 6: 305). O `hpMax` é dado do piso (`vidaMax`), a cura é sempre percentual dele, e os HP/danos dos inimigos sobem junto
 
 **A definir:** arma desta fase, inimigos comuns, percentual de cura dos consumíveis.
 

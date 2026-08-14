@@ -1,6 +1,6 @@
 ---
 name: fase-nova
-description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta — questionário que preenche o faseN.prd, busca de imagens de cenário/personagens/chefe no Pinterest para o usuário revisar, máquina de estados inédita para o chefão, chão de cor e forma inéditas e itens inéditos (nunca repetir entre fases), gravação das vozes uma a uma, montagem do cenário em alto-relevo com coadjuvantes em cômodos inacessíveis, e herança de tudo que a fase anterior já resolveu. Usar quando o usuário pedir para criar/começar uma fase nova, o piso N, ou invocar /fase-nova.
+description: Cria uma fase (piso) nova do Hector, the Brave de ponta a ponta — questionário que preenche o faseN.prd, busca de imagens de cenário/personagens/chefe no Pinterest para o usuário revisar, máquina de estados inédita para o chefão, chão de cor e forma inéditas e itens inéditos (nunca repetir entre fases), barra de saúde do jogador 25% maior que a da fase anterior, gravação das vozes uma a uma, montagem do cenário em alto-relevo com coadjuvantes em cômodos inacessíveis, e herança de tudo que a fase anterior já resolveu. Usar quando o usuário pedir para criar/começar uma fase nova, o piso N, ou invocar /fase-nova.
 ---
 
 # Criar uma fase nova
@@ -51,6 +51,7 @@ Fazer as perguntas com **AskUserQuestion**, em blocos de até 4, sempre com opç
 - *Inimigo comum* — **novo**, nunca as ratazanas ou baratas de novo; herda-se o comportamento, não o bicho.
 - **HP e ataque de CADA ameaça/inimigo** — perguntar explicitamente, um a um (obstáculo cíclico incluído), com faixas de referência das fases prontas nas opções: ratazana 18 HP/mordida 6 · barata 34 HP/mordida 9 · espinho e labareda ~9-11 de dano por janela. As respostas entram no PRD como números oficiais (sem ⚠).
 - *Cura da arena* (o análogo dos esparadrapos/caldos), 25%.
+- **A barra de saúde do jogador cresce 25% em relação à fase anterior** — não se pergunta, é regra fixa (etapa 1.7); o que se pergunta são os HP dos inimigos, que sobem junto.
 
 **Bloco 5 — chefe (§3.5) e áudio (§3.6):** ver etapas 5 e 6 — as respostas entram no PRD na hora.
 
@@ -109,6 +110,24 @@ Como não repetir de verdade:
 - **Limpeza anti-vazamento no `aoIniciar`**: zerar explicitamente os itens de todos os pisos anteriores antes de montar o piso novo — a fase 3 zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas e os ajudantes de cozinha, e repovoa as portas internas com as do próprio piso. Sem isso, item de fase velha ressurge no andar novo (é bug, não herança). A lista cresce a cada fase: acrescentar a do piso anterior inteira.
 
 No questionário (Bloco 4), perguntar **cada família** com AskUserQuestion, mostrando nas descrições o que cada fase já usou, e nunca oferecer "reaproveitar o da fase anterior" como opção. As respostas entram no PRD (§3.4) com nome, arte e percentual.
+
+---
+
+## 1.7. A barra de saúde cresce 25% a cada fase
+
+**Regra dura: a cada piso novo, a barra de saúde do jogador aumenta 25% sobre a do piso anterior.** Hector sobe o castelo ficando mais resistente — quem chega ao piso 4 com os mesmos 100 do calabouço está jogando a fase 1 com os inimigos da fase 4. O crescimento é **composto** (25% sobre o valor anterior, não sobre os 100 iniciais), arredondado ao inteiro:
+
+| Piso | 1 | 2 | 3 | 4 | 5 | 6 |
+|---|---|---|---|---|---|---|
+| `hpMax` | 100 | 125 | 156 | 195 | 244 | 305 |
+
+Como fazer:
+
+- O `hpMax` é **dado do piso**, não número solto no motor: declarar `vidaMax` no objeto do piso e o `jog` nascer com `hp: p.vidaMax, hpMax: p.vidaMax` (hoje `castelo.html` traz `hp:100, hpMax:100` cravado na criação do jogador — trocar por leitura do piso, com `|| 100` de reserva para piso que não declare). Piso é dado + ganchos; mexer no motor por causa de uma fase é o sinal de sempre de que a abstração escorregou.
+- **Cura em percentual acompanha sozinha** — a cura espalhada (15%) e a da arena (25%) já são `Math.round(jog.hpMax*…)` e escalam de graça. **Cura em número fixo não**: o trapo/poção do botão `Q` cura `+40` cravado, que no piso 6 vale 13% em vez de 40%. Ao entrar numa fase nova, converter o que ainda for fixo para percentual do `hpMax`, senão o consumível encolhe a cada andar sem ninguém decidir isso.
+- **A barra da UI não muda**: ela já desenha `scaleX(hp/hpMax)`, então continua cheia na largura de sempre. O jogador não vê uma barra maior — vê a mesma barra descendo mais devagar. É intencional; não tentar esticar o elemento.
+- **Os HP e danos dos inimigos sobem junto** (etapa 5 e Bloco 4): com +25% de vida, repetir os números do piso anterior deixa a fase mais fácil que a anterior, não mais difícil. Usar a razão como piso da conversa nas opções do AskUserQuestion — o dano que tirava 1/4 da barra na fase 2 tem de tirar 1/4 dela na fase 3 para *empatar*.
+- Registrar o número no PRD (§3.4) como oficial, sem ⚠ — ele sai da tabela acima, não de uma pergunta.
 
 ---
 
@@ -194,7 +213,7 @@ O motor lê tudo do `cfg` — mexer no motor é sinal de que a abstração não 
 
 Propor ao usuário (AskUserQuestion, 3 opções + Outro) **uma mecânica nova de verdade** para o chefe da vez — não só números diferentes. Direções que o motor comporta com pouco acréscimo: ataque em área ao redor, projétil/arremesso, invocação de lacaios, fase 2 com moveset trocado abaixo de X% de vida, ataque que muda o cenário (apagar luzes, alagar, incendiar), agarrão que exige esquiva no tempo certo, contra-ataque se golpeado no momento errado.
 
-**Perguntar também os números do chefão** (AskUserQuestion): HP total e o dano de cada golpe do moveset novo, com as referências dos anteriores nas opções (Gladiador 560 HP, combo 18/18/28, investida 24 · Açougueiro 700 HP, talhos 26/34, investida 30). Registrar no PRD (§3.5) o `cfg` completo — HP, tempos, danos, alcances, janelas — com os valores respondidos como oficiais; só o que o usuário não decidir leva ⚠, e tudo vale **até a primeira sessão de jogo real** (balanceamento nunca fecha no papel).
+**Perguntar também os números do chefão** (AskUserQuestion): HP total e o dano de cada golpe do moveset novo, com as referências dos anteriores nas opções (Gladiador 560 HP, combo 18/18/28, investida 24 · Açougueiro 700 HP, talhos 26/34, investida 30). Lembrar na descrição das opções que **o jogador entra nesta fase com 25% mais vida** (etapa 1.7): repetir o dano do chefe anterior é baixá-lo em um quinto na prática — as opções recomendadas já vêm corrigidas por esse fator. Registrar no PRD (§3.5) o `cfg` completo — HP, tempos, danos, alcances, janelas — com os valores respondidos como oficiais; só o que o usuário não decidir leva ⚠, e tudo vale **até a primeira sessão de jogo real** (balanceamento nunca fecha no papel).
 
 ---
 
@@ -306,11 +325,12 @@ Vale sem re-especificar (e **regredir qualquer um destes é bug**):
 3. **Navegador headless**: carregar `?piso=N`, checar `console --errors` vazio e tirar screenshots das regiões novas — olhar as imagens, não só o log. Um screenshot por cômodo sai de `?piso=N&sala=<nome>`, em laço pela lista `comodos`.
 4. **Chão inédito**: pôr lado a lado um screenshot do chão da fase nova e o de cada fase anterior — cor e forma têm de ser reconhecivelmente outras (etapa 1.5). Conferir também os números da `paleta` contra a tabela.
 5. **Itens inéditos**: percorrer a tabela da etapa 1.6 família por família e confirmar que nenhuma peça da fase nova repete uma anterior — cura, cura de arena, inimigo comum, obstáculo e mobília. Depois **jogar o piso anterior e subir a escada**: se um trapo, pão, ratazana ou barril do andar de baixo aparecer no de cima, faltou entrada na limpeza do `aoIniciar`.
-6. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
-7. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
-8. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
-9. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
-10. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
+6. **Vida do jogador**: no console, `?piso=N` e conferir `jog.hpMax` contra a tabela da etapa 1.7 (25% acima do piso anterior). Conferir também que **a cura do botão `Q` é percentual** — pegar dano, usar o consumível e ver se recuperou a mesma fração que recuperava na fase anterior, não os `+40` cravados.
+7. **Fluxo completo**: falar com os 3 informantes (e pular um), abrir a arena, lutar, morrer, retomar (música volta?), vencer, ver a bolsa e a transição.
+8. Preencher §5 (revertidos), §7 (adições) e §8 (pendências) do PRD.
+9. Atualizar o `README.md`: marcar o piso na tabela e descrever o conteúdo novo.
+10. Commitar e empurrar direto (sem pedir confirmação), abrir o jogo para o usuário testar, e **mergear na `main` assim que ele aprovar** — é a main que o GitHub Pages publica; empurrar só na branch de feature não coloca nada no ar.
+11. **Esperar o build do Pages e só então abrir produção**: consultar `gh api repos/OWNER/REPO/pages/builds/latest` em laço até o status virar `built` **com o commit certo**, e aí `open` no link de prod. Abrir antes mostra a versão anterior e parece que a entrega não subiu. Se vier `errored`, avisar em vez de abrir (o `.nojekyll` na raiz já resolve o caso conhecido).
 
 ## Armadilhas conhecidas
 
