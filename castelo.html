@@ -3714,10 +3714,19 @@ function desenharFacao(ox, oy){
 const imgMachado = new Image(); imgMachado.src = 'img/fase1/machado.png';
 const ARMAS = {
   // facão: cabo no topo da imagem, lâmina desce -> pivô perto do topo, gira ang - 90°
-  'facao-catacumbas':  {img: () => imgFacao,   alt:.85, rot:-Math.PI/2, pivo:.18},
+  'facao-catacumbas':  {img: () => imgFacao,   alt:.85, rot:-Math.PI/2, pivo:.18, dano:10},
   // machado: cabeça no topo, cabo desce -> pivô perto da base do cabo, gira ang + 90°
-  'machado-gladiador': {img: () => imgMachado, alt:1.25, rot:Math.PI/2, pivo:.82}
+  'machado-gladiador': {img: () => imgMachado, alt:1.25, rot:Math.PI/2, pivo:.82, dano:15}
 };
+/* o dano base de quem está com aquela arma na mão. Ficava num ternário
+   `machado ? 13 : 10` repetido em quatro lugares (dois pisos × entrar no piso e
+   pegar o item) — mexer no machado exigia acertar os quatro, e um esquecido
+   dava arma que muda de força ao trocar de andar. O machado subiu 15% em
+   14/08 (13 -> 15, pedido do dono); mãos limpas continuam nos 10 de sempre. */
+const DANO_SEM_ARMA = 10;
+function danoDaArma(id){
+  return (ARMAS[id] && ARMAS[id].dano) || DANO_SEM_ARMA;
+}
 function desenharArmaNaMao(px, py, r){
   const cfgA = ARMAS[jog.arma];
   if(!cfgA) return;
@@ -4373,6 +4382,7 @@ const PISO_CALABOUCO = {
   pegarItem(item){
     if(!ARMAS[item.id]) return;
     jog.arma = item.id;
+    jog.dano = danoDaArma(item.id);   // faltava aqui: só este piso empunhava sem atualizar o dano
     avisar('Na mão', item.nome);
   },
   desenharCenario(ox, oy){
@@ -6259,7 +6269,7 @@ const PISO_COZINHAS = {
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
     const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
     jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
-    jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
+    jog.dano = danoDaArma(jog.arma);
     etapa = 'livre';
     avisar('As cozinhas', 'siga o cheiro de fumaça');
   },
@@ -6365,7 +6375,7 @@ const PISO_COZINHAS = {
   pegarItem(item){
     if(!ARMAS[item.id]) return;
     jog.arma = item.id;
-    jog.dano = item.id === 'machado-gladiador' ? 13 : 10;
+    jog.dano = danoDaArma(item.id);
     avisar('Na mão', item.nome);
   },
   desenharCenario(ox, oy){
@@ -9912,7 +9922,7 @@ const PISO_FUNERAL = {
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
     const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
     jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
-    jog.dano = jog.arma === 'machado-gladiador' ? 13 : 10;
+    jog.dano = danoDaArma(jog.arma);
     /* um valor por golpe do combo: a lista curta deixava o 2º talho com dano
        undefined, a vida do jogador virava NaN e ele ficava imortal */
     ajustarPazada();
@@ -10056,7 +10066,7 @@ const PISO_FUNERAL = {
   pegarItem(item){
     if(!ARMAS[item.id]) return;
     jog.arma = item.id;
-    jog.dano = item.id === 'machado-gladiador' ? 13 : 10;
+    jog.dano = danoDaArma(item.id);
     avisar('Na mão', item.nome);
   },
   /* camadas de ambiente por proximidade (F3-RF-24) */

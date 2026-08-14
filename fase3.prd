@@ -206,7 +206,7 @@ A ordem importa: estrutura por cima do chão, recortes por último.
 
 **Limpeza anti-vazamento no `aoIniciar`**: zera espinhos, trapos, facão, esparadrapos, labaredas, pães, caldos, ratazanas e os ajudantes de cozinha do piso 2 (lista à parte da dos ajudantes de carpintaria desta fase) antes de montar o piso 3 — e repovoa as portas internas com as do próprio piso (§7). Nada dos pisos 1–2 sobrevive à subida.
 
-**A arma vem da bolsa**: machado do Gladiador se estiver no inventário (13 de dano), senão o facão das catacumbas (10). Com o Avental no peito, o piso avisa na entrada: *"a pá dele vai doer bem menos"*.
+**A arma vem da bolsa**: machado do Gladiador se estiver no inventário (**15** de dano desde 14/08, +15% sobre os 13 originais), senão o facão das catacumbas (10). O número mora agora no próprio `ARMAS` (`dano`), lido por `danoDaArma()` — antes era um ternário `13 : 10` repetido em quatro lugares. Com o Avental no peito, o piso avisa na entrada: *"a pá dele vai doer bem menos"*.
 
 **Becos d'água na cripta**: duas passarelas que **morrem sobre a água parada** — um espigão que sobe do caminho sul e outro que sai da margem leste. Com a escada desmoronada murada, são eles que sustentam sozinhos a lição da travessia falsa.
 
