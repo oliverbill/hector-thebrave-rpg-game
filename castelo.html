@@ -6493,58 +6493,13 @@ function golpearMao(m, cortante){
     for(let k=0;k<6;k++) terraRevolvida(m.x, m.y + .2);
   }
 }
-/* --- a mão que o Coveiro manda enquanto está por baixo ---------------------
-   O mergulho dele dava um fôlego ao jogador: sumia da tela e sobrava andar em
-   roda esperando a emersão. Agora, a cada mergulhada, uma mão irrompe perto do
-   jogador e persegue enquanto o chefe estiver enterrado — e afunda junto com
-   ele quando volta à luz. É uma mão do mesmo sistema da cripta, então leva
-   golpe, agarra, e o Avental de Aço encurta o agarrão do mesmo jeito.
-   Uma por mergulhada: quem mata a mão fica em paz até o próximo mergulho. */
-let maoCoveiro = null, maoDaMergulhada = false;
-function coveiroPorBaixo(){
-  /* de propósito NÃO usa chefeSubmerso(): ela também vale para 'enterrando',
-     que é o agarrão de desespero — ali o chefe já está com o jogador na mão */
-  return !!(chefe && chefe.hp > 0 &&
-    (chefe.estado === 'cava' || chefe.estado === 'persegue' || chefe.estado === 'irrompe'));
-}
-function pontoDaMaoCoveiro(){
-  for(let k = 0; k < 24; k++){
-    const a = Math.random()*TAU, r = 2.2 + Math.random()*1.2;   // longe o bastante para ser justo
-    const x = jog.x + Math.cos(a)*r, y = jog.y + Math.sin(a)*r;
-    if(x < 29.6 || x > 44.4 || y < 2.6 || y > 16.4) continue;   // só na terra da cova
-    if(solido(x, y)) continue;
-    return {x, y};
-  }
-  return null;
-}
-function sumirMaoDoCoveiro(){
-  if(!maoCoveiro) return;
-  if(agarrao && agarrao.mao === maoCoveiro) soltarAgarrao();
-  const i = maos.indexOf(maoCoveiro);
-  if(i >= 0) maos.splice(i, 1);
-  maoCoveiro = null;
-}
-function atualizarMaoDoCoveiro(){
-  if(etapa !== 'chefe'){ sumirMaoDoCoveiro(); maoDaMergulhada = false; return; }
-  if(coveiroPorBaixo()){
-    if(!maoDaMergulhada && !maoCoveiro && !agarrao){
-      const p = pontoDaMaoCoveiro();
-      if(p){
-        maoCoveiro = {x:p.x, y:p.y, hx:p.x, hy:p.y, vx:0, vy:0, raio:.34,
-          hp:25, dreno:6, vel:2.4, fase:Math.random()*TAU, flash:0,
-          passo:Math.random()*15, olhar:-1};
-        maos.push(maoCoveiro);
-        maoDaMergulhada = true;
-        tocarSfx('audio/fase3/sons/mao-raspando-2.mp3', .85);
-        for(let k=0;k<10;k++) terraRevolvida(p.x, p.y + .2);
-      }
-    }
-  } else {
-    maoDaMergulhada = false;                 // ele emergiu: a próxima manda outra
-    sumirMaoDoCoveiro();
-  }
-  if(maoCoveiro && maoCoveiro.hp <= 0) sumirMaoDoCoveiro();   // morta pelo jogador
-}
+/* --- a mão que o Coveiro mandava enquanto estava por baixo: REMOVIDA --------
+   A cada mergulhada nascia uma mão perto do jogador, que perseguia e agarrava
+   enquanto o chefe estava enterrado. Saiu a pedido do dono (14/08): o mergulho
+   já é a parte difícil da luta, e ficar preso numa mão enquanto a pá irrompe
+   somava dois castigos na mesma janela. Debaixo da terra o Coveiro luta
+   sozinho; as mãos dos mortos continuam onde sempre foram, na cripta e no
+   colombário (criarMaos no aoIniciar). */
 
 function desenharMaos(ox, oy){
   maos.forEach(m => {
@@ -9836,7 +9791,10 @@ const PISO_FUNERAL = {
          volta atordoada, que é a janela de dano */
       cavaT:.45, persegueVel:3.4, persegueT:2.2,
       irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
-      atordoadoT:2.0, mergulhosAteExausto:2, exaustoT:2.0,   // a janela de dano: 2s e ele fecha a guarda
+      /* a janela de dano ganhou +1s (era 2s nas duas): voltar da terra e ter
+         dois segundos para chegar, mirar e bater não dava para quem entra na
+         cova sem decorar o ciclo. Agora são 3s, atordoado ou sem fôlego */
+      atordoadoT:3.0, mergulhosAteExausto:2, exaustoT:3.0,
       tremorPasso:7,
       sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2',
             entrada:'fase3/vozes/coveiro-entrada', golpe:'fase3/vozes/coveiro-golpe',
@@ -9913,7 +9871,6 @@ const PISO_FUNERAL = {
     criarCorvos(2);            // os dois corvos da cova, pousados nas lápides
     cirios = [];
     /* as ameaças da fase (mecânicas da frente do motor) */
-    maoCoveiro = null; maoDaMergulhada = false;   // criarMaos troca o array inteiro
     criarMaos([
       {x:17.5, y:32.5}, {x:27.5, y:33},      // margens da cripta
       {x:16.5, y:40.5},                       // margem sul
@@ -9971,7 +9928,6 @@ const PISO_FUNERAL = {
     atualizarPortasInternas(dt);      // as mesmas dobradiças do piso 2, na lista do piso 3
     /* a cova aberta desfaz o portão: some em pouco menos de um segundo */
     if(porta3.aberta && porta3.quebra < 1) porta3.quebra = Math.min(1, porta3.quebra + dt*1.4);
-    atualizarMaoDoCoveiro();          // decide antes: a mão nova entra no mesmo laço
     atualizarMaos(dt);
     atualizarZonasLuz(dt);
     atualizarVultos(dt);
