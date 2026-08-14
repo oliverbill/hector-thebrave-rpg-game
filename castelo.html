@@ -9801,10 +9801,10 @@ const PISO_FUNERAL = {
          volta atordoada, que é a janela de dano */
       cavaT:.45, persegueVel:3.4, persegueT:2.2,
       irromperRaio:2.4, irromperAvisoT:.62, irromperDano:36,
-      /* a janela de dano ganhou +1s (era 2s nas duas): voltar da terra e ter
-         dois segundos para chegar, mirar e bater não dava para quem entra na
-         cova sem decorar o ciclo. Agora são 3s, atordoado ou sem fôlego */
-      atordoadoT:3.0, mergulhosAteExausto:2, exaustoT:3.0,
+      /* a janela de dano chegou a subir para 3s em 14/08 e voltou aos 2s no
+         mesmo dia, a pedido do dono: com a mão da mergulhada fora da arena, a
+         luta já tinha afrouxado o bastante sem alongar a janela */
+      atordoadoT:2.0, mergulhosAteExausto:2, exaustoT:2.0,   // a janela de dano: 2s e ele fecha a guarda
       tremorPasso:7,
       sons:{cava:'fase3/sons/terra-cavando-1', irrompe:'fase3/sons/terra-emersao-2',
             entrada:'fase3/vozes/coveiro-entrada', golpe:'fase3/vozes/coveiro-golpe',
