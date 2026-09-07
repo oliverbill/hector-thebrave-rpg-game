@@ -30,9 +30,11 @@ const src = [
   pega(/const ESTACOES = \[[\s\S]*?\];/),
   pega(/function construirCozinhas\(\)\{[\s\S]*?\n\}/),
   pega(/const FUN = \{[\s\S]*?\n\};/),
-  pega(/function construirFuneral\(\)\{[\s\S]*?\n\}/)
+  pega(/function construirFuneral\(\)\{[\s\S]*?\n\}/),
+  pega(/const ALQ = \{[\s\S]*?\n\};/),
+  pega(/function construirAlquimista\(\)\{[\s\S]*?\n\}/)
 ].join('\n');
-new Function(...Object.keys(ctx), src + '\nthis.calabouco = construirCalabouco; this.cozinhas = construirCozinhas; this.funeral = construirFuneral;')
+new Function(...Object.keys(ctx), src + '\nthis.calabouco = construirCalabouco; this.cozinhas = construirCozinhas; this.funeral = construirFuneral; this.alquimista = construirAlquimista;')
   .apply(ctx, Object.values(ctx));
 
 /* alvos por piso: [nome, x, y, exigência]
@@ -92,6 +94,20 @@ const PISOS = [
       ['cova grande — arena (37,9)', 37, 9, 'anda']
     ],
     selado: { alvo: [37, 9], abrir: [[36, 17], [37, 17], [38, 17]] }
+  },
+  {
+    nome: 'Piso 4 — O Laboratório do Alquimista', mapa: ctx.alquimista(), spawn: [37, 61],
+    alvos: [
+      ['oficina de bancadas (8,10)', 8, 10, 'alcanca'],
+      ['sala da fornalha (23,10)', 23, 10, 'alcanca'],
+      ['estúdio de anotações (37,10)', 37, 10, 'alcanca'],
+      ['salão central (23,21)', 23, 21, 'alcanca'],
+      ['estufa de ingredientes (8,32)', 8, 32, 'alcanca'],
+      ['cela de experimentos (36,32)', 36, 32, 'alcanca'],
+      ['depósito de barris (4,44)', 4, 44, 'alcanca'],
+      ['sala de experimentos (30,48)', 30, 48, 'alcanca'],
+      ['escada de chegada (37,61)', 37, 61, 'alcanca']
+    ]
   }
 ];
 

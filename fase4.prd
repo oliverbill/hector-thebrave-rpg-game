@@ -1,0 +1,190 @@
+# PRD — Fase 4: O Laboratório do Alquimista
+
+**Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
+**Fase:** 4 de 6 — laboratório do Alquimista e O Alquimista
+**Status:** em construção — planta do piso pronta e testada (flood-fill OK); imagens aprovadas; chefe/itens/vozes pendentes
+**Escrito em:** 07/09/2026 · **atualizado com o código em:** 07/09/2026
+
+---
+
+## 0. Sobre este documento
+
+Preenchido **antes** da construção via questionário de 07/09/2026 (processo `/fase-nova`, etapa 1). Toda resposta do usuário entra na coluna Origem; os números de combate levam ⚠ — valem até a primeira sessão de jogo real.
+
+Numeração: prefixo de fase, `F4-RF-01` em diante.
+
+---
+
+## 1. Objetivo
+
+Vencido o Coveiro, o jogador sobe das Salas de Funeral e entra no **Laboratório do Alquimista** — um andar industrial de tubos enferrujados, fornalhas apagadas, alambiques e bancadas cobertas de frascos. O jogador atravessa a oficina de bancadas, o depósito labiríntico de barris e reagentes, a cela de experimentos fracassados, a estufa de ingredientes e o estúdio/biblioteca de fórmulas — reacendendo fornalhas com a **Lanterna dos Mortos**, coletando 3 reagentes e ouvindo 3 informantes que conhecem os vícios do Alquimista — antes de enfrentá-lo na **Sala de Experimentos**, sua arena. Vencido, ele larga uma **poção-bomba** que Hector usa contra o Zelador na Fase 5, causando 15% de dano logo no início daquela luta.
+
+**Pilar de design desta fase:** **fogo alquímico e explosões** — vazamentos de gás que ignifincam, frascos arremessados que incendeiam o chão, uma fornalha central que domina o cenário. O perigo do piso é reação química descontrolada, não criatura viva.
+
+**Tom:** grotesco — experimentos fracassados, homúnculos deformados, partes de corpo/animais em frascos.
+
+**Item herdado da fase anterior:** **Lanterna dos Mortos** do Coveiro — aqui **acende fornalhas e lareiras apagadas**, liberando passagens seladas; é a ferramenta de puzzle da fase, não só ambientação.
+**Item entregue ao fim desta fase:** **poção-bomba** — vai à bolsa; contra o Zelador (Fase 5), causa 15% de dano logo na entrada da luta.
+
+---
+
+## 2. Baseline — HERDADO
+
+Vale o bloco inteiro do template mais tudo que as fases 1–3 consolidaram: transição com animação do castelo e início automático, `retomar()` sem perder progresso, música da luta disparada **na entrada da arena**, botão PULAR, ducking preso à legenda, vozes/batidas/tremor pelo `cfg`, escala por informante, camadas de ambiente por proximidade (`piso.ambientes`), atalhos `?piso=4`, `?piso=4&chefe=1`, `?piso=4&transicao=1`, `?piso=4&sala=X`, e os testes (`node testes/geometria.js`). Pose diagonal da arma empunhada (herdada desde a fase 3, §5.4 do `fase3.prd`) vale sem re-especificar.
+
+**O que esta fase deve acrescentar ao motor** (justificar cada um na construção):
+
+1. **Arremesso à distância do chefe** — primeiro chefão com ataque que não é corpo-a-corpo nem ciclo subterrâneo: o Alquimista arremessa frascos que aterrissam em área telegrafada e **incendeiam o chão da arena**, reduzindo o espaço seguro conforme a luta avança. A máquina genérica ganha isso via `cfg` (ex.: `arremessoT`, lista de pontos incendiados que persistem e causam dano de contato).
+2. **Vazamento de gás cíclico com explosão de área** — variante do obstáculo cíclico (espinhos/labaredas/mãos): uma válvula libera gás visível por alguns segundos e depois ignifica numa explosão telegrafada.
+3. **Homúnculo que explode ao morrer** — inimigo comum com dano de área na morte, verbo novo (fugir do próprio inimigo abatido, não só do vivo).
+
+---
+
+## 3. Requisitos funcionais
+
+### 3.1 Mundo e cenário
+
+| # | Requisito | Origem |
+|---|---|---|
+| F4-RF-01 | O piso segue a planta da imagem de inspiração (`img/scenarios/fase4-alchemist-lab.png`): piso de placas metálicas, fornalha/alambique central com tubos, bancadas de trabalho cobertas de frascos e ferramentas, prateleiras e barris | fixado — imagem de inspiração |
+| F4-RF-02 | Regiões: **Sala da Fornalha/Alambique** (central, obstáculo cíclico principal), **Oficina de bancadas**, **Depósito de barris e reagentes** (labirinto), **Cela de experimentos fracassados**, **Estúdio/biblioteca de anotações**, **Estufa de ingredientes**, **Sala de Experimentos** (arena do chefe) | questionário 07/09 — regiões marcadas |
+| F4-RF-03 | Obstáculo cíclico: **vazamento de gás + explosão** — válvulas liberam gás visível em ciclo; após alguns segundos, ignifica numa explosão de área telegrafada (dano ⚠12) | questionário 07/09 |
+| F4-RF-04 | Labirinto (`gerarLabirinto`, semente própria) no **Depósito de barris e reagentes** — corredores estreitos entre prateleiras e barris empilhados, equivalente à adega (fase 2) e ao colombário (fase 3) | questionário 07/09 |
+| F4-RF-05 | Travessia falsa: um **cano/duto horizontal** parece uma passarela e cede no meio, devolvendo o jogador ao início do trecho | questionário 07/09 |
+| F4-RF-06 | Fornalhas/lareiras apagadas bloqueiam passagens; acendê-las com a Lanterna dos Mortos (ação ACENDER, botão E) libera o caminho | questionário 07/09 — item herdado |
+
+**Chão inédito (regra da etapa 1.5):**
+
+| Elemento | Valor |
+|---|---|
+| Família de cor | **Verde-azulado de bronze oxidado** (verdigris/patina de cobre) — nova em relação a cinza-arroxeado (1), ocre-quente (2) e azul-frio (3) |
+| Forma da laje | **Placa de metal rebitada** — módulo novo em relação à laje quadrada de 1 tile (1), à laje 2×2 desgastada (2) e à laje fina com mosaico circular (3) |
+| `paleta.chao` / `.chao2` | ⚠ a fixar no código, dentro da família verde-azulada de bronze oxidado |
+
+**HERDADO:** cenário detalhado em alto-relevo (perspectiva 3/4), caminhos conectados, imagens de referência são inspiração.
+
+### 3.2 Personagens e apresentação
+
+| # | Requisito | Origem |
+|---|---|---|
+| F4-RF-07 | Três informantes: **O Aprendiz Fugitivo** (chave `arremesso`, na Oficina de bancadas — viu o Alquimista trabalhar de perto), **O Bibliotecário Cego** (chave `gas`, no Estúdio/biblioteca — reconhece o cheiro do gás antes da explosão), **O Jardineiro** (chave `exausto`, na Estufa de ingredientes — sabe reconhecer o cansaço do Alquimista) | questionário 07/09 |
+| F4-RF-08 | Retratos e sprites do Pinterest (`testes/pinterest.py`), PNG sem fundo, revisados pelo usuário antes de entrar | processo /fase-nova |
+
+**HERDADO:** animação em loop, presença no mapa, facho dourado sobre quem tem segredo, PULAR.
+
+### 3.3 Progressão e missão
+
+| # | Requisito | Origem |
+|---|---|---|
+| F4-RF-09 | 4 tarefas: **Coletar os 3 reagentes** · **Ouvir os informantes (0/3)** · **Atravessar o depósito** · **Derrotar o Alquimista** | questionário 07/09 |
+| F4-RF-10 | 3 reagentes, um por região-chave: Oficina de bancadas, Estufa de ingredientes, Depósito de barris — cada reagente pode alimentar uma fornalha ao ser levado até ela | questionário 07/09 |
+| F4-RF-11 | A Sala de Experimentos só abre com os 3 informantes ouvidos **e** ⚠ os 3 reagentes coletados — trava dupla no padrão das fases 1–3 | derivado das tarefas |
+| F4-RF-12 | Morte devolve à **soleira da Sala de Experimentos**, vida cheia, tudo mantido | questionário 07/09 — recomendado aceito |
+
+### 3.4 Itens, inventário e combate
+
+| # | Requisito | Origem |
+|---|---|---|
+| F4-RF-13 | Cura espalhada: **frascos de antídoto** (líquido azul-claro, 15%, botão Q) | questionário 07/09 |
+| F4-RF-14 | Cura da arena: **injeções de adrenalina alquímica** nos cantos da Sala de Experimentos (25%, repostas por tentativa) | questionário 07/09 |
+| F4-RF-15 | Inimigo comum: **homúnculo de vidro/argila** — rasteja perseguindo o jogador e **explode em dano de área ao morrer** (⚠HP 50, mordida/contato 10) | questionário 07/09 |
+| F4-RF-16 | `hpMax` do jogador nesta fase: **195** (+25% sobre os 156 do piso 3, regra fixa da etapa 1.7); cura do botão Q permanece percentual (15% de `hpMax`) | regra fixa /fase-nova §1.7 |
+| F4-RF-17 | Recompensa: **poção-bomba** — vai à bolsa com popup; na Fase 5, contra o Zelador, causa 15% de dano logo no início da luta | questionário 07/09 |
+
+**HERDADO:** golpe nunca automático; popup de inventário; sangue e gemidos (substituído por vidro quebrando/líquido no caso do homúnculo).
+
+### 3.5 O chefe: O Alquimista
+
+Mecânica inédita — **ele altera o cenário da arena**: arremessa frascos que incendeiam partes do chão da Sala de Experimentos, reduzindo o espaço seguro ao longo da luta (questionário 07/09, recomendado aceito). Primeiro chefe com ataque à distância e primeiro que muda o próprio terreno em tempo real.
+
+| # | Requisito | Origem |
+|---|---|---|
+| F4-RF-18 | Ciclo: espera → aproxima → combo corpo-a-corpo → **arremesso** (frasco lançado à distância, aterrissa em área telegrafada que incendeia o chão) → exausto | questionário 07/09 |
+| F4-RF-19 | O fogo deixado pelos frascos **persiste no chão da arena** pelo resto da tentativa, encolhendo o espaço seguro conforme a luta avança | questionário 07/09 |
+| F4-RF-20 | Fraquezas × chaves: `arremesso` (Aprendiz) → bônus de dano no lado fraco do arremesso (ele sempre erra a mesma mão); `gas` (Bibliotecário) → telegrafia do arremesso/explosão fica visível mais cedo, com aviso sonoro; `exausto` (Jardineiro) → bônus de dano no estado exausto/preparo. Sem chave, os multiplicadores caem para valores reduzidos (⚠ a definir, padrão 1.2–1.25 como nas fases anteriores) | questionário 07/09 |
+| F4-RF-21 | Números ⚠: `hp:900`, combo corpo-a-corpo `[20,28]`, dano do arremesso `22`, demais tempos/alcances a fixar no código durante a construção | questionário 07/09 |
+| F4-RF-22 | Fala de abertura com legenda antes da luta, voz gravada real — texto a fechar em F4-FALAS.md | herdado |
+
+**Falas-segredo — a fechar em F4-FALAS.md, com o texto exato ditado pelo usuário na etapa 6.**
+
+### 3.6 Áudio
+
+| # | Requisito | Origem |
+|---|---|---|
+| F4-RF-23 | Vozes: 3 falas × 3 informantes + 3 do Alquimista (entrada/golpe/leva-golpe), gravações reais, pedidas uma a uma, −14 a −17 LUFS | processo /fase-nova, etapa 6 |
+| F4-RF-24 | Trilhas: BGM do laboratório + trilha da Sala de Experimentos — fornecidas pelo usuário | herdado do padrão de fases anteriores |
+| F4-RF-25 | SFX via `/buscar-sfx-prd`: vazamento de gás/silvo, explosão, vidro quebrando, líquido borbulhando, metal rangendo, fornalha acendendo, frasco arremessado voando, homúnculo explodindo | derivado do §3 |
+| F4-RF-26 | Ambientes por proximidade (`piso.ambientes`): borbulhar de alambique na Sala da Fornalha, tinir de vidros na Oficina, folhas farfalhando na Estufa, silêncio pesado na Biblioteca, gotejar químico no Depósito | processo /fase-nova, etapa 8 |
+
+### 3.7 Controles e HUD — HERDADO
+
+Rótulo ACENDER reaproveitado (fornalhas em vez de velas). Sem tecla nova.
+
+---
+
+## 4. Requisitos não-funcionais — HERDADO
+
+RNF-01 a RNF-05 do template. O piso 4 não pode regredir os pisos 1–3 (o teste de geometria roda para todos).
+
+---
+
+## 5. Decisões revertidas
+
+_(vazio — preencher ao longo da construção)_
+
+---
+
+## 6.5 Planta construída (etapa 7 do /fase-nova)
+
+Mapa 44×64, spawn na escada de chegada (37,61). Regiões: oficina de bancadas (3,4)-(14,15), sala da fornalha (17,3)-(30,17), estúdio de anotações (33,4)-(42,15), salão central (5,20)-(41,23), estufa de ingredientes (3,27)-(14,38), cela de experimentos (31,27)-(42,38), corredor sul (3,39)-(41,41), depósito de barris em labirinto 6×3 (`gerarLabirinto(6,3,20260907,0)`, x3-19/y43-50), sala de experimentos/arena (23,43)-(41,56), escada de chegada (32,59)-(42,63). `node testes/geometria.js` passa para os 4 pisos, com o piso 4 100% alcançável do spawn (1494/1494 tiles). A soleira da Sala de Experimentos (`ALQ.PORTA`) ainda não está selada — isso entra junto com o chefe (etapa 5/9), como trava dupla (F4-RF-11).
+
+---
+
+## 6. Critérios de aceite
+
+**HERDADO** — os 12 do template.
+
+**Específicos desta fase:**
+
+- [ ] A Lanterna dos Mortos acende fornalhas/lareiras apagadas e libera passagens seladas
+- [ ] O vazamento de gás telegrafa e explode em ciclo, com dano de área
+- [ ] O homúnculo persegue e explode em dano de área ao morrer
+- [ ] O Alquimista arremessa frascos à distância que incendeiam o chão da arena, encolhendo o espaço seguro
+- [ ] As 3 chaves dos informantes mudam visivelmente o combate contra o Alquimista
+- [ ] O depósito labiríntico de barris é atravessável e a travessia falsa (cano que cede) engana pelo menos uma vez
+- [ ] Vencer abre a bolsa com a poção-bomba
+- [ ] `jog.hpMax` = 195 no piso 4; cura do Q recupera 15% de `hpMax`, não um valor fixo
+
+---
+
+## 7. Adições posteriores
+
+_(vazio — preencher ao longo da construção)_
+
+---
+
+## 8. Pendências conhecidas
+
+_(vazio no rascunho — preencher com o que ficar pendente ao fim da construção: vozes, trilha, arte não instalada, mecânica pela metade, como nas fases anteriores)_
+
+---
+
+## Apêndice A — Assets
+
+| Tipo | Item | Formato | Status |
+|---|---|---|---|
+| Cenário | referências de cômodo aprovadas: `bancada-5.jpg`/`bancada-3.jpg`/`fornalha-5.jpg` (fornalha/bancada), `barril-2.jpg`/`barril-3.jpg` (depósito), `janela-3/4/5.jpg` (janela) | Pinterest → revisão | **aprovado** — inspiração para pintar o cache (não são recortes) |
+| Cenário | porta interna (arco + folha rúnica dupla) | Pinterest → revisão → PNG sem fundo | **pronto** — `porta-3.png` |
+| Retrato NPC | Aprendiz Fugitivo | PNG sem fundo | **pronto** — `npc-aprendiz-3.png` (arte de mercador maduro, não jovem — aceito pelo dono) |
+| Retrato NPC | Bibliotecário Cego | PNG sem fundo | **pronto** — `npc-bibliotecario-3.png` |
+| Retrato NPC | Jardineiro | PNG sem fundo | **pronto** — `npc-jardineiro-1.png` |
+| Chefe | O Alquimista | PNG sem fundo | **pronto** — `chefe-5.png` (mago/alquimista de boca monstruosa, cajado e livro) |
+| Inimigo | homúnculo (inseto/autômato de casca rúnica) | PNG sem fundo | **pronto** — `inimigo-5.png` |
+| Item | frasco de antídoto, injeção de adrenalina, poção-bomba | PNG recortado | pendente — buscar na etapa de itens |
+| Voz | 9 dos informantes + 3 do Alquimista | gravação real → MP3 −14/−17 LUFS | pendente (etapa 6, uma a uma) — texto a fechar em F4-FALAS.md |
+| Trilha | BGM do piso + luta da Sala de Experimentos | MP3 | pendente — usuário |
+| SFX | lista do F4-RF-25 | MP3 CC0, 3 opções cada | pendente — `/buscar-sfx-prd` |
+
+## Apêndice B — Ordem de trabalho
+
+A do template, com o processo `/fase-nova`: PRD ok → imagens (cenário → personagens → chefe, com revisões) → mapa e geometria (+ teste) → NPCs sem voz → chefe (estados novos no motor via cfg) → falas fechadas → vozes uma a uma → itens e curas → coadjuvantes + ambientes → verificação completa → README/PRD → entrega.

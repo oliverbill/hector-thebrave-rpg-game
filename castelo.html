@@ -10089,8 +10089,251 @@ const PISO_FUNERAL = {
   }
 };
 
+/* ================================================================
+   CONTEÚDO — PISO 4: O LABORATÓRIO DO ALQUIMISTA
+   ESQUELETO — só a planta (etapa 7 do /fase-nova): paredes, chão,
+   portas e cômodos, para uma revisão só antes de decorar cômodo a
+   cômodo. Chefe, inimigos, itens e vozes vêm nas etapas seguintes.
+   (fase4.prd)
+   ================================================================ */
+
+const ALQ = {                      // geografia do piso (planta: 3 salas ao norte, salão central, 2 salas ao sul, depósito + arena mais ao fundo, escada de chegada)
+  LARG:44, ALT:64,
+  /* soleira sealed da Sala de Experimentos, para a trava dupla (F4-RF-11)
+     entrar em vigor quando o chefe for construído — por ora fica aberta */
+  PORTA:{x:29, y:42, larg:3}
+};
+const vistosAlq = new Set();
+/* cada cômodo se apresenta na primeira vez que o jogador entra nele */
+const COMODOS_ALQ = [
+  {x1:3,  y1:4,  x2:14, y2:15, nome:'A oficina de bancadas',   sub:'frascos, balanças e ferramentas por toda parte'},
+  {x1:17, y1:3,  x2:30, y2:17, nome:'A sala da fornalha',      sub:'o alambique nunca esfria'},
+  {x1:33, y1:4,  x2:42, y2:15, nome:'O estúdio de anotações',  sub:'fórmulas rabiscadas até nas paredes'},
+  {x1:5,  y1:20, x2:41, y2:23, nome:'O salão central',         sub:'liga o laboratório inteiro'},
+  {x1:3,  y1:27, x2:14, y2:38, nome:'A estufa de ingredientes',sub:'plantas que ninguém deveria cultivar'},
+  {x1:31, y1:27, x2:42, y2:38, nome:'A cela de experimentos',  sub:'o que deu errado fica trancado aqui'},
+  {x1:3,  y1:43, x2:19, y2:50, nome:'O depósito de barris',    sub:'prateleiras e reagentes instáveis, sem saída fácil'},
+  {x1:23, y1:43, x2:41, y2:56, nome:'A sala de experimentos',  sub:'aqui ele testa nos vivos'},
+  {x1:32, y1:59, x2:42, y2:63, nome:'A escada de chegada',     sub:'as salas de funeral ficaram lá embaixo'}
+];
+function anunciarComodoAlq(){
+  for(const c of COMODOS_ALQ){
+    if(vistosAlq.has(c.nome)) continue;
+    if(jog.x >= c.x1 && jog.x <= c.x2 && jog.y >= c.y1 && jog.y <= c.y2){
+      vistosAlq.add(c.nome);
+      avisar(c.nome, c.sub);
+      return;
+    }
+  }
+}
+
+function construirAlquimista(){
+  const t = new Uint8Array(ALQ.LARG*ALQ.ALT).fill(PAREDE);
+  const bra = [], dec = [];
+  const ix = (x,y) => y*ALQ.LARG + x;
+  const cavar = (x1,y1,x2,y2,tile) => {
+    for(let y=y1;y<=y2;y++) for(let x=x1;x<=x2;x++) t[ix(x,y)] = (tile===undefined?CHAO:tile);
+  };
+
+  /* ---- fileira norte: oficina, fornalha (central, maior) e estúdio ---- */
+  cavar(3,4,14,15);             // oficina de bancadas
+  cavar(17,3,30,17);            // sala da fornalha
+  cavar(33,4,42,15);            // estúdio de anotações
+  cavar(8,16,9,19);             // corredor oficina -> salão
+  cavar(22,18,23,19);           // corredor fornalha -> salão
+  cavar(36,16,37,19);           // corredor estúdio -> salão
+
+  /* ---- salão central, ligando tudo ---- */
+  cavar(5,20,41,23);
+  cavar(7,24,8,26);             // corredor salão -> estufa
+  cavar(37,24,38,26);           // corredor salão -> cela
+
+  /* ---- fileira sul: estufa e cela ---- */
+  cavar(3,27,14,38);            // estufa de ingredientes
+  cavar(31,27,42,38);           // cela de experimentos fracassados
+
+  /* ---- corredor sul, ligando estufa e cela ao depósito e à arena ---- */
+  cavar(3,39,41,41);
+  cavar(3,42,4,42);             // corredor -> depósito (primeira cela do labirinto)
+  cavar(30,42,31,42);           // corredor -> sala de experimentos
+
+  /* ---- depósito de barris e reagentes: labirinto 6x3, um caminho só ----
+     Mesmo gerador do colombário (fase3) e da adega (fase2): backtracker
+     puro (braid=0), grade de células 2x2 com paredes de 1 tile entre elas. */
+  const lab = gerarLabirinto(6, 3, 20260907, 0);
+  for(let ly=0; ly<3; ly++) for(let lx=0; lx<6; lx++) cavar(3+lx*3, 43+ly*3, 4+lx*3, 44+ly*3);
+  for(let ly=0; ly<3; ly++) for(let lx=0; lx<6; lx++){
+    const c = lab[ly*6+lx], gx = 3+lx*3, gy = 43+ly*3;
+    if(c.portas[1]) cavar(gx+2, gy, gx+2, gy+1);   // passagem para leste
+    if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
+  }
+
+  /* ---- sala de experimentos: a arena do Alquimista (SELADA mais tarde) ---- */
+  cavar(23,43,41,56,CHAO2);
+
+  /* ---- escada de chegada (vinda das salas de funeral) ---- */
+  cavar(32,59,42,63,CHAO2);
+  cavar(36,57,37,58);           // corredor arena -> escada
+
+  /* ---- luzes: poucas, o piso ainda não tem a fornalha pintada ---- */
+  [[8.5,5.6],[8.5,13.6],                              // oficina
+   [23,4.6],[23,10],[23,15.6],                        // fornalha
+   [37.5,5.6],[37.5,13.6],                             // estúdio
+   [10,20.5],[22,20.5],[34,20.5],                     // salão
+   [8,28],[8,36],                                      // estufa
+   [36,28],[36,36],                                    // cela
+   [4,40.5],[40,40.5],                                 // corredor sul
+   [26,44],[38,44],[26,54],[38,54],                   // sala de experimentos
+   [37,60.5]                                           // escada
+  ].forEach(([x,y]) => bra.push({x, y, fase:Math.random()*TAU}));
+
+  return {larg:ALQ.LARG, alt:ALQ.ALT, tiles:t, braseiros:bra, decor:dec};
+}
+
+/* --- porta interna: mesma receita do piso 3 (arco fixo + folha que abre) --- */
+const imgPorta4 = new Image(); imgPorta4.src = 'img/fase4/porta.png';
+const P4_FOLHA = {x1:.175, x2:.825, y:.12};
+function criarPortasAlq(){
+  portasInternas = [
+    {x:8,  y:19, vert:false},    // oficina -> salão
+    {x:22, y:19, vert:false},    // fornalha -> salão
+    {x:36, y:19, vert:false},    // estúdio -> salão
+    {x:7,  y:26, vert:false},    // salão -> estufa
+    {x:37, y:26, vert:false},    // salão -> cela
+    {x:3,  y:42, vert:false},    // corredor sul -> depósito
+    {x:30, y:42, vert:false},    // corredor sul -> sala de experimentos
+    {x:36, y:58, vert:false}     // sala de experimentos -> escada
+  ].map(p => ({...p, ab:0, rangeu:false}));
+}
+function desenharPortasAlq(ox, oy){
+  const pronta = imgPorta4.complete && imgPorta4.naturalWidth > 0;
+  portasInternas.forEach(p => {
+    if(foraDaVista(ox + (p.x + .5)*tam, oy + (p.y + .5)*tam, tam*4)) return;
+    if(!pronta) return;
+    const iw = imgPorta4.naturalWidth, ih = imgPorta4.naturalHeight;
+    const w = tam*2.7, h = w*1.32;
+    const x0 = ox + (p.x + 1)*tam - w/2, yTopo = oy + (p.y + .95)*tam - h;
+    const fx = P4_FOLHA.x1*w, fw = (P4_FOLHA.x2 - P4_FOLHA.x1)*w;
+    const fy = P4_FOLHA.y*h, fh = h - fy;
+    ctx.fillStyle = 'rgba(8,6,12,.6)';
+    ctx.fillRect(x0 + fx, yTopo + fy, fw, fh);
+    if(p.ab < .98){
+      const esc = Math.max(.05, 1 - p.ab*1.02);
+      ctx.fillStyle = 'rgba(0,0,0,' + (.28*(1 - p.ab)) + ')';
+      ctx.beginPath();
+      ctx.ellipse(x0 + fx + fw*esc*.5, yTopo + h + tam*.04, fw*esc*.5, tam*.13, 0, 0, TAU);
+      ctx.fill();
+      ctx.save();
+      ctx.translate(x0 + fx, yTopo + fy);
+      ctx.scale(esc, 1);
+      ctx.drawImage(imgPorta4,
+        iw*P4_FOLHA.x1, ih*P4_FOLHA.y, iw*(P4_FOLHA.x2 - P4_FOLHA.x1), ih*(1 - P4_FOLHA.y),
+        0, 0, fw, fh);
+      ctx.fillStyle = 'rgba(0,0,0,' + (p.ab*.6) + ')'; ctx.fillRect(0, 0, fw, fh);
+      ctx.restore();
+    }
+    ctx.drawImage(imgPorta4, 0, 0, iw*P4_FOLHA.x1, ih, x0, yTopo, fx, h);
+    ctx.drawImage(imgPorta4, iw*P4_FOLHA.x2, 0, iw*(1 - P4_FOLHA.x2), ih,
+      x0 + P4_FOLHA.x2*w, yTopo, (1 - P4_FOLHA.x2)*w, h);
+    ctx.drawImage(imgPorta4, iw*P4_FOLHA.x1, 0, iw*(P4_FOLHA.x2 - P4_FOLHA.x1), ih*P4_FOLHA.y,
+      x0 + fx, yTopo, fw, fy);
+  });
+}
+
+const PISO_ALQUIMISTA = {
+  id:'alquimista', nome:'O Laboratório do Alquimista',
+  bgm:'audio/fase2/trilha-fase2.mp3',    // tapa-buraco: a trilha própria vem do dono (F4-RF-24)
+  paleta:{
+    fundo:'#05100c',
+    chao:[74,102,92],       // verde-azulado de bronze oxidado — família inédita
+    chao2:[54,80,72],       // patina mais escura: corredores e o depósito
+    parede:[46,66,60],
+    luzAmbiente:'#6fa090'
+  },
+  construir: construirAlquimista,
+  comodos: COMODOS_ALQ,
+  spawn:{x:37, y:61},
+  trapos:0,
+  intro:{
+    titulo:"O Laboratório do Alquimista<em>piso 4</em>",
+    texto:"A escada das salas de funeral termina entre tubos enferrujados e fornalhas apagadas. Aqui o Alquimista destila, dissolve e explode — e alguém precisa atravessar o depósito de reagentes até a Sala de Experimentos, onde ele espera.",
+    botao:"Subir"
+  },
+  missao:{
+    titulo:'Sobreviver ao Laboratório',
+    tarefas:[
+      {id:'t-reagentes', label:'Coletar os reagentes', contador:3},
+      {id:'t-informantes4', label:'Ouvir os informantes', contador:3},
+      {id:'t-chefe4', label:'Derrotar o Alquimista'}
+    ],
+    tarefaInformantes:'t-informantes4',
+    tarefaChefe:'t-chefe4'
+  },
+  informantes:[],   // etapa 3 do /fase-nova: retratos já aprovados, falas e vozes entram depois
+  textos:{
+    vitoria: () => ({
+      titulo:"O Alquimista cai<em>piso 4 concluído</em>",
+      texto:"Os frascos param de fumegar. Uma escada sobe para os dormitórios, onde o Zelador faz a ronda.",
+      botao:"De novo",
+      placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>',
+      mostrarBolsa:true
+    }),
+    derrota: () => ({
+      titulo:"O gás te derruba<em>mas você respira</em>",
+      texto:"Você volta à soleira da sala de experimentos. Nada se perdeu.",
+      botao:"Levantar", placar:''
+    })
+  },
+  retomar(){
+    if(etapa !== 'livre' && etapa !== 'chefe') return false;
+    etapa = 'livre'; vivo = true; pausado = false; dialogo = null;
+    chefe = null; el('chefeBarra').classList.remove('on');
+    jog.hp = jog.hpMax;
+    jog.x = 37; jog.y = 52;      // a soleira da sala de experimentos (F4-RF-12)
+    jog.vx = jog.vy = 0; jog.invul = 2.5;
+    jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
+    if(piso.ambientes) criarAmbientes(piso.ambientes);
+    camX = jog.x; camY = jog.y;
+    el('veu').classList.add('oculto');
+    atualizarHUD();
+    avisar('De pé outra vez', 'os frascos ainda fumegam');
+    return true;
+  },
+  aoIniciar(){
+    /* limpa o que é dos pisos anteriores, para nada vazar de um piso ao outro */
+    espinhos = []; trapos = []; facao = null; esparadrapos = [];
+    labaredas = []; paes = []; caldos = []; ratazanas = [];
+    ajudantes = []; velasCaminho = []; aguaBenta = []; cirios = [];
+    maos = []; zonasLuz = []; vultos = [];
+    criarPortasAlq();
+    vistosAlq.clear();
+    const temMachado = inventario.some(i => i.id === 'machado-gladiador');
+    const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
+    jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
+    jog.dano = danoDaArma(jog.arma);
+    etapa = 'livre';
+    avisar('O Laboratório do Alquimista', 'algo ainda fumega');
+  },
+  atualizar(dt){
+    const bg = el('btnGolpe');
+    bg.classList.add('on');
+    bg.classList.toggle('off', jog.recarga > 0);
+    el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
+    anunciarComodoAlq();
+    atualizarPortasInternas(dt);
+  },
+  interacao(){ return null; },
+  agir(i){},
+  desenharCenario(ox, oy){
+    desenharPortasAlq(ox, oy);
+  },
+  desenharNoJogador(px, py, r, bal){
+    if(jog.arma) desenharArmaNaMao(px, py, r);
+  }
+};
+
 /* ---------- registro dos pisos ---------- */
-const PISOS = [PISO_CALABOUCO, PISO_COZINHAS, PISO_FUNERAL];
+const PISOS = [PISO_CALABOUCO, PISO_COZINHAS, PISO_FUNERAL, PISO_ALQUIMISTA];
 let pisoAtual = 0;
 
 /* ---------- atalho de revisão: nascer dentro de um cômodo ----------
