@@ -98,6 +98,9 @@ const PISOS = [
   {
     nome: 'Piso 4 — O Laboratório do Alquimista', mapa: ctx.alquimista(), spawn: [37, 61],
     alvos: [
+      ['O Aprendiz Fugitivo (8,10)', 8, 10, 'fala'],
+      ['O Bibliotecário Cego (37,10)', 37, 10, 'fala'],
+      ['O Jardineiro (8,32)', 8, 32, 'fala'],
       ['oficina de bancadas (8,10)', 8, 10, 'alcanca'],
       ['sala da fornalha (23,10)', 23, 10, 'alcanca'],
       ['estúdio de anotações (37,10)', 37, 10, 'alcanca'],

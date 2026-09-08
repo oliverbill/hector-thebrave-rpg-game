@@ -10425,13 +10425,48 @@ const PISO_ALQUIMISTA = {
     tarefaInformantes:'t-informantes4',
     tarefaChefe:'t-chefe4'
   },
-  informantes:[],   // etapa 3 do /fase-nova: retratos já aprovados, falas e vozes entram depois
+  /* três informantes (F4-RF-07): retratos aprovados, falas fechadas em F4-FALAS.md.
+     Vozes reais entram na etapa 6 — enquanto audio/fase4/vozes/ estiver vazio, o
+     `cfg.voz` sai sintetizado, no mesmo padrão que o piso 3 usou antes de gravar. */
+  informantes:[
+    { nome:'O Aprendiz Fugitivo', chave:'arremesso', cor:'#c9b88a', escala:1,
+      retrato:'img/fase4/npc-aprendiz-3.png',
+      voz:{pitch:1.05, rate:1.05, genero:'m',
+           audios:['audio/fase4/vozes/aprendiz-1.mp3','audio/fase4/vozes/aprendiz-2.mp3','audio/fase4/vozes/aprendiz-3.mp3']},
+      x:8.5, y:10,        // na oficina, entre as bancadas
+      falas:[
+        'Fugi antes que ele me pedisse pra beber o que sobrou no frasco. Ainda sonho com a cor.',
+        'Ele me ensinou a misturar. Nunca me ensinou a parar antes de explodir.',
+        'Presta atenção no braço dele: sempre arremessa pelo mesmo lado. O frasco cai sempre ali.'
+      ], ganho:'O lado que ele sempre erra ao arremessar leva mais dano.' },
+    { nome:'O Bibliotecário Cego', chave:'gas', cor:'#9fb0c0', escala:1.1,
+      retrato:'img/fase4/npc-bibliotecario-3.png',
+      voz:{pitch:.85, rate:.9, genero:'m',
+           audios:['audio/fase4/vozes/bibliotecario-1.mp3','audio/fase4/vozes/bibliotecario-2.mp3','audio/fase4/vozes/bibliotecario-3.mp3']},
+      x:37.5, y:10,       // no estúdio, entre as prateleiras
+      falas:[
+        'Não preciso ver as fórmulas. Sei todas de cor — e sei quando uma vai dar errado.',
+        'Os olhos foram o preço de aprender rápido demais. Valeu a pena? Pergunte outro dia.',
+        'O gás dele tem cheiro antes de faiscar. Eu sinto e me afasto. Você também vai sentir, se prestar atenção.'
+      ], ganho:'O aviso do vazamento de gás chega mais cedo, com som.' },
+    { nome:'O Jardineiro', chave:'exausto', cor:'#8fae7a', escala:1.15,
+      retrato:'img/fase4/npc-jardineiro-1.png',
+      voz:{pitch:.65, rate:.82, genero:'m',
+           audios:['audio/fase4/vozes/jardineiro-1.mp3','audio/fase4/vozes/jardineiro-2.mp3','audio/fase4/vozes/jardineiro-3.mp3']},
+      x:8.5, y:32,        // na estufa, entre os canteiros
+      falas:[
+        'Essas plantas não perdoam quem rega errado. Ele também não perdoa quem erra a dose.',
+        'Trabalho pra ele há trinta anos. Cultivo o que ele precisa, e ele finge que não precisa de mim.',
+        'Vê essas folhas murchando? É o mesmo jeito que ele fica quando o fôlego acaba. Bata quando ele murchar.'
+      ], ganho:'Dano maior nele quando estiver exausto ou se preparando pro arremesso.' }
+  ],
   textos:{
     vitoria: () => ({
       titulo:"O Alquimista cai<em>piso 4 concluído</em>",
       texto:"Os frascos param de fumegar. Uma escada sobe para os dormitórios, onde o Zelador faz a ronda.",
       botao:"De novo",
-      placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>',
+      placar:'Vida restante <b>' + Math.max(0, Math.round(jog.hp)) + '</b>'
+        + ' &nbsp;·&nbsp; Segredos <b>' + informantes.filter(p=>p.feito).length + '/' + informantes.length + '</b>',
       mostrarBolsa:true
     }),
     derrota: () => ({
