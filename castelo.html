@@ -11098,6 +11098,11 @@ const PISO_ALQUIMISTA = {
     ]);
     criarAjudantesOficina();   // o coadjuvante que circula pela oficina de bancadas
     criarFornalhasApagadas();  // F4-RF-06: a Lanterna dos Mortos acende, o nicho abre
+    /* a Lanterna não é arma nem consumível — não tem o que "usar" na bolsa,
+       ela só precisa estar no inventário pra ACENDER funcionar perto da
+       fornalha. Garantida aqui em vez de confiar só no auto-empréstimo dos
+       pisos anteriores (?piso=4 direto já fazia isso; agora não depende disso) */
+    adicionarAoInventario(PISO_FUNERAL.recompensa);
     /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15).
        `casa` prende cada um ao próprio cômodo (prenderNaCasa) — sem isso ele
        perseguia o jogador porta afora e virava problema do piso inteiro */
