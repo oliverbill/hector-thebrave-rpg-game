@@ -10437,6 +10437,74 @@ function desenharPortasAlq(ox, oy){
 /* vazamento de gás cíclico (F4-RF-03): válvula solta gás visível por um
    tempo, avisa, e ignifica numa explosão de área — o obstáculo cíclico
    desta fase, papel dos espinhos (fase 1) e labaredas (fase 2) */
+/* ajudante da oficina de bancadas: circula entre 3 postos, no mesmo
+   padrão dos carpinteiros do piso 3 (POSTOS_CARP/atualizarCarpinteiros) —
+   anda devagar, chega, trabalha um tempo, escolhe outro posto */
+const imgAjOficina = new Image(); imgAjOficina.src = 'img/fase4/ajudante-oficina.png';
+const POSTOS_OFIC = [
+  {x:5,    y:5.5,  gesto:'misturar', olha:1},
+  {x:12.5, y:5.5,  gesto:'medir',    olha:-1},
+  {x:6,    y:13.5, gesto:'anotar',   olha:1}
+];
+let ajudantesOficina = [];
+function criarAjudantesOficina(){
+  const e = POSTOS_OFIC[0];
+  ajudantesOficina = [{x:e.x, y:e.y, vx:0, vy:0, raio:.28, alvo:0, fase:'trabalhando',
+    tempo:2 + Math.random()*2, flip:e.olha < 0, bal:Math.random()*TAU, teima:0, dist:0}];
+}
+function outroPostoOfic(a){
+  const livres = POSTOS_OFIC.map((_, k) => k).filter(k => k !== a.alvo);
+  return livres[irand(livres.length)];
+}
+function atualizarAjudantesOficina(dt){
+  ajudantesOficina.forEach(a => {
+    a.bal += dt;
+    const e = POSTOS_OFIC[a.alvo];
+    if(a.fase === 'trabalhando'){
+      a.tempo -= dt;
+      if(a.tempo <= 0){ a.alvo = outroPostoOfic(a); a.fase = 'indo'; a.teima = 0; a.dist = 99; }
+      return;
+    }
+    const dx = e.x - a.x, dy = e.y - a.y, d = Math.hypot(dx, dy);
+    if(d < .14){
+      a.fase = 'trabalhando'; a.tempo = 3 + Math.random()*3; a.flip = e.olha < 0; a.vx = a.vy = 0;
+      return;
+    }
+    const vel = .85;
+    a.vx = dx/d*vel; a.vy = dy/d*vel;
+    mover(a, a.vx*dt, a.vy*dt);
+    if(Math.abs(dx) > .05) a.flip = dx < 0;
+    if(d < a.dist - .05){ a.dist = d; a.teima = 0; }
+    else { a.teima += dt; if(a.teima > 2.5){ a.alvo = outroPostoOfic(a); a.teima = 0; a.dist = 99; } }
+  });
+}
+function desenharAjudantesOficina(ox, oy){
+  if(!(imgAjOficina.complete && imgAjOficina.naturalWidth > 0)) return;
+  ajudantesOficina.forEach(a => {
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    if(foraDaVista(px, py, tam*2.2)) return;
+    const q = Math.floor(a.bal*8)/8;
+    const alt = tam*1.25;
+    const lar = imgAjOficina.naturalWidth*(alt/imgAjOficina.naturalHeight);
+    let gira = Math.sin(q*2.2)*.035, sopro = 1 + Math.sin(q*3.2)*.02, quica = Math.abs(Math.sin(q*2.4))*tam*.05;
+    if(a.fase === 'trabalhando'){
+      const g = POSTOS_OFIC[a.alvo].gesto;
+      if(g === 'misturar'){ gira = Math.sin(q*6)*.09; quica = Math.abs(Math.sin(q*3))*tam*.03; }
+      else if(g === 'medir'){ gira = Math.sin(q*3.4)*.06; quica = Math.abs(Math.sin(q*3.4))*tam*.04; }
+      else { gira = Math.sin(q*2.6)*.05; quica = Math.abs(Math.sin(q*2.6))*tam*.03; }
+      sopro = 1 + Math.sin(q*5)*.03;
+    }
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.08, lar*.32, tam*.08, 0, 0, TAU); ctx.fill();
+    ctx.save();
+    ctx.translate(px, py + tam*.1 - quica);
+    if(a.flip) ctx.scale(-1, 1);
+    ctx.rotate(gira);
+    ctx.scale(1, sopro);
+    ctx.drawImage(imgAjOficina, -lar/2, -alt, lar, alt);
+    ctx.restore();
+  });
+}
 let vazamentos = [];
 function criarVazamentos(pontos){
   vazamentos = pontos.map(p => {
@@ -10977,6 +11045,7 @@ const PISO_ALQUIMISTA = {
       {x:34, y:30},                                   // cela de experimentos
       {x:5,  y:30}                                    // estufa de ingredientes
     ]);
+    criarAjudantesOficina();   // o coadjuvante que circula pela oficina de bancadas
     /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15).
        `casa` prende cada um ao próprio cômodo (prenderNaCasa) — sem isso ele
        perseguia o jogador porta afora e virava problema do piso inteiro */
@@ -11002,6 +11071,7 @@ const PISO_ALQUIMISTA = {
     atualizarPortasInternas(dt);
     atualizarPortaoArena(dt);
     atualizarHomunculos(dt);
+    atualizarAjudantesOficina(dt);
     /* o fogo do arremesso queima quem pisar — machucar() já tem o próprio
        cooldown (jog.invul), então parado ali dói umas duas vezes por segundo */
     fogosArena.forEach(fo => {
@@ -11118,10 +11188,27 @@ const PISO_ALQUIMISTA = {
     desenharFrascosAntidoto(ox, oy);
     desenharInjecoesArena(ox, oy);
     desenharHomunculos(ox, oy);
+    desenharAjudantesOficina(ox, oy);
     desenharVazamentos(ox, oy);
     desenharPortasAlq(ox, oy);
     desenharPortaoArena(ox, oy);
   },
+  /* camadas de ambiente por proximidade (F4-RF-26): borbulhar na fornalha,
+     vidro tinindo na oficina, folhas na estufa, gotejar químico no
+     depósito. O estúdio fica de fora de propósito — "silêncio pesado" é
+     ausência de som, não um clipe a mais. Arquivos ainda não baixados
+     (etapa /buscar-sfx-prd não rodou); path já reservado, no padrão do
+     piso 3 antes de gravar. */
+  ambientes:[
+    { url:'audio/fase4/sons/borbulhar-alambique-1.mp3', ganho:.32, raio:6, desvanece:5,
+      pontos:[[23,10]] },
+    { url:'audio/fase4/sons/vidros-tinir-1.mp3', ganho:.26, raio:4.5, desvanece:4,
+      pontos:[[8.5,10]] },
+    { url:'audio/fase4/sons/folhas-farfalhar-1.mp3', ganho:.24, raio:5, desvanece:4,
+      pontos:[[8.5,32]] },
+    { url:'audio/fase4/sons/gotejar-quimico-1.mp3', ganho:.22, raio:5, desvanece:5,
+      pontos:[[10,46]] }
+  ],
   desenharNoJogador(px, py, r, bal){
     if(jog.arma) desenharArmaNaMao(px, py, r);
   }
