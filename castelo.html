@@ -413,7 +413,7 @@ let jog = null, chefe = null, informantes = [];
 let etapa = 'menu', vivo = false, pausado = false;
 let intel = {}, dialogo = null, interacao = null;
 let tempo = 0, tremor = 0, camX = 0, camY = 0;
-let particulas = [], riscos = [], destrocos = [];
+let particulas = [], riscos = [], destrocos = [], explosoes = [];
 
 const tela = el('tela'), ctx = tela.getContext('2d');
 const cacheMapa = document.createElement('canvas'), cmx = cacheMapa.getContext('2d');
@@ -1855,6 +1855,27 @@ function estilhacarElos(x, y, qtd){
       vang:(Math.random()-.5)*14, vida:1.4, comp:.13 + Math.random()*.05});
   }
 }
+/* anel de explosão genérico (o homúnculo do piso 4 é o primeiro a usar,
+   mas não é dado de piso nenhum — qualquer inimigo pode empurrar aqui) */
+function atualizarExplosoes(dt){
+  for(let i = explosoes.length - 1; i >= 0; i--){
+    explosoes[i].t += dt;
+    if(explosoes[i].t >= explosoes[i].dur) explosoes.splice(i, 1);
+  }
+}
+function desenharExplosoes(ox, oy){
+  explosoes.forEach(e => {
+    const px = ox + e.x*tam, py = oy + e.y*tam;
+    if(foraDaVista(px, py, tam*3)) return;
+    const p = Math.min(1, e.t/e.dur);
+    const r = e.raio*tam*(.3 + p*.9);
+    ctx.strokeStyle = 'rgba(255,150,60,' + (.9*(1-p)) + ')';
+    ctx.lineWidth = Math.max(2, tam*.1*(1-p*.6));
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,180,80,' + (.35*(1-p)) + ')';
+    ctx.beginPath(); ctx.arc(px, py, r*.6, 0, TAU); ctx.fill();
+  });
+}
 function atualizarParticulas(dt){
   particulas.forEach(p => { p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .93; p.vy *= .93; p.vida -= dt*1.7; });
   particulas = particulas.filter(p => p.vida > 0);
@@ -2595,6 +2616,7 @@ function atualizar(dt){
   if(pausaMenu) return;                 // pausa do jogador: nem as fagulhas andam
   tempo += dt;
   atualizarParticulas(dt);
+  atualizarExplosoes(dt);
   /* os ambientes fundem mesmo com o jogo pausado: é o diálogo (que pausa tudo)
      que mais precisa do ducking — congelar aqui deixava os ajudantes gritando */
   atualizarAmbientes(dt);
@@ -2725,6 +2747,7 @@ function desenhar(){
     ctx.fillRect(ox + p.x*tam - s/2, oy + p.y*tam - s/2, s, s);
   });
   ctx.globalAlpha = 1;
+  desenharExplosoes(ox, oy);
 
   /* luz: ambiente do piso + poças quentes dos braseiros */
   lcx.setTransform(1,0,0,1,0,0);
@@ -3853,10 +3876,13 @@ function golpeDeArma(){
     flutuar(h.x, h.y-.4, dano, cortante ? '#ffd88a' : '#f4e2b4');
     for(let k=0;k<8;k++) faisca(h.x, h.y, '#8fd08a', .12);
     /* explode em dano de área ao morrer: o vidro/argila estoura, quem
-       estiver perto leva o mesmo tanto que a mordida (F4-RF-15) */
+       estiver perto leva o mesmo tanto que a mordida (F4-RF-15). Cor e anel
+       em laranja — o verde da explosão original sumia contra o chão verde
+       do piso, e parecia que nada tinha acontecido */
     if(h.hp <= 0){
-      sFerro(); tremor = Math.max(tremor, 8);
-      for(let k=0;k<20;k++) faisca(h.x, h.y, '#a8e0a0', .17);
+      sBaterParede(); tremor = Math.max(tremor, 14);
+      explosoes.push({x:h.x, y:h.y, t:0, dur:.45, raio:1.4});
+      for(let k=0;k<26;k++) faisca(h.x, h.y, k%2 ? '#ffb04a' : '#e8632a', .19);
       if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.4) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
     }
   });
@@ -3925,6 +3951,19 @@ function criarHomunculos(pontos){
     .map(p => ({...p, vx:0, vy:0, raio:.26, hp:50, dano:10, ang:Math.random()*TAU,
                 fase:Math.random()*TAU, morde:0, flash:0}));
 }
+/* a coleira do homúnculo: preso ao cômodo onde nasceu (p.casa), do mesmo
+   jeito que prenderChefeNaArena tranca o chefe na arena — sem isso ele
+   perseguia o jogador por portas afora e virava um problema do piso
+   inteiro, não da sala dele */
+function prenderNaCasa(h){
+  const c = h.casa;
+  if(!c) return;
+  const m = h.raio*.9;
+  const nx = Math.min(Math.max(h.x, c.x1 + m), c.x2 - m);
+  const ny = Math.min(Math.max(h.y, c.y1 + m), c.y2 - m);
+  if(nx !== h.x){ h.x = nx; h.vx = 0; }
+  if(ny !== h.y){ h.y = ny; h.vy = 0; }
+}
 function atualizarHomunculos(dt){
   homunculos.forEach(h => {
     if(h.hp <= 0) return;
@@ -3942,6 +3981,7 @@ function atualizarHomunculos(dt){
       h.vy += (Math.sin(a)*.4 - h.vy)*Math.min(1, dt*2);
     }
     mover(h, h.vx*dt, h.vy*dt);
+    prenderNaCasa(h);
     if(Math.hypot(h.vx, h.vy) > .15) h.ang = Math.atan2(h.vy, h.vx);
     if(d < h.raio + jog.raio + .1 && h.morde <= 0){
       h.morde = .8;
@@ -10833,12 +10873,14 @@ const PISO_ALQUIMISTA = {
     criarReagentes();
     criarFrascosAntidoto();
     criarInjecoesArena();
-    /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15) */
+    /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15).
+       `casa` prende cada um ao próprio cômodo (prenderNaCasa) — sem isso ele
+       perseguia o jogador porta afora e virava problema do piso inteiro */
     criarHomunculos([
-      {x:12,   y:8},    // oficina de bancadas
-      {x:24,   y:8},    // sala da fornalha
-      {x:36,   y:32},   // cela de experimentos
-      {x:9.5,  y:43.5}  // depósito de barris, logo na entrada do labirinto
+      {x:12,   y:8,    casa:{x1:3, y1:4,  x2:14, y2:15}},   // oficina de bancadas
+      {x:24,   y:8,    casa:{x1:17,y1:3,  x2:30, y2:17}},   // sala da fornalha
+      {x:36,   y:32,   casa:{x1:31,y1:27, x2:42, y2:38}},   // cela de experimentos
+      {x:9.5,  y:43.5, casa:{x1:3, y1:43, x2:19, y2:50}}    // depósito de barris
     ]);
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
     const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
@@ -10935,6 +10977,11 @@ const PISO_ALQUIMISTA = {
     }
     abrirSalaExperimentos();
   },
+  /* sem isso o botão GOLPE não faz nada — nem no chefe, nem no homúnculo.
+     Todo piso com combate precisa apontar pra cá (ou pra uma variante,
+     como golpeFase3); ficou faltando desde a planta e ninguém reparou
+     porque a máquina de estados do chefe roda sozinha */
+  acaoGolpe: golpeDeArma,
   falarLiberado(){ return etapa === 'livre'; },
   irAoChefe(){
     informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
