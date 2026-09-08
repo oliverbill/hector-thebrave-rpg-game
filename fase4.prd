@@ -152,7 +152,7 @@ Mapa 44×64, spawn na escada de chegada (37,61). Regiões: oficina de bancadas (
 
 **Específicos desta fase:**
 
-- [ ] A Lanterna dos Mortos acende fornalhas/lareiras apagadas e libera passagens seladas
+- [x] A Lanterna dos Mortos acende fornalhas/lareiras apagadas e libera passagens seladas
 - [x] O vazamento de gás telegrafa e explode em ciclo, com dano de área
 - [x] O homúnculo persegue e explode em dano de área ao morrer
 - [x] O Alquimista arremessa frascos à distância que incendeiam o chão da arena, encolhendo o espaço seguro
@@ -282,8 +282,11 @@ Açougueiro e Coveiro. Ver §8.
 
 - `pintarAlquimistaCache` só tem o passe global (paredes 3/4 + placa de metal rebitada);
   os 5 passes por cômodo (mobília, fornalha, bancadas, prateleiras) da etapa 8 não começaram.
-- A poção-bomba (recompensa) e a Lanterna dos Mortos acendendo fornalhas (F4-RF-06) ainda
-  não têm arte nem mecânica de puzzle — só a entrega genérica ao vencer o chefe funciona.
+- **A Lanterna dos Mortos acendendo fornalhas (F4-RF-06) está pronta**: um nicho selado no
+  corredor sul (x21,y42), com frasco de antídoto bônus dentro — só a poção-bomba
+  (recompensa final) ainda não tem arte, só a entrega genérica ao vencer o chefe funciona.
+  É o único nicho do piso; mais fornalhas apagadas (uma por cômodo, por exemplo) ficam
+  pra quando a decoração da etapa 8 entrar.
 - **Coadjuvantes: só a oficina tem** (1 ajudante circulando 3 postos). Fornalha, estúdio,
   estufa, cela e depósito ainda não têm ninguém — cada um pede sua própria leva de imagens
   (etapa 2/3) antes de instalar.
