@@ -2153,7 +2153,7 @@ function atualizarChefe(dt){
         if(Math.hypot(jog.x - alvo.x, jog.y - alvo.y) < f.arremessoRaio)
           machucar(f.arremessoDano, ang);
         fogosArena.push({x: alvo.x, y: alvo.y, raio: f.arremessoRaio});
-        tremor = Math.max(tremor, 12);
+        tremor = Math.max(tremor, 5);   // era 12 — sacudia a tela inteira por um frasco
         if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe); else sBaterParede();
         for(let k=0;k<20;k++) faisca(alvo.x, alvo.y, '#e8a13c', .17);
         c.estado = 'exausto'; c.t = f.exaustoT;
@@ -3960,7 +3960,7 @@ function prenderNaCasa(h){
 function explodirHomunculo(h){
   h.hp = 0;
   tocarSfx('audio/fase4/sons/homunculo-explodindo-1.mp3', 1, sBaterParede);
-  tremor = Math.max(tremor, 14);
+  tremor = Math.max(tremor, 5);   // era 14 — tela inteira tremendo por um bicho de 50 HP
   explosoes.push({x:h.x, y:h.y, t:0, dur:.45, raio:1.4});
   for(let k=0;k<26;k++) faisca(h.x, h.y, k%2 ? '#ffb04a' : '#e8632a', .19);
   if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.6) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
@@ -11139,7 +11139,7 @@ const PISO_ALQUIMISTA = {
       const f = faseVazamento(v);
       if(f.tipo === 'estoura'){
         if(!v.armado){
-          v.armado = true; tremor = Math.max(tremor, 10);
+          v.armado = true; tremor = Math.max(tremor, 4);   // era 10
           tocarSfx('audio/fase4/sons/explosao-2.mp3', 1, sBaterParede);
         }
         /* o dano sai da BOCA (v.bx/v.by), não do centro do barril — é ali
