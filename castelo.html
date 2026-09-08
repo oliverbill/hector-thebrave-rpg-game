@@ -10252,8 +10252,8 @@ function desenharPortasAlq(ox, oy){
 /* --- a soleira da Sala de Experimentos: porta própria, maior e diferente
    das outras (pedido do dono, 08/09) --- */
 let portaoArena = null;
-const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta.png';   // placeholder até a arte da arena ser aprovada
-const PA_FOLHA = {x1:.12, x2:.88, y:.1};
+const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta-arena.png';   // referência do dono: dragões + leão na chave do arco
+const PA_FOLHA = {x1:.21, x2:.79, y:.24};
 function atualizarPortaoArena(dt){
   if(!portaoArena) return;
   const p = portaoArena, cx = p.x + 1, cy = p.y;
