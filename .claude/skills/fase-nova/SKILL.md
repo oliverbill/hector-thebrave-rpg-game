@@ -234,6 +234,7 @@ ffmpeg -y -i in.m4a -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=${I}:measured_
 4. **A legenda usa o texto gravado, palavra por palavra** — se o usuário improvisou na gravação, pedir o texto real e atualizar `FN-FALAS.md` e o código.
 5. **Nunca TTS para voz de personagem.** O motor não tem mais fallback de síntese (removido na Fase 2, porque pular a fala fazia o robô narrar) — sem clipe, a legenda fala em silêncio.
 6. SFX (não-voz) vêm da skill **`/buscar-sfx-prd`**; trilhas são fornecidas pelo usuário.
+7. **Pedir as duas trilhas nesta etapa, sem esperar o dono lembrar sozinho** — a trilha do piso e a trilha da luta do chefe (`audio/faseN/trilha-faseN.mp3` e `audio/faseN/trilha-arena.mp3`). Até ele mandar, o piso toca emprestada a trilha da fase anterior como tapa-buraco (`bgm:` aponta pra ela) — isso já aconteceu sem ninguém notar por várias fases seguidas. Perguntar explicitamente aqui, junto com o pedido das vozes, e marcar como pendência em `faseN.prd` §8 enquanto não chegar.
 
 ---
 

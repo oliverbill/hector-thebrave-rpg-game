@@ -271,8 +271,6 @@ Açougueiro e Coveiro. Ver §8.
 
 - Vozes dos 3 informantes e do Alquimista: textos fechados em F4-FALAS.md, gravação não
   começou — hoje sai voz sintetizada do `cfg.voz`/`voz` de cada informante.
-- Trilha do piso e da arena: tocam `audio/fase2/trilha-fase2.mp3` e
-  `audio/fase4/trilha-arena.mp3` (este último nem existe) como tapa-buraco.
 - **SFX baixados** (11 sons × 3 opções, CC0, Freesound): vazamento de gás, explosão,
   vidro quebrando, líquido borbulhando, metal rangendo, fornalha acendendo, frasco
   arremessado, homúnculo explodindo, vidros tinindo, folhas farfalhando, gotejar químico.
@@ -313,7 +311,7 @@ Açougueiro e Coveiro. Ver §8.
 | Inimigo | homúnculo (inseto/autômato de casca rúnica) | PNG sem fundo | **pronto** — `inimigo-5.png` |
 | Item | frasco de antídoto, injeção de adrenalina, poção-bomba | PNG recortado | pendente — buscar na etapa de itens |
 | Voz | 9 dos informantes + 3 do Alquimista | gravação real → MP3 −14/−17 LUFS | pendente (etapa 6, uma a uma) — texto a fechar em F4-FALAS.md |
-| Trilha | BGM do piso + luta da Sala de Experimentos | MP3 | pendente — usuário |
+| Trilha | BGM do piso + luta da Sala de Experimentos | MP3 | **pronto** — `trilha-fase4.mp3` e `trilha-arena.mp3`, do dono |
 | SFX | lista do F4-RF-25/26 (11 sons) | MP3 CC0, 3 opções cada | **baixados** em `audio/fase4/sons/`; opção `-1` de cada em uso |
 
 ## Apêndice B — Ordem de trabalho
