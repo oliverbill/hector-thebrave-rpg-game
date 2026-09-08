@@ -10484,7 +10484,9 @@ function desenharAjudantesOficina(ox, oy){
     const px = ox + a.x*tam, py = oy + a.y*tam;
     if(foraDaVista(px, py, tam*2.2)) return;
     const q = Math.floor(a.bal*8)/8;
-    const alt = tam*1.25;
+    /* mesma altura em tela do jogador (largura tam*.9), no padrão dos informantes */
+    const alt = imgJogador.naturalWidth > 0
+      ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2;
     const lar = imgAjOficina.naturalWidth*(alt/imgAjOficina.naturalHeight);
     let gira = Math.sin(q*2.2)*.035, sopro = 1 + Math.sin(q*3.2)*.02, quica = Math.abs(Math.sin(q*2.4))*tam*.05;
     if(a.fase === 'trabalhando'){
