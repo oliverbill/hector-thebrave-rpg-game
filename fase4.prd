@@ -273,7 +273,12 @@ Açougueiro e Coveiro. Ver §8.
   começou — hoje sai voz sintetizada do `cfg.voz`/`voz` de cada informante.
 - Trilha do piso e da arena: tocam `audio/fase2/trilha-fase2.mp3` e
   `audio/fase4/trilha-arena.mp3` (este último nem existe) como tapa-buraco.
-- Nenhum SFX baixado ainda (`/buscar-sfx-prd` não rodou).
+- **SFX baixados** (11 sons × 3 opções, CC0, Freesound): vazamento de gás, explosão,
+  vidro quebrando, líquido borbulhando, metal rangendo, fornalha acendendo, frasco
+  arremessado, homúnculo explodindo, vidros tinindo, folhas farfalhando, gotejar químico.
+  As opções `-1` já tocam no jogo (chefe, homúnculo, vazamento, ambientes); `-2`/`-3`
+  ficam de reserva — dono ainda não escolheu a definitiva de cada um. `gas-vazamento-1`
+  saiu bem baixo (−31 LUFS) na conferência de nível; considerar as opções 2/3 ou normalizar.
 
 **Itens e mundo**
 
@@ -309,7 +314,7 @@ Açougueiro e Coveiro. Ver §8.
 | Item | frasco de antídoto, injeção de adrenalina, poção-bomba | PNG recortado | pendente — buscar na etapa de itens |
 | Voz | 9 dos informantes + 3 do Alquimista | gravação real → MP3 −14/−17 LUFS | pendente (etapa 6, uma a uma) — texto a fechar em F4-FALAS.md |
 | Trilha | BGM do piso + luta da Sala de Experimentos | MP3 | pendente — usuário |
-| SFX | lista do F4-RF-25 | MP3 CC0, 3 opções cada | pendente — `/buscar-sfx-prd` |
+| SFX | lista do F4-RF-25/26 (11 sons) | MP3 CC0, 3 opções cada | **baixados** em `audio/fase4/sons/`; opção `-1` de cada em uso |
 
 ## Apêndice B — Ordem de trabalho
 
