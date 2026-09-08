@@ -3875,16 +3875,7 @@ function golpeDeArma(){
     if(cortante) sCorte(); else sEspadaAcerta();
     flutuar(h.x, h.y-.4, dano, cortante ? '#ffd88a' : '#f4e2b4');
     for(let k=0;k<8;k++) faisca(h.x, h.y, '#8fd08a', .12);
-    /* explode em dano de área ao morrer: o vidro/argila estoura, quem
-       estiver perto leva o mesmo tanto que a mordida (F4-RF-15). Cor e anel
-       em laranja — o verde da explosão original sumia contra o chão verde
-       do piso, e parecia que nada tinha acontecido */
-    if(h.hp <= 0){
-      sBaterParede(); tremor = Math.max(tremor, 14);
-      explosoes.push({x:h.x, y:h.y, t:0, dur:.45, raio:1.4});
-      for(let k=0;k<26;k++) faisca(h.x, h.y, k%2 ? '#ffb04a' : '#e8632a', .19);
-      if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.4) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
-    }
+    if(h.hp <= 0) explodirHomunculo(h);   // matou no golpe: explode igual ao pavio (F4-RF-15)
   });
 }
 
@@ -3949,7 +3940,7 @@ let homunculos = [];
 function criarHomunculos(pontos){
   homunculos = pontos
     .map(p => ({...p, vx:0, vy:0, raio:.26, hp:50, dano:10, ang:Math.random()*TAU,
-                fase:Math.random()*TAU, morde:0, flash:0}));
+                fase:Math.random()*TAU, flash:0, aceso:0}));
 }
 /* a coleira do homúnculo: preso ao cômodo onde nasceu (p.casa), do mesmo
    jeito que prenderChefeNaArena tranca o chefe na arena — sem isso ele
@@ -3964,13 +3955,32 @@ function prenderNaCasa(h){
   if(nx !== h.x){ h.x = nx; h.vx = 0; }
   if(ny !== h.y){ h.y = ny; h.vy = 0; }
 }
+/* explode de vez: usada tanto quando o jogador o mata no golpe (golpeDeArma)
+   quanto quando o pavio chega a zero sozinho (chegou perto demais) */
+function explodirHomunculo(h){
+  h.hp = 0;
+  sBaterParede(); tremor = Math.max(tremor, 14);
+  explosoes.push({x:h.x, y:h.y, t:0, dur:.45, raio:1.4});
+  for(let k=0;k<26;k++) faisca(h.x, h.y, k%2 ? '#ffb04a' : '#e8632a', .19);
+  if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.6) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
+}
 function atualizarHomunculos(dt){
   homunculos.forEach(h => {
     if(h.hp <= 0) return;
     h.fase += dt;
-    h.morde = Math.max(0, h.morde - dt);
     h.flash = Math.max(0, h.flash - dt*4);
     const dx = h.x-jog.x, dy = h.y-jog.y, d = Math.hypot(dx,dy);
+    /* pavio aceso: chegou perto do jogador e vai estourar sozinho — não
+       precisa mais golpear pra ele explodir (F4-RF-15, pedido do dono) */
+    if(h.aceso > 0){
+      h.aceso -= dt;
+      h.vx *= .8; h.vy *= .8;
+      mover(h, h.vx*dt, h.vy*dt);
+      prenderNaCasa(h);
+      if(h.aceso <= 0) explodirHomunculo(h);
+      return;
+    }
+    if(d < 1.1){ h.aceso = .5; sFerro(); return; }
     if(d < 5.5 && d > .001){
       const v = 2.3;
       h.vx += (-dx/d*v - h.vx)*Math.min(1, dt*5);
@@ -3983,10 +3993,6 @@ function atualizarHomunculos(dt){
     mover(h, h.vx*dt, h.vy*dt);
     prenderNaCasa(h);
     if(Math.hypot(h.vx, h.vy) > .15) h.ang = Math.atan2(h.vy, h.vx);
-    if(d < h.raio + jog.raio + .1 && h.morde <= 0){
-      h.morde = .8;
-      machucar(h.dano);
-    }
   });
 }
 function desenharHomunculos(ox, oy){
@@ -4008,6 +4014,12 @@ function desenharHomunculos(ox, oy){
       ctx.drawImage(foto, -lar/2, -alt*.72, lar, alt);
       ctx.globalAlpha = 1;
       ctx.restore();
+    }
+    /* pavio aceso: pisca cada vez mais rápido até estourar — dá pra recuar */
+    if(h.aceso > 0){
+      const pisca = Math.abs(Math.sin(tempo*(6 + (.5 - h.aceso)*30)));
+      ctx.fillStyle = 'rgba(255,140,50,' + (.35 + pisca*.4) + ')';
+      ctx.beginPath(); ctx.arc(px, py - alt*.55, tam*.22, 0, TAU); ctx.fill();
     }
   });
 }
