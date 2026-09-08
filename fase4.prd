@@ -154,12 +154,12 @@ Mapa 44×64, spawn na escada de chegada (37,61). Regiões: oficina de bancadas (
 
 - [ ] A Lanterna dos Mortos acende fornalhas/lareiras apagadas e libera passagens seladas
 - [ ] O vazamento de gás telegrafa e explode em ciclo, com dano de área
-- [ ] O homúnculo persegue e explode em dano de área ao morrer
-- [ ] O Alquimista arremessa frascos à distância que incendeiam o chão da arena, encolhendo o espaço seguro
-- [ ] As 3 chaves dos informantes mudam visivelmente o combate contra o Alquimista
+- [x] O homúnculo persegue e explode em dano de área ao morrer
+- [x] O Alquimista arremessa frascos à distância que incendeiam o chão da arena, encolhendo o espaço seguro
+- [x] As 3 chaves dos informantes mudam visivelmente o combate contra o Alquimista (dano pelas costas, telegrafo mais cedo, dano no exausto/preparo)
 - [ ] O depósito labiríntico de barris é atravessável e a travessia falsa (cano que cede) engana pelo menos uma vez
 - [ ] Vencer abre a bolsa com a poção-bomba
-- [ ] `jog.hpMax` = 195 no piso 4; cura do Q recupera 15% de `hpMax`, não um valor fixo
+- [x] `jog.hpMax` = 195 no piso 4; cura do Q recupera 15% de `hpMax`, não um valor fixo
 
 ---
 
@@ -214,6 +214,24 @@ corrigido guardando `c.arremessoTotal` no momento em que o aviso é montado.
 como sprite, não um desenho vetorial com pernas animadas — diferente de Gladiador,
 Açougueiro e Coveiro. Ver §8.
 
+**Itens e o homúnculo (etapa de itens do /fase-nova).**
+
+- **Reagentes** (3, F4-RF-10/F4-RF-11): um na oficina, um na estufa, um no fundo do
+  depósito. Coletar os 3 fecha a metade que faltava da trava dupla — `agir()` agora nega
+  a abertura da soleira separadamente por informante e por reagente, com o aviso dizendo
+  qual falta.
+- **Frascos de antídoto** (F4-RF-13): 6 espalhados pelo piso, curam 15% na hora e ainda
+  entram na bolsa como ração do botão Q — mesmo padrão da água benta do piso 3.
+- **Injeções de adrenalina** (F4-RF-14): 4 nos cantos da Sala de Experimentos, 25%, só
+  valem com `etapa === 'chefe'` e são repostas a cada tentativa (`criarInjecoesArena()`
+  roda em `aoIniciar` e em `retomar`).
+- **Homúnculo** (F4-RF-15, inimigo comum): novo de verdade — nunca ratazana/barata. Persegue
+  como a ratazana (`atualizarHomunculos`, mesmo raio de perseguição, mesma lógica de
+  mordida), mas **explode em dano de área ao morrer** — o motor ganhou esse conceito de novo
+  (não existia nenhum inimigo comum com efeito de morte antes). 4 espalhados: oficina,
+  fornalha, cela de experimentos, entrada do depósito. Sprite do recorte aprovado
+  (`inimigo-5.png`), sem desenho vetorial próprio (mesma pendência do chefe).
+
 ---
 
 ## 8. Pendências conhecidas
@@ -227,8 +245,6 @@ Açougueiro e Coveiro. Ver §8.
   desenho vetorial dedicado.
 - **Golpe e leva-golpe do Alquimista não têm fala** — só a entrada está fechada
   (F4-FALAS.md). `cfg.sons.golpe`/`levaGolpe` apontam pra arquivos que ainda não existem.
-- **A trava dupla só checa os informantes.** Os "3 reagentes coletados" (F4-RF-11) ainda
-  não existem como item — `agir()` abre a soleira com só 1 das 2 condições do PRD.
 
 **Áudio**
 
@@ -240,10 +256,13 @@ Açougueiro e Coveiro. Ver §8.
 
 **Itens e mundo**
 
-- Reagentes (3), frascos de antídoto, injeções de adrenalina, homúnculo (inimigo comum) e
-  o vazamento de gás cíclico (F4-RF-03) — nenhum ainda está no piso. É a próxima etapa.
+- O vazamento de gás cíclico (F4-RF-03, o obstáculo cíclico da Sala da Fornalha) ainda não
+  está no piso — reagentes, curas e o homúnculo entraram nesta etapa; o gás fica para
+  quando a Sala da Fornalha ganhar decoração (etapa 8).
 - `pintarAlquimistaCache` só tem o passe global (paredes 3/4 + placa de metal rebitada);
   os 5 passes por cômodo (mobília, fornalha, bancadas, prateleiras) da etapa 8 não começaram.
+- A poção-bomba (recompensa) e a Lanterna dos Mortos acendendo fornalhas (F4-RF-06) ainda
+  não têm arte nem mecânica de puzzle — só a entrega genérica ao vencer o chefe funciona.
 
 **Herdadas**
 

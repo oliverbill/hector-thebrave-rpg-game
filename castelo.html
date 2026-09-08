@@ -3841,6 +3841,25 @@ function golpeDeArma(){
     for(let k=0;k<8;k++) faisca(rz.x, rz.y, '#a34040', .12);
     if(rz.hp <= 0){ sRato(); for(let k=0;k<12;k++) faisca(rz.x, rz.y, '#6d5a60', .14); }
   });
+  homunculos.forEach(h => {
+    if(h.hp <= 0) return;
+    const dx = h.x-jog.x, dy = h.y-jog.y, d = Math.hypot(dx,dy);
+    if(d > 1.3) return;
+    jog.angulo = Math.atan2(dy, dx);
+    const dano = Math.round((jog.dano + irand(5)) * (cortante ? 2 : 1));
+    h.hp -= dano; h.flash = 1;
+    h.vx += dx/Math.max(.01,d)*6; h.vy += dy/Math.max(.01,d)*6;
+    if(cortante) sCorte(); else sEspadaAcerta();
+    flutuar(h.x, h.y-.4, dano, cortante ? '#ffd88a' : '#f4e2b4');
+    for(let k=0;k<8;k++) faisca(h.x, h.y, '#8fd08a', .12);
+    /* explode em dano de área ao morrer: o vidro/argila estoura, quem
+       estiver perto leva o mesmo tanto que a mordida (F4-RF-15) */
+    if(h.hp <= 0){
+      sFerro(); tremor = Math.max(tremor, 8);
+      for(let k=0;k<20;k++) faisca(h.x, h.y, '#a8e0a0', .17);
+      if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.4) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
+    }
+  });
 }
 
 /* --- ratazanas (compartilhadas entre pisos: calabouço, despensa, adega...) --- */
@@ -3895,6 +3914,61 @@ function desenharRatazanas(ox, oy){
     ctx.beginPath(); ctx.arc(r*1.18, -r*.14, Math.max(1, r*.08), 0, TAU); ctx.fill();
     ctx.beginPath(); ctx.arc(r*1.18, r*.14, Math.max(1, r*.08), 0, TAU); ctx.fill();
     ctx.restore();
+  });
+}
+
+/* --- homúnculo (inimigo comum do piso 4): persegue como a ratazana,
+   mas explode em dano de área ao morrer (F4-RF-15) --- */
+let homunculos = [];
+function criarHomunculos(pontos){
+  homunculos = pontos
+    .map(p => ({...p, vx:0, vy:0, raio:.26, hp:50, dano:10, ang:Math.random()*TAU,
+                fase:Math.random()*TAU, morde:0, flash:0}));
+}
+function atualizarHomunculos(dt){
+  homunculos.forEach(h => {
+    if(h.hp <= 0) return;
+    h.fase += dt;
+    h.morde = Math.max(0, h.morde - dt);
+    h.flash = Math.max(0, h.flash - dt*4);
+    const dx = h.x-jog.x, dy = h.y-jog.y, d = Math.hypot(dx,dy);
+    if(d < 5.5 && d > .001){
+      const v = 2.3;
+      h.vx += (-dx/d*v - h.vx)*Math.min(1, dt*5);
+      h.vy += (-dy/d*v - h.vy)*Math.min(1, dt*5);
+    } else {
+      const a = h.ang + Math.sin(h.fase*.9)*1.2;
+      h.vx += (Math.cos(a)*.4 - h.vx)*Math.min(1, dt*2);
+      h.vy += (Math.sin(a)*.4 - h.vy)*Math.min(1, dt*2);
+    }
+    mover(h, h.vx*dt, h.vy*dt);
+    if(Math.hypot(h.vx, h.vy) > .15) h.ang = Math.atan2(h.vy, h.vx);
+    if(d < h.raio + jog.raio + .1 && h.morde <= 0){
+      h.morde = .8;
+      machucar(h.dano);
+    }
+  });
+}
+function desenharHomunculos(ox, oy){
+  const foto = imgRetrato('img/fase4/inimigo-5.png');
+  const pronta = foto.complete && foto.naturalWidth > 0;
+  homunculos.forEach(h => {
+    if(h.hp <= 0) return;
+    const px = ox + h.x*tam, py = oy + h.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    const alt = tam*1.15;
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(px, py + alt*.4, alt*.32, alt*.12, 0, 0, TAU); ctx.fill();
+    if(pronta){
+      const lar = foto.naturalWidth*(alt/foto.naturalHeight);
+      ctx.save();
+      ctx.translate(px, py);
+      if(h.vx < -.05) ctx.scale(-1, 1);
+      if(h.flash > 0) ctx.globalAlpha = .65;
+      ctx.drawImage(foto, -lar/2, -alt*.72, lar, alt);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
   });
 }
 
@@ -10330,6 +10404,81 @@ function desenharFogosArena(ox, oy){
     }
   });
 }
+/* itens do piso: reagentes (F4-RF-10, a 2ª metade da trava dupla), frascos de
+   antídoto (cura espalhada 15%, F4-RF-13) e injeções de adrenalina alquímica
+   (cura da arena 25%, só na luta, repostas a cada tentativa — F4-RF-14) */
+let reagentes = [], frascosAntidoto = [], injecoesArena = [];
+function criarReagentes(){
+  reagentes = [
+    {x:11,   y:13,   pego:false},   // oficina de bancadas
+    {x:11,   y:35,   pego:false},   // estufa de ingredientes
+    {x:15.5, y:49.5, pego:false}    // depósito de barris, no fundo do labirinto
+  ];
+}
+function criarFrascosAntidoto(){
+  frascosAntidoto = [
+    {x:26,   y:9,    pego:false},   // sala da fornalha
+    {x:5,    y:7,    pego:false},   // oficina
+    {x:40,   y:7,    pego:false},   // estúdio de anotações
+    {x:20,   y:22,   pego:false},   // salão central
+    {x:40,   y:33,   pego:false},   // cela de experimentos
+    {x:37,   y:61.5, pego:false}    // escada de chegada
+  ];
+}
+function criarInjecoesArena(){
+  injecoesArena = [
+    {x:24.5, y:44.5, pego:false}, {x:39.5, y:44.5, pego:false},
+    {x:24.5, y:54.5, pego:false}, {x:39.5, y:54.5, pego:false}
+  ];
+}
+function desenharReagentes(ox, oy){
+  reagentes.forEach(r => {
+    if(r.pego) return;
+    const px = ox + r.x*tam, py = oy + r.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    const bal = Math.sin(tempo*3 + r.x)*tam*.06;
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.14, tam*.13, tam*.05, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#8fd0a0';
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.08 + bal, tam*.11, tam*.16, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#c9a882';
+    ctx.fillRect(px - tam*.05, py - tam*.24 + bal, tam*.1, tam*.07);
+    ctx.fillStyle = 'rgba(200,255,220,.55)';
+    ctx.beginPath(); ctx.arc(px - tam*.03, py - tam*.1 + bal, tam*.03, 0, TAU); ctx.fill();
+  });
+}
+function desenharFrascosAntidoto(ox, oy){
+  frascosAntidoto.forEach(a => {
+    if(a.pego) return;
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    const bal = Math.sin(tempo*2.6 + a.x*2)*tam*.05;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.12, tam*.11, tam*.04, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#6fb8d8';
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.06 + bal, tam*.09, tam*.14, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a5a68';
+    ctx.fillRect(px - tam*.035, py - tam*.2 + bal, tam*.07, tam*.05);
+    ctx.fillStyle = 'rgba(220,245,255,.55)';
+    ctx.beginPath(); ctx.arc(px - tam*.025, py - tam*.09 + bal, tam*.025, 0, TAU); ctx.fill();
+  });
+}
+function desenharInjecoesArena(ox, oy){
+  if(etapa !== 'chefe') return;
+  injecoesArena.forEach(a => {
+    if(a.pego) return;
+    const px = ox + a.x*tam, py = oy + a.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    ctx.fillStyle = 'rgba(0,0,0,.3)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.12, tam*.1, tam*.04, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#b9c6c0'; ctx.lineWidth = Math.max(1, tam*.03);
+    ctx.beginPath(); ctx.moveTo(px, py - tam*.22); ctx.lineTo(px, py + tam*.06); ctx.stroke();
+    ctx.fillStyle = '#e85a6a';
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.02, tam*.06, tam*.12, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(255,230,235,.45)';
+    ctx.beginPath(); ctx.arc(px - tam*.02, py - tam*.05, tam*.02, 0, TAU); ctx.fill();
+  });
+}
 const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta-arena.png';   // referência do dono: dragões + leão na chave do arco
 const PA_FOLHA = {x1:.21, x2:.79, y:.24};
 function atualizarPortaoArena(dt){
@@ -10661,6 +10810,7 @@ const PISO_ALQUIMISTA = {
     chefe = null; el('chefeBarra').classList.remove('on');
     jog.hp = jog.hpMax;
     fogosArena = [];             // repostos a cada tentativa (F4-RF-19): a arena volta inteira
+    criarInjecoesArena();        // idem os 4 cantos da arena (F4-RF-14)
     jog.x = ALQ.PORTA.x + ALQ.PORTA.larg/2; jog.y = ALQ.PORTA.y + 1.6;   // a soleira (F4-RF-12)
     jog.vx = jog.vy = 0; jog.invul = 2.5;
     jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
@@ -10680,6 +10830,16 @@ const PISO_ALQUIMISTA = {
     fogosArena = [];
     criarPortasAlq();
     vistosAlq.clear();
+    criarReagentes();
+    criarFrascosAntidoto();
+    criarInjecoesArena();
+    /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15) */
+    criarHomunculos([
+      {x:12,   y:8},    // oficina de bancadas
+      {x:24,   y:8},    // sala da fornalha
+      {x:36,   y:32},   // cela de experimentos
+      {x:9.5,  y:43.5}  // depósito de barris, logo na entrada do labirinto
+    ]);
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
     const temFacao = inventario.some(i => i.id === 'facao-catacumbas');
     jog.arma = temMachado ? 'machado-gladiador' : (temFacao ? 'facao-catacumbas' : null);
@@ -10695,11 +10855,51 @@ const PISO_ALQUIMISTA = {
     anunciarComodoAlq();
     atualizarPortasInternas(dt);
     atualizarPortaoArena(dt);
+    atualizarHomunculos(dt);
     /* o fogo do arremesso queima quem pisar — machucar() já tem o próprio
        cooldown (jog.invul), então parado ali dói umas duas vezes por segundo */
     fogosArena.forEach(fo => {
       if(Math.hypot(fo.x-jog.x, fo.y-jog.y) < fo.raio) machucar(6);
     });
+    /* reagentes: 15% da trava dupla que falta juntar aos informantes */
+    reagentes.forEach(r => {
+      if(r.pego || Math.hypot(r.x-jog.x, r.y-jog.y) > .6) return;
+      r.pego = true;
+      const feitos = reagentes.filter(x => x.pego).length;
+      const cont = el('t-reagentes-cont'); if(cont) cont.textContent = feitos + '/' + reagentes.length;
+      if(feitos >= reagentes.length) marcarTarefa('t-reagentes');
+      sTrapo();
+      flutuar(r.x, r.y-.3, '+1 reagente', '#8fd0a0');
+      for(let k=0;k<10;k++) faisca(r.x, r.y, '#8fd0a0', .09);
+    });
+    /* frascos de antídoto: cura 15% na hora e ainda entram na bolsa como ração (+1 no Q) */
+    frascosAntidoto.forEach(a => {
+      if(a.pego || Math.hypot(a.x-jog.x, a.y-jog.y) > .6) return;
+      a.pego = true; jog.pocoes++;
+      const cura = Math.round(jog.hpMax*.15);
+      if(jog.hp < jog.hpMax){
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        flutuar(a.x, a.y-.6, '+' + cura, '#8fc4d8');
+      }
+      sTrapo();
+      flutuar(a.x, a.y-.3, '+1 antídoto', '#8fc4d8');
+      for(let k=0;k<10;k++) faisca(a.x, a.y, '#8fc4d8', .09);
+      atualizarHUD();
+    });
+    /* injeções de adrenalina: só valem na luta, repostas a cada tentativa */
+    if(etapa === 'chefe'){
+      injecoesArena.forEach(a => {
+        if(a.pego || jog.hp >= jog.hpMax) return;
+        if(Math.hypot(a.x-jog.x, a.y-jog.y) > .65) return;
+        a.pego = true;
+        const cura = Math.round(jog.hpMax*.25);
+        jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+        sTrapo();
+        flutuar(a.x, a.y-.5, '+' + cura, '#e8909c');
+        for(let k=0;k<16;k++) faisca(a.x, a.y, '#e8909c', .11);
+        atualizarHUD();
+      });
+    }
     /* atravessou a soleira aberta: a luta sela, e a trilha da arena toca */
     if(etapa === 'livre' && portaoArena && portaoArena.aberta
        && jog.y > ALQ.PORTA.y + .9
@@ -10709,9 +10909,8 @@ const PISO_ALQUIMISTA = {
       etapa = 'chefe';
     }
   },
-  /* a interação do piso: abrir a soleira selada da Sala de Experimentos
-     (trava dupla, F4-RF-11 — por ora só os 3 informantes; os 3 reagentes
-     entram quando a etapa de itens estiver pronta) */
+  /* a interação do piso: abrir a soleira selada da Sala de Experimentos —
+     trava dupla de verdade (F4-RF-11): os 3 informantes E os 3 reagentes */
   interacao(){
     if(etapa !== 'livre' || !portaoArena || portaoArena.aberta) return null;
     if(Math.hypot(ALQ.PORTA.x + ALQ.PORTA.larg/2 - jog.x, ALQ.PORTA.y + 1 - jog.y) < 2.6)
@@ -10721,10 +10920,17 @@ const PISO_ALQUIMISTA = {
   agir(i){
     if(i.tipo !== 'arena') return;
     const sabidos = informantes.filter(p => p.feito).length;
+    const juntados = reagentes.filter(r => r.pego).length;
     if(sabidos < informantes.length){
       sPortaoTravado(); tremor = 4;
       const falta = informantes.length - sabidos;
       avisar('A soleira não abre', falta === 1 ? 'falta ouvir 1 informante' : 'faltam ouvir ' + falta + ' informantes');
+      return;
+    }
+    if(juntados < reagentes.length){
+      sPortaoTravado(); tremor = 4;
+      const falta = reagentes.length - juntados;
+      avisar('A soleira não abre', falta === 1 ? 'falta 1 reagente' : 'faltam ' + falta + ' reagentes');
       return;
     }
     abrirSalaExperimentos();
@@ -10735,6 +10941,9 @@ const PISO_ALQUIMISTA = {
     const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
     if(cont) cont.textContent = informantes.length + '/' + informantes.length;
     marcarTarefa(tid);
+    reagentes.forEach(r => { r.pego = true; });
+    const rc = el('t-reagentes-cont'); if(rc) rc.textContent = reagentes.length + '/' + reagentes.length;
+    marcarTarefa('t-reagentes');
     abrirSalaExperimentos();
     jog.x = ALQ.PORTA.x + ALQ.PORTA.larg/2; jog.y = ALQ.PORTA.y + 1.6;
     jog.vx = jog.vy = 0; camX = jog.x; camY = jog.y;
@@ -10743,6 +10952,10 @@ const PISO_ALQUIMISTA = {
   },
   desenharCenario(ox, oy){
     desenharFogosArena(ox, oy);
+    desenharReagentes(ox, oy);
+    desenharFrascosAntidoto(ox, oy);
+    desenharInjecoesArena(ox, oy);
+    desenharHomunculos(ox, oy);
     desenharPortasAlq(ox, oy);
     desenharPortaoArena(ox, oy);
   },
