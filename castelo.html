@@ -10331,6 +10331,12 @@ function construirAlquimista(){
   /* ---- corredor sul, ligando estufa e cela ao depósito e à arena ---- */
   cavar(3,39,43,41);            // vai até x43: alcança o desvio leste (abaixo)
   cavar(3,42,4,42);             // corredor -> depósito (primeira cela do labirinto)
+  /* nicho da fornalha apagada (F4-RF-06): um bolsão isolado embaixo do
+     corredor sul, coluna x21 — longe do depósito (acaba em x19) e da
+     arena (começa em x23), com parede de sobra dos dois lados. Só abre
+     com a Lanterna dos Mortos + ACENDER; a soleira (21,42) fica PAREDE
+     até lá */
+  cavar(21,43,21,44);
   /* a soleira da Sala de Experimentos (ALQ.PORTA, x30-31/y42) fica SELADA —
      só abre com os 3 informantes ouvidos e os 3 reagentes coletados
      (trava dupla, F4-RF-11); os tiles viram CHAO em abrirSalaExperimentos() */
@@ -10508,6 +10514,47 @@ function desenharAjudantesOficina(ox, oy){
     ctx.restore();
   });
 }
+/* fornalha apagada (F4-RF-06): a Lanterna dos Mortos acende, e o gancho
+   de parede vira CHAO — libera o nicho com o antídoto bônus */
+let fornalhasApagadas = [];
+function criarFornalhasApagadas(){
+  fornalhasApagadas = [{x:21, y:42, gx:21, gy:42, acesa:false}];
+}
+function desenharFornalhasApagadas(ox, oy){
+  fornalhasApagadas.forEach(f => {
+    const px = ox + f.x*tam, py = oy + f.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    ctx.fillStyle = f.acesa ? '#1c1410' : '#141210';
+    ctx.beginPath(); ctx.arc(px, py, tam*.26, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,80,60,.6)'; ctx.lineWidth = Math.max(1, tam*.04);
+    ctx.beginPath(); ctx.arc(px, py, tam*.26, 0, TAU); ctx.stroke();
+    if(f.acesa){
+      const pulso = .7 + Math.sin(tempo*6)*.3;
+      const g = ctx.createRadialGradient(px, py, 0, px, py, tam*.6);
+      g.addColorStop(0, 'rgba(255,150,60,' + (.5*pulso) + ')'); g.addColorStop(1, 'rgba(255,90,20,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, tam*.6, 0, TAU); ctx.fill();
+      for(let i=0;i<3;i++){
+        const fx = px + (i-1)*tam*.09, alt = tam*(.32 + Math.sin(tempo*9+i)*.08);
+        ctx.fillStyle = i%2 ? 'rgba(255,150,50,.85)' : 'rgba(255,200,90,.85)';
+        ctx.beginPath();
+        ctx.moveTo(fx - tam*.05, py + tam*.05);
+        ctx.quadraticCurveTo(fx, py - alt*.6, fx, py - alt);
+        ctx.quadraticCurveTo(fx, py - alt*.6, fx + tam*.05, py + tam*.05);
+        ctx.closePath(); ctx.fill();
+      }
+    } else if(Math.random() < .02){
+      faisca(f.x, f.y - .2, 'rgba(120,110,90,.3)', .05);   // fuligem fria, de vez em quando
+    }
+  });
+}
+function acenderFornalha(f){
+  f.acesa = true;
+  mapa[idx(f.gx, f.gy)] = CHAO;
+  desenharCache();
+  tocarSfx('audio/fase4/sons/fornalha-acendendo-1.mp3', 1, sTrapo);
+  tremor = 6;
+  avisar('A fornalha acende', 'um nicho se abre na parede');
+}
 let vazamentos = [];
 function criarVazamentos(pontos){
   vazamentos = pontos.map(p => {
@@ -10628,7 +10675,8 @@ function criarFrascosAntidoto(){
     {x:40,   y:7,    pego:false},   // estúdio de anotações
     {x:20,   y:22,   pego:false},   // salão central
     {x:40,   y:33,   pego:false},   // cela de experimentos
-    {x:37,   y:61.5, pego:false}    // escada de chegada
+    {x:37,   y:61.5, pego:false},   // escada de chegada
+    {x:21.5, y:43.5, pego:false}    // dentro do nicho da fornalha apagada — só chega quem acender
   ];
 }
 function criarInjecoesArena(){
@@ -11049,6 +11097,7 @@ const PISO_ALQUIMISTA = {
       {x:5,  y:30}                                    // estufa de ingredientes
     ]);
     criarAjudantesOficina();   // o coadjuvante que circula pela oficina de bancadas
+    criarFornalhasApagadas();  // F4-RF-06: a Lanterna dos Mortos acende, o nicho abre
     /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15).
        `casa` prende cada um ao próprio cômodo (prenderNaCasa) — sem isso ele
        perseguia o jogador porta afora e virava problema do piso inteiro */
@@ -11145,12 +11194,21 @@ const PISO_ALQUIMISTA = {
   /* a interação do piso: abrir a soleira selada da Sala de Experimentos —
      trava dupla de verdade (F4-RF-11): os 3 informantes E os 3 reagentes */
   interacao(){
-    if(etapa !== 'livre' || !portaoArena || portaoArena.aberta) return null;
+    if(etapa !== 'livre') return null;
+    const fApagada = fornalhasApagadas.find(f => !f.acesa && Math.hypot(f.x-jog.x, f.y-jog.y) < 1.4);
+    if(fApagada) return {tipo:'fornalha', rotulo:'ACENDER', icone:'✦', alvo:fApagada};
+    if(!portaoArena || portaoArena.aberta) return null;
     if(Math.hypot(ALQ.PORTA.x + ALQ.PORTA.larg/2 - jog.x, ALQ.PORTA.y + 1 - jog.y) < 2.6)
       return {tipo:'arena', rotulo:'ABRIR', icone:'⇧'};
     return null;
   },
   agir(i){
+    if(i.tipo === 'fornalha'){
+      const temLanterna = inventario.some(it => it.id === 'lanterna-mortos');
+      if(!temLanterna){ avisar('Fria demais', 'precisa da Lanterna dos Mortos pra acender'); return; }
+      acenderFornalha(i.alvo);
+      return;
+    }
     if(i.tipo !== 'arena') return;
     const sabidos = informantes.filter(p => p.feito).length;
     const juntados = reagentes.filter(r => r.pego).length;
@@ -11195,6 +11253,7 @@ const PISO_ALQUIMISTA = {
     desenharInjecoesArena(ox, oy);
     desenharHomunculos(ox, oy);
     desenharAjudantesOficina(ox, oy);
+    desenharFornalhasApagadas(ox, oy);
     desenharVazamentos(ox, oy);
     desenharPortasAlq(ox, oy);
     desenharPortaoArena(ox, oy);
