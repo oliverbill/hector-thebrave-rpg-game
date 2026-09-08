@@ -10743,13 +10743,15 @@ const imgLanternaMao = new Image(); imgLanternaMao.src = 'img/fase3/lanterna-mor
 function desenharLanternaNaMao(px, py, r){
   if(!inventario.some(i => i.id === 'lanterna-mortos')) return;
   if(!(imgLanternaMao.complete && imgLanternaMao.naturalWidth > 0)) return;
-  const lado = Math.cos(jog.angulo) < 0 ? 1 : -1;   // a arma fica do lado do olhar; a lanterna, do outro
-  const lx = px - lado*tam*.4, ly = py + r*.75;
+  /* mão direita do jogador, sempre — não troca de lado com a arma. Altura
+     de mão/quadril (mesma faixa que o fallback de desenharArmaNaMao usa
+     pra empunhadura), não mais lá embaixo perto do pé */
+  const lx = px + tam*.36, ly = py - r*.15;
   const alt = tam*.42, lar = imgLanternaMao.naturalWidth*(alt/imgLanternaMao.naturalHeight);
-  const g = ctx.createRadialGradient(lx, ly - alt*.3, 0, lx, ly - alt*.3, tam*.85);
+  const g = ctx.createRadialGradient(lx, ly - alt*.5, 0, lx, ly - alt*.5, tam*.85);
   g.addColorStop(0, 'rgba(255,205,130,.32)'); g.addColorStop(1, 'rgba(255,205,130,0)');
-  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(lx, ly - alt*.3, tam*.85, 0, TAU); ctx.fill();
-  ctx.drawImage(imgLanternaMao, lx - lar/2, ly - alt*.9, lar, alt);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(lx, ly - alt*.5, tam*.85, 0, TAU); ctx.fill();
+  ctx.drawImage(imgLanternaMao, lx - lar/2, ly - alt, lar, alt);
 }
 const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta-arena.png';   // referência do dono: dragões + leão na chave do arco
 const PA_FOLHA = {x1:.21, x2:.79, y:.24};
