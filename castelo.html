@@ -10439,8 +10439,12 @@ function desenharPortasAlq(ox, oy){
    desta fase, papel dos espinhos (fase 1) e labaredas (fase 2) */
 let vazamentos = [];
 function criarVazamentos(pontos){
-  vazamentos = pontos.map(p => ({...p, fase:Math.random()*5.2, armado:false,
-    ang: p.ang != null ? p.ang : Math.random()*TAU}));
+  vazamentos = pontos.map(p => {
+    const ang = p.ang != null ? p.ang : Math.random()*TAU;
+    const off = .55;      // metade do comprimento do barril, em tiles
+    return {...p, fase:Math.random()*5.2, armado:false, ang,
+      bx: p.x + Math.cos(ang)*off, by: p.y + Math.sin(ang)*off};   // a boca, onde vaza e onde dói
+  });
 }
 function faseVazamento(v){
   const c = (tempo + v.fase) % 5.2;
@@ -10453,7 +10457,7 @@ function desenharVazamentos(ox, oy){
   vazamentos.forEach(v => {
     const px = ox + v.x*tam, py = oy + v.y*tam;
     if(foraDaVista(px, py, tam*3)) return;
-    const ang = v.ang || 0, comp = tam*.66, larg = tam*.34;
+    const ang = v.ang || 0, comp = tam*1.1, larg = tam*.52;
     /* o barril de ferro velho, tombado — referência do dono: pilha de
        tambores enferrujados vazando um brilho verde pela boca aberta */
     ctx.save();
@@ -10480,7 +10484,7 @@ function desenharVazamentos(ox, oy){
     ctx.beginPath(); ctx.ellipse(comp/2, 0, larg*.34, larg*.48, 0, 0, TAU); ctx.stroke();
     ctx.restore();
 
-    const bocaX = px + Math.cos(ang)*comp*.52, bocaY = py + Math.sin(ang)*comp*.52;
+    const bocaX = ox + v.bx*tam, bocaY = oy + v.by*tam;   // mesmo ponto usado pro dano
     const f = faseVazamento(v);
     if(f.tipo === 'gas'){
       const r = tam*(.26 + f.p*.95);
@@ -11006,7 +11010,10 @@ const PISO_ALQUIMISTA = {
       const f = faseVazamento(v);
       if(f.tipo === 'estoura'){
         if(!v.armado){ v.armado = true; tremor = Math.max(tremor, 10); sBaterParede(); }
-        if(Math.hypot(v.x-jog.x, v.y-jog.y) < 1.3) machucar(12);
+        /* o dano sai da BOCA (v.bx/v.by), não do centro do barril — é ali
+           que o efeito visual da explosão aparece; conferir contra v.x/v.y
+           deixava gente dentro do círculo laranja sem levar dano nenhum */
+        if(Math.hypot(v.bx-jog.x, v.by-jog.y) < 1.3) machucar(12);
       } else v.armado = false;
     });
     /* reagentes: 15% da trava dupla que falta juntar aos informantes */
