@@ -2073,7 +2073,8 @@ function atualizarChefe(dt){
         const i = Math.min(c.golpes, f.comboGolpes) - 1;
         golpeChefe(f.comboDano[i], f.comboAlcance[i]);
         if(c.golpes >= f.comboGolpes){
-          if(f.cavaT) entrarCava(c, f);          // ciclo subterrâneo (só com cfg.cavaT)
+          if(f.cavaT) entrarCava(c, f);                    // ciclo subterrâneo (só com cfg.cavaT)
+          else if(f.arremessoAvisoT) entrarArremesso(c, f); // frasco à distância (só com cfg.arremessoAvisoT)
           else { c.estado = 'exausto'; c.t = f.exaustoT; }
         }
         else c.t = f.comboIntervalo;
@@ -2116,6 +2117,26 @@ function atualizarChefe(dt){
 
     case 'zonzo':
       if(c.t <= 0){ c.estado = 'aproxima'; c.t = f.aproximaT; }
+      break;
+
+    /* ---- arremesso à distância (só entra aqui quando o cfg tem arremessoAvisoT):
+       primeiro chefe com ataque que não é corpo-a-corpo nem ciclo subterrâneo.
+       O frasco aterrissa num ponto telegrafado — o jogador ainda pode sair
+       de cima — e o que sobra no chão vira fogo permanente (F4-RF-19),
+       fora do alcance desta máquina: mora em `fogosArena`. ---- */
+    case 'arremesso':
+      c.vx *= .8; c.vy *= .8;
+      if(c.t <= 0){
+        const alvo = c.alvoArremesso || {x: jog.x, y: jog.y};
+        const ang = Math.atan2(jog.y - alvo.y, jog.x - alvo.x);
+        if(Math.hypot(jog.x - alvo.x, jog.y - alvo.y) < f.arremessoRaio)
+          machucar(f.arremessoDano, ang);
+        fogosArena.push({x: alvo.x, y: alvo.y, raio: f.arremessoRaio});
+        tremor = Math.max(tremor, 12);
+        if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe); else sBaterParede();
+        for(let k=0;k<20;k++) faisca(alvo.x, alvo.y, '#e8a13c', .17);
+        c.estado = 'exausto'; c.t = f.exaustoT;
+      }
       break;
 
     /* ---- ciclo subterrâneo (só entra aqui quando o cfg tem cavaT) ---- */
@@ -2191,6 +2212,23 @@ function entrarCava(c, f){
   if(f.sons && f.sons.cava) vozChefe(f.sons.cava);
   tremor = Math.max(tremor, 8);
   for(let k=0;k<14;k++) terraRevolvida(c.x + (Math.random()-.5)*c.raio*1.6, c.y + (Math.random()-.5)*c.raio*.8);
+}
+/* entra no arremesso: mira onde o jogador está agora (ele pode sair de cima
+   antes do frasco cair) e telegrafa por `arremessoAvisoT`. Chave `gas` na
+   fraqueza `aviso` (F4-RF-20, Bibliotecário Cego) estica o aviso e soa um
+   alerta — quem sabe o segredo sente o cheiro antes de faiscar. */
+function entrarArremesso(c, f){
+  c.estado = 'arremesso';
+  const fq = piso.chefe.fraquezas, av = fq && fq.aviso;
+  const sabeGas = av && intel[av.chave];
+  c.t = f.arremessoAvisoT + (sabeGas ? (av.bonusT || 0) : 0);
+  c.arremessoTotal = c.t;      // a chave 'gas' estica o aviso além de arremessoAvisoT — o
+                                // telegrafo mede o progresso contra ESTE total, não a base
+  c.alvoArremesso = {x: jog.x, y: jog.y};
+  c.vx = c.vy = 0;
+  if(sabeGas){ sFerro(); flutuar(c.x, c.y - c.raio*2.2, 'cheiro de gás...', '#9fd08a'); }
+  if(f.sons && f.sons.arremesso) vozChefe(f.sons.arremesso);
+  tremor = Math.max(tremor, 4);
 }
 /* debaixo da terra ele não é visto, não empurra e não leva golpe */
 function chefeSubmerso(c){
@@ -2367,6 +2405,7 @@ function atualizarBarraChefe(){
       : 'cavando...';
   else if(chefe.estado === 'combo' && sabeExausto)
     txt = 'golpe ' + Math.min(f.comboGolpes, chefe.golpes+1) + ' de ' + f.comboGolpes;
+  else if(chefe.estado === 'arremesso') txt = 'mirando o frasco...';
   /* fora dos estados vulneráveis a lâmina não entra: o HUD avisa, senão o
      jogador acha que o golpe está bugado */
   if(chefe.estado === 'abraca') txt = 'ele te agarrou';
@@ -2471,8 +2510,12 @@ function morrer(){
 function usarTrapo(){
   if(!vivo || pausado || jog.pocoes <= 0 || jog.hp >= jog.hpMax) return;
   jog.pocoes--;
-  jog.hp = Math.min(jog.hpMax, jog.hp + 40);
-  flutuar(jog.x, jog.y, '+40', '#8fc48a');
+  /* percentual do hpMax (regra fixa da etapa 1.7 do /fase-nova) — em número
+     fixo, o consumível encolhia sozinho a cada piso: 40 valia 40% no piso 1
+     e só 13% no piso 6. 15% acompanha o cura espalhada de cada fase. */
+  const cura = Math.round(jog.hpMax*.15);
+  jog.hp = Math.min(jog.hpMax, jog.hp + cura);
+  flutuar(jog.x, jog.y, '+' + cura, '#8fc48a');
   for(let k=0;k<12;k++) faisca(jog.x, jog.y, '#8fc48a', .09);
   sTrapo();
   atualizarHUD();
@@ -3131,7 +3174,7 @@ function iniciarPiso(p){
   vestido = null;
   el('dialogo').classList.remove('on'); calarVoz();   // nada do piso anterior fica na tela
   intel = {};
-  jog = {x:p.spawn.x, y:p.spawn.y, vx:0, vy:0, raio:.30, hp:100, hpMax:100, dano:10,
+  jog = {x:p.spawn.x, y:p.spawn.y, vx:0, vy:0, raio:.30, hp:(p.vidaMax||100), hpMax:(p.vidaMax||100), dano:10,
          angulo:-Math.PI/2, golpe:0, recarga:0, dash:0, dashCd:0, invul:0, flash:0,
          pocoes:p.trapos, passo:0, lento:false, dashOff:false};
   informantes = p.informantes.map(i => ({...i, indice:0, feito:false, fase:Math.random()*TAU}));
@@ -4103,6 +4146,7 @@ const PISO_CALABOUCO = {
   },
   construir: construirCalabouco,
   spawn:{x:5.8, y:21.2},
+  vidaMax:100,
   trapos:2,
   intro:{
     titulo:"O Calabouço<em>piso 1</em>",
@@ -6117,6 +6161,7 @@ const PISO_COZINHAS = {
       pontos:[[5.5,46.5],[17,51.5],[30.5,51.5]] }                    // as lanternas e velas da adega
   ],
   spawn:{x:40, y:50},
+  vidaMax:125,
   trapos:2,
   intro:{
     titulo:"As Cozinhas<em>piso 2</em>",
@@ -9711,6 +9756,7 @@ const PISO_FUNERAL = {
   pintarCache: pintarFuneralCache,
   comodos: COMODOS_FUN,        // a planta que o `?sala=` usa para nascer dentro de um cômodo
   spawn:{x:40, y:52},
+  vidaMax:156,
   trapos:2,
   intro:{
     titulo:"As Salas de Funeral<em>piso 3</em>",
@@ -10099,9 +10145,12 @@ const PISO_FUNERAL = {
 
 const ALQ = {                      // geografia do piso (planta: 3 salas ao norte, salão central, 2 salas ao sul, depósito + arena mais ao fundo, escada de chegada)
   LARG:44, ALT:64,
-  /* soleira sealed da Sala de Experimentos, para a trava dupla (F4-RF-11)
-     entrar em vigor quando o chefe for construído — por ora fica aberta */
-  PORTA:{x:29, y:42, larg:3}
+  /* soleira SELADA da Sala de Experimentos (F4-RF-11): 2 tiles de PAREDE no
+     corredor sul, x30..31/y42 — abre quando os 3 informantes forem ouvidos
+     E os 3 reagentes coletados, como a cova do piso 3 */
+  PORTA:{x:30, y:42, larg:2},
+  /* a coleira do Alquimista: ele não sai da Sala de Experimentos */
+  ARENA:{x1:23, y1:43, x2:41, y2:56}
 };
 const vistosAlq = new Set();
 /* cada cômodo se apresenta na primeira vez que o jogador entra nele */
@@ -10153,9 +10202,11 @@ function construirAlquimista(){
   cavar(31,27,42,38);           // cela de experimentos fracassados
 
   /* ---- corredor sul, ligando estufa e cela ao depósito e à arena ---- */
-  cavar(3,39,41,41);
+  cavar(3,39,43,41);            // vai até x43: alcança o desvio leste (abaixo)
   cavar(3,42,4,42);             // corredor -> depósito (primeira cela do labirinto)
-  cavar(30,42,31,42);           // corredor -> sala de experimentos
+  /* a soleira da Sala de Experimentos (ALQ.PORTA, x30-31/y42) fica SELADA —
+     só abre com os 3 informantes ouvidos e os 3 reagentes coletados
+     (trava dupla, F4-RF-11); os tiles viram CHAO em abrirSalaExperimentos() */
   /* soleiras: TODA passagem leva porta (pedido do dono) — a estufa e a cela
      tinham o fundo aberto de ponta a ponta pro corredor sul, sem vão nenhum
      pra pendurar a folha. Fecha a fiada de baixo e sobra só a soleira. */
@@ -10173,12 +10224,18 @@ function construirAlquimista(){
     if(c.portas[2]) cavar(gx, gy+2, gx+1, gy+2);   // passagem para o sul
   }
 
-  /* ---- sala de experimentos: a arena do Alquimista (SELADA mais tarde) ---- */
+  /* ---- sala de experimentos: a arena do Alquimista (SELADA) ---- */
   cavar(23,43,41,56,CHAO2);
 
   /* ---- escada de chegada (vinda das salas de funeral) ---- */
   cavar(32,59,42,63,CHAO2);
-  cavar(36,57,37,58);           // corredor arena -> escada
+  /* a ÚNICA porta da Sala de Experimentos é a soleira selada (ALQ.PORTA,
+     no corredor sul) — nada de atalho direto da escada pra arena, senão a
+     trava dupla vira decoração. O spawn contorna a arena por fora, pelo
+     desvio leste — SÓ x43 (x42 fica de parede, separando o desvio da arena
+     nas linhas y43..56; colado, o desvio furava a soleira por fora) */
+  cavar(43,41,43,58);
+  cavar(42,59,43,59);           // a boca do desvio, entrando na escada
 
   /* ---- luzes: poucas, o piso ainda não tem a fornalha pintada ---- */
   [[8.5,5.6],[8.5,13.6],                              // oficina
@@ -10208,11 +10265,11 @@ function criarPortasAlq(){
     {x:8,  y:38, vert:false},    // estufa -> corredor sul
     {x:36, y:38, vert:false},    // cela -> corredor sul
     {x:3,  y:42, vert:false},    // corredor sul -> depósito
-    {x:36, y:58, vert:false}     // sala de experimentos -> escada
+    {x:42, y:59, vert:false}     // desvio leste -> escada
   ].map(p => ({...p, ab:0, rangeu:false}));
   /* a soleira da Sala de Experimentos é especial: porta própria, maior e
      mais ornamentada, diferente das outras (pedido do dono) */
-  portaoArena = {x:30, y:42, ab:0, rangeu:false};
+  portaoArena = {x:30, y:42, ab:0, rangeu:false, aberta:false};
 }
 function desenharPortasAlq(ox, oy){
   const pronta = imgPorta4.complete && imgPorta4.naturalWidth > 0;
@@ -10252,10 +10309,31 @@ function desenharPortasAlq(ox, oy){
 /* --- a soleira da Sala de Experimentos: porta própria, maior e diferente
    das outras (pedido do dono, 08/09) --- */
 let portaoArena = null;
+/* poças de fogo que o arremesso deixa no chão da arena — persistem pelo
+   resto da tentativa (F4-RF-19), fora da máquina de estados do chefe */
+let fogosArena = [];
+function desenharFogosArena(ox, oy){
+  fogosArena.forEach(fo => {
+    const px = ox + fo.x*tam, py = oy + fo.y*tam, r = fo.raio*tam;
+    if(foraDaVista(px, py, r + tam*2)) return;
+    const pulso = .55 + Math.sin(tempo*6 + fo.x*3)*.45;
+    ctx.fillStyle = 'rgba(40,10,4,.55)';
+    ctx.beginPath(); ctx.ellipse(px, py, r*1.05, r*.62, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(232,120,40,' + (.16 + pulso*.14) + ')';
+    ctx.beginPath(); ctx.ellipse(px, py, r*.85, r*.52, 0, 0, TAU); ctx.fill();
+    for(let k=0;k<7;k++){
+      const a = k/7*TAU + tempo*1.6;
+      const fx = px + Math.cos(a)*r*.55, fy = py + Math.sin(a)*r*.34 - Math.abs(Math.sin(tempo*7+k))*r*.4;
+      ctx.fillStyle = k%2 ? 'rgba(255,176,64,.8)' : 'rgba(226,88,30,.75)';
+      ctx.beginPath();
+      ctx.ellipse(fx, fy, r*.1, r*.18, 0, 0, TAU); ctx.fill();
+    }
+  });
+}
 const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta-arena.png';   // referência do dono: dragões + leão na chave do arco
 const PA_FOLHA = {x1:.21, x2:.79, y:.24};
 function atualizarPortaoArena(dt){
-  if(!portaoArena) return;
+  if(!portaoArena || !portaoArena.aberta) return;   // selada: nem range, fica fechada
   const p = portaoArena, cx = p.x + 1, cy = p.y;
   const perto = Math.hypot(cx - jog.x, cy - jog.y) < 2.4;
   const alvo = perto ? 1 : 0;
@@ -10266,6 +10344,16 @@ function atualizarPortaoArena(dt){
     if(Math.hypot(cx - jog.x, cy - jog.y) < 9) sRanger(.45);
   }
   if(alvo === 0 && p.ab < .04) p.rangeu = false;
+}
+/* abre a soleira selada da Sala de Experimentos (F4-RF-11): os tiles de
+   ALQ.PORTA viram CHAO, o cache é repintado e o portão passa a rangear
+   como as outras portas — igual ao portão da cova no piso 3 */
+function abrirSalaExperimentos(){
+  portaoArena.aberta = true;
+  for(let x = ALQ.PORTA.x; x < ALQ.PORTA.x + ALQ.PORTA.larg; x++) mapa[idx(x, ALQ.PORTA.y)] = CHAO;
+  desenharCache();
+  sPortao(); tremor = 10;
+  avisar('A soleira se abre', 'a Sala de Experimentos espera');
 }
 function desenharPortaoArena(ox, oy){
   if(!portaoArena) return;
@@ -10297,6 +10385,52 @@ function desenharPortaoArena(ox, oy){
   ctx.drawImage(imgPortaArena, 0, 0, iw*FL.x1, ih, x0, yTopo, fx, h);
   ctx.drawImage(imgPortaArena, iw*FL.x2, 0, iw*(1-FL.x2), ih, x0 + FL.x2*w, yTopo, (1-FL.x2)*w, h);
   ctx.drawImage(imgPortaArena, iw*FL.x1, 0, iw*(FL.x2-FL.x1), ih*FL.y, x0 + fx, yTopo, fw, fy);
+}
+
+/* O ALQUIMISTA: sprite recortado (não desenho vetorial como Gladiador/
+   Açougueiro/Coveiro — pendência conhecida, ver PRD §8), duas vezes a
+   altura do jogador, com sombra, avanço no golpe e o círculo telegrafado
+   do arremesso. */
+function desenharAlquimista(c, ox, oy){
+  const f = c.cfg;
+  const px = ox + c.x*tam, py = oy + c.y*tam;
+  if(foraDaVista(px, py, tam*7)) return;
+  const foto = imgRetrato(f.retrato);
+  const pronta = foto.complete && foto.naturalWidth > 0;
+  const playerH = imgJogador.naturalWidth > 0
+    ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2;
+  const alt = playerH*2.15;                       // duas vezes maior que o jogador
+  const avanco = c.golpeAnim > 0 ? Math.cos(c.angulo)*tam*.12 : 0;
+  const suba   = c.golpeAnim > 0 ? Math.sin(c.angulo)*tam*.12 : 0;
+  ctx.fillStyle = 'rgba(0,0,0,.4)';
+  ctx.beginPath(); ctx.ellipse(px, py + alt*.05, alt*.24, alt*.08, 0, 0, TAU); ctx.fill();
+  if(pronta){
+    const lar = foto.naturalWidth*(alt/foto.naturalHeight);
+    const bx = px + avanco, by = py + alt*.03 + suba;
+    ctx.drawImage(foto, bx - lar/2, by - alt, lar, alt);
+    if(c.flash > 0){
+      ctx.globalAlpha = c.flash*.5;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(bx - lar/2, by - alt, lar, alt);
+      ctx.globalAlpha = 1;
+    }
+  }
+  /* o círculo telegrafado do arremesso: pisca mais rápido conforme o tempo
+     fecha — o mesmo desenho do 'irrompe' do Coveiro, no ponto de pouso */
+  if(c.estado === 'arremesso' && c.alvoArremesso){
+    const ax = ox + c.alvoArremesso.x*tam, ay = oy + c.alvoArremesso.y*tam;
+    const p = Math.max(0, Math.min(1, 1 - Math.max(0, c.t)/(c.arremessoTotal || f.arremessoAvisoT)));
+    const pisca = Math.abs(Math.sin(tempo*13));
+    const r = f.arremessoRaio*tam;
+    ctx.fillStyle = 'rgba(230,120,40,' + (.08 + .13*pisca + .1*p) + ')';
+    ctx.beginPath(); ctx.arc(ax, ay, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(230,120,40,' + (.3 + .5*pisca) + ')';
+    ctx.lineWidth = Math.max(2, tam*.08);
+    ctx.beginPath(); ctx.arc(ax, ay, r, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,200,120,' + (.25 + .45*p) + ')';
+    ctx.lineWidth = Math.max(1, tam*.05);
+    ctx.beginPath(); ctx.arc(ax, ay, r*p, 0, TAU); ctx.stroke();
+  }
 }
 
 /* === PINTURA DO CENÁRIO DO PISO 4 (gancho pintarCache) ===================
@@ -10409,6 +10543,7 @@ const PISO_ALQUIMISTA = {
   pintarCache: pintarAlquimistaCache,
   comodos: COMODOS_ALQ,
   spawn:{x:37, y:61},
+  vidaMax:195,      // +25% sobre o piso 3 (156), regra fixa da etapa 1.7
   trapos:0,
   intro:{
     titulo:"O Laboratório do Alquimista<em>piso 4</em>",
@@ -10437,8 +10572,8 @@ const PISO_ALQUIMISTA = {
       falas:[
         'Fugi antes que ele me pedisse pra beber o que sobrou no frasco. Ainda sonho com a cor.',
         'Ele me ensinou a misturar. Nunca me ensinou a parar antes de explodir.',
-        'Presta atenção no braço dele: sempre arremessa pelo mesmo lado. O frasco cai sempre ali.'
-      ], ganho:'O lado que ele sempre erra ao arremessar leva mais dano.' },
+        'Presta atenção no arremesso: ele nunca cobre as próprias costas nesse instante. É a hora de acertar por trás.'
+      ], ganho:'Golpes pelas costas causam bem mais dano.' },
     { nome:'O Bibliotecário Cego', chave:'gas', cor:'#9fb0c0', escala:1.1,
       retrato:'img/fase4/npc-bibliotecario-3.png',
       voz:{pitch:.85, rate:.9, genero:'m',
@@ -10460,6 +10595,51 @@ const PISO_ALQUIMISTA = {
         'Vê essas folhas murchando? É o mesmo jeito que ele fica quando o fôlego acaba. Bata quando ele murchar.'
       ], ganho:'Dano maior nele quando estiver exausto ou se preparando pro arremesso.' }
   ],
+  /* O ALQUIMISTA (F4-RF-18..22): primeiro chefe com ataque à distância —
+     nada de investida em linha reta. Corpo-a-corpo normal até o combo
+     fechar; aí ele recua e arremessa um frasco num ponto telegrafado, que
+     vira fogo permanente no chão (fora da máquina, em `fogosArena`, F4-RF-19). */
+  chefe:{
+    cfg:{
+      nome:'O Alquimista', x:32, y:47, hp:900, raio:.95,
+      retrato:'img/fase4/chefe-5.png',
+      esperaT:.4, aproximaT:2.2, velAproxima:2.0,
+      arena:ALQ.ARENA,
+      comboDist:2.8, comboIntervalo:.4, comboGolpes:2,
+      comboDano:[20, 28], comboAlcance:[2.6, 2.8],
+      reageDeImediato:true,
+      /* o arremesso: recua, mira onde o jogador está, e telegrafa por quase
+         1s — sai fácil de esquivar, mas o chão que ele acerta fica ardendo
+         pelo resto da tentativa (a arena vai encolhendo) */
+      arremessoAvisoT:.95, arremessoRaio:2.2, arremessoDano:22,
+      exaustoT:1.8, tremorPasso:6,
+      sons:{arremesso:'fase4/sons/vidro-arremesso-1', irrompe:'fase4/sons/explosao-1',
+            entrada:'fase4/vozes/alquimista-entrada', golpe:'fase4/vozes/alquimista-golpe',
+            levaGolpe:'fase4/vozes/alquimista-levagolpe'},
+      entrada:['O Alquimista', 'cada frasco tem um propósito'],
+      abertura:{
+        falas:['Mais um rato correndo pelos meus corredores... vamos ver do que você é feito.'],
+        voz:{pitch:.8, rate:.92, genero:'m', audios:['audio/fase4/vozes/alquimista-entrada.mp3']}
+      }
+    },
+    fraquezas:{
+      costas:{chave:'arremesso', com:2.1, sem:1.2},
+      /* fraqueza que não é dano: estica o telegrafo do arremesso e soa um
+         aviso — F4-RF-20, chave do Bibliotecário Cego (lida em entrarArremesso) */
+      aviso:{chave:'gas', bonusT:.6},
+      porEstado:{
+        exausto:{chave:'exausto', com:2.2, sem:1.25},
+        arremesso:{chave:'exausto', com:1.8, sem:1.15}
+      }
+    },
+    desenhar: desenharAlquimista
+  },
+  recompensa:{
+    id:'pocao-bomba',
+    nome:'Poção-bomba',
+    img:null,
+    desc:'Um frasco instável, pronto pra explodir. Contra o Zelador, causa dano assim que a luta começa.'
+  },
   textos:{
     vitoria: () => ({
       titulo:"O Alquimista cai<em>piso 4 concluído</em>",
@@ -10480,7 +10660,8 @@ const PISO_ALQUIMISTA = {
     etapa = 'livre'; vivo = true; pausado = false; dialogo = null;
     chefe = null; el('chefeBarra').classList.remove('on');
     jog.hp = jog.hpMax;
-    jog.x = 37; jog.y = 52;      // a soleira da sala de experimentos (F4-RF-12)
+    fogosArena = [];             // repostos a cada tentativa (F4-RF-19): a arena volta inteira
+    jog.x = ALQ.PORTA.x + ALQ.PORTA.larg/2; jog.y = ALQ.PORTA.y + 1.6;   // a soleira (F4-RF-12)
     jog.vx = jog.vy = 0; jog.invul = 2.5;
     jog.golpe = 0; jog.recarga = 0; jog.dash = 0; jog.dashCd = 0;
     if(piso.ambientes) criarAmbientes(piso.ambientes);
@@ -10496,6 +10677,7 @@ const PISO_ALQUIMISTA = {
     labaredas = []; paes = []; caldos = []; ratazanas = [];
     ajudantes = []; velasCaminho = []; aguaBenta = []; cirios = [];
     maos = []; zonasLuz = []; vultos = [];
+    fogosArena = [];
     criarPortasAlq();
     vistosAlq.clear();
     const temMachado = inventario.some(i => i.id === 'machado-gladiador');
@@ -10513,10 +10695,54 @@ const PISO_ALQUIMISTA = {
     anunciarComodoAlq();
     atualizarPortasInternas(dt);
     atualizarPortaoArena(dt);
+    /* o fogo do arremesso queima quem pisar — machucar() já tem o próprio
+       cooldown (jog.invul), então parado ali dói umas duas vezes por segundo */
+    fogosArena.forEach(fo => {
+      if(Math.hypot(fo.x-jog.x, fo.y-jog.y) < fo.raio) machucar(6);
+    });
+    /* atravessou a soleira aberta: a luta sela, e a trilha da arena toca */
+    if(etapa === 'livre' && portaoArena && portaoArena.aberta
+       && jog.y > ALQ.PORTA.y + .9
+       && jog.x > ALQ.PORTA.x - 1 && jog.x < ALQ.PORTA.x + ALQ.PORTA.larg + 1){
+      criarChefe();
+      tocarBgm('audio/fase4/trilha-arena.mp3', .38);   // tapa-buraco até o dono mandar a trilha (F4-RF-24)
+      etapa = 'chefe';
+    }
   },
-  interacao(){ return null; },
-  agir(i){},
+  /* a interação do piso: abrir a soleira selada da Sala de Experimentos
+     (trava dupla, F4-RF-11 — por ora só os 3 informantes; os 3 reagentes
+     entram quando a etapa de itens estiver pronta) */
+  interacao(){
+    if(etapa !== 'livre' || !portaoArena || portaoArena.aberta) return null;
+    if(Math.hypot(ALQ.PORTA.x + ALQ.PORTA.larg/2 - jog.x, ALQ.PORTA.y + 1 - jog.y) < 2.6)
+      return {tipo:'arena', rotulo:'ABRIR', icone:'⇧'};
+    return null;
+  },
+  agir(i){
+    if(i.tipo !== 'arena') return;
+    const sabidos = informantes.filter(p => p.feito).length;
+    if(sabidos < informantes.length){
+      sPortaoTravado(); tremor = 4;
+      const falta = informantes.length - sabidos;
+      avisar('A soleira não abre', falta === 1 ? 'falta ouvir 1 informante' : 'faltam ouvir ' + falta + ' informantes');
+      return;
+    }
+    abrirSalaExperimentos();
+  },
+  falarLiberado(){ return etapa === 'livre'; },
+  irAoChefe(){
+    informantes.forEach(p => { p.feito = true; intel[p.chave] = true; });
+    const tid = piso.missao.tarefaInformantes, cont = el(tid + '-cont');
+    if(cont) cont.textContent = informantes.length + '/' + informantes.length;
+    marcarTarefa(tid);
+    abrirSalaExperimentos();
+    jog.x = ALQ.PORTA.x + ALQ.PORTA.larg/2; jog.y = ALQ.PORTA.y + 1.6;
+    jog.vx = jog.vy = 0; camX = jog.x; camY = jog.y;
+    atualizarHUD();
+    avisar('Atalho de teste', 'a Sala de Experimentos está aberta');
+  },
   desenharCenario(ox, oy){
+    desenharFogosArena(ox, oy);
     desenharPortasAlq(ox, oy);
     desenharPortaoArena(ox, oy);
   },

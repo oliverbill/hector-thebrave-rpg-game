@@ -17,9 +17,9 @@ Alvo: −14 a −17 LUFS. Nomes de arquivo já batem com o `voz.audios` do códi
    > Ele me ensinou a misturar. Nunca me ensinou a parar antes de explodir.
 
 3. `audio/fase4/vozes/aprendiz-3.mp3` — **segredo mecânico**
-   > Presta atenção no braço dele: sempre arremessa pelo mesmo lado. O frasco cai sempre ali.
+   > Presta atenção no arremesso: ele nunca cobre as próprias costas nesse instante. É a hora de acertar por trás.
 
-Ganho (`p.ganho`): *O lado que ele sempre erra ao arremessar leva mais dano.*
+Ganho (`p.ganho`): *Golpes pelas costas causam bem mais dano.*
 
 ---
 
@@ -53,7 +53,14 @@ Ganho (`p.ganho`): *Dano maior nele quando estiver exausto ou se preparando pro 
 
 ---
 
-## O Alquimista (chefão) — falas a fechar
+## O Alquimista (chefão)
 
-Pendente: entrada (com legenda antes da luta), golpe e leva-golpe — junto com a etapa 5
-(máquina de estados do chefe), quando os números e o moveset ficarem oficiais no `cfg`.
+Entrada fechada (com legenda, antes da luta). Golpe e leva-golpe ainda pendentes — o
+`cfg.sons` já reserva os nomes de arquivo (`alquimista-golpe`, `alquimista-levagolpe`),
+mas o texto/gravação entram quando o dono decidir o que ele grita ao bater e ao apanhar.
+
+1. `audio/fase4/vozes/alquimista-entrada.mp3` — fala de abertura, com legenda
+   > Mais um rato correndo pelos meus corredores... vamos ver do que você é feito.
+
+Números oficiais do `cfg` (F4-RF-21): `hp:900`, corpo-a-corpo `comboDano:[20,28]`,
+arremesso `arremessoDano:22`, `arremessoRaio:2.2`, `arremessoAvisoT:.95`.

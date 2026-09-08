@@ -108,9 +108,10 @@ const PISOS = [
       ['estufa de ingredientes (8,32)', 8, 32, 'alcanca'],
       ['cela de experimentos (36,32)', 36, 32, 'alcanca'],
       ['depósito de barris (4,44)', 4, 44, 'alcanca'],
-      ['sala de experimentos (30,48)', 30, 48, 'alcanca'],
+      ['sala de experimentos (30,48)', 30, 48, 'anda'],
       ['escada de chegada (37,61)', 37, 61, 'alcanca']
-    ]
+    ],
+    selado: { alvo: [30, 48], abrir: [[30, 42], [31, 42]] }
   }
 ];
 

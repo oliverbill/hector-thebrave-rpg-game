@@ -2,8 +2,8 @@
 
 **Produto:** Hector, the Brave — RPG de ação 2D, top-down, um único arquivo HTML
 **Fase:** 4 de 6 — laboratório do Alquimista e O Alquimista
-**Status:** em construção — planta do piso pronta e testada (flood-fill OK); imagens aprovadas; chefe/itens/vozes pendentes
-**Escrito em:** 07/09/2026 · **atualizado com o código em:** 07/09/2026
+**Status:** em construção — planta, NPCs e chefe jogáveis e testados; itens/curas, coadjuvantes, ambientes e vozes pendentes
+**Escrito em:** 07/09/2026 · **atualizado com o código em:** 08/09/2026
 
 ---
 
@@ -165,13 +165,90 @@ Mapa 44×64, spawn na escada de chegada (37,61). Regiões: oficina de bancadas (
 
 ## 7. Adições posteriores
 
-_(vazio — preencher ao longo da construção)_
+**Máquina de estados do Alquimista construída (etapa 5 do /fase-nova).** Ciclo: espera →
+aproxima → combo (2 golpes corpo-a-corpo) → **arremesso** → exausto → repete. O `arremesso`
+é o primeiro estado de chefe que não é corpo-a-corpo nem o ciclo subterrâneo do Coveiro:
+`entrarArremesso(c,f)` mira o ponto onde o jogador está *agora* e telegrafa por
+`arremessoAvisoT` (quase 1s — dá pra sair de cima); ao fechar, dano em área
+(`arremessoDano:22` num raio `arremessoRaio:2.2`) e o ponto vira uma poça de fogo
+permanente, empurrada para `fogosArena` (array global, fora da máquina do chefe) — o motor
+ganhou esse conceito novo porque é o primeiro chefe cujo ataque muda o próprio terreno da
+arena (F4-RF-19). As poças causam dano de contato (`machucar(6)`, com o cooldown de
+`jog.invul` de sempre) e são repostas a cada tentativa (zeradas em `aoIniciar`/`retomar`).
+
+**Trava dupla real** (F4-RF-11): `ALQ.PORTA` (x30-31/y42) nasce como PAREDE — a Sala de
+Experimentos só abre com `abrirSalaExperimentos()`, chamada de `agir()` quando os 3
+informantes estão ouvidos (a checagem dos 3 reagentes entra junto com a etapa de itens).
+A soleira tem porta própria (`portaoArena`), maior e com a arte do dono — ela só anima
+quando `portaoArena.aberta` é `true`; selada, fica de pé sem range. Como a única outra
+saída da arena (pro corredor sul) ficava presa atrás dessa mesma soleira, o piso ganhou um
+**desvio pelo leste** (`x43`, y41-58, com `x42` de parede-tampão contra a arena) para o
+spawn (na escada) alcançar o resto do mapa sem depender da trava — sem ele, sela a arena
+selava o piso inteiro.
+
+**Fraquezas dos 3 informantes ligadas ao chefe** (F4-RF-20): `arremesso` (Aprendiz) usa o
+slot genérico `fq.costas` (dano pelas costas, ×2.1/×1.2 — igual ao "flanco" do Gladiador e
+à "lanterna" do Coveiro, mesmo mecanismo, nome de chave diferente); `exausto` (Jardineiro)
+usa `fq.porEstado`, dobrado — vale tanto no estado `exausto` quanto no `arremesso` (o
+"preparo" desta fase), cobrindo o "exausto ou se preparando" do PRD; `gas` (Bibliotecário
+Cego) é um tipo de fraqueza **novo**, `fq.aviso` — não multiplica dano, estica o telegrafo
+do arremesso em `bonusT` (.6s) e dispara um aviso sonoro/flutuante, lido dentro de
+`entrarArremesso()`. É a primeira fraqueza do jogo que não é bônus de dano.
+
+**Motor: vida do jogador lida do piso, cura do Q virou percentual.** `jog.hpMax` deixou de
+ser `100` cravado — agora lê `piso.vidaMax` (com `||100` de reserva). Os 4 pisos já
+declaram o valor: 100 / 125 / 156 / 195, a progressão de +25% da etapa 1.7. `usarTrapo()`
+(o botão Q genérico) curava `+40` fixo desde a fase 1 — virou `Math.round(jog.hpMax*.15)`,
+acompanhando a mesma fração que a água benta do piso 3 já usava. Sem isso, o consumível
+encolhia sozinho a cada piso (era 40% da vida no calabouço e ia virar 13% aqui).
+
+**Bug corrigido antes de testar a luta**: o desvio leste, na primeira versão, corria colado
+à parede da arena (`x42`, sem parede-tampão) — a arena vazava pro corredor por fora da
+soleira selada e `node testes/geometria.js` pegou (`a arena do chefe já é alcançável com a
+passagem fechada`). Também apareceu um raio negativo no círculo do telegrafo
+(`IndexSizeError`, `ctx.arc`) quando a chave `gas` estica o aviso além do
+`arremessoAvisoT` base — o cálculo do progresso do círculo dividia pelo tempo errado;
+corrigido guardando `c.arremessoTotal` no momento em que o aviso é montado.
+
+**Pendente desta etapa**: `desenharAlquimista` usa o retrato recortado (`chefe-5.png`)
+como sprite, não um desenho vetorial com pernas animadas — diferente de Gladiador,
+Açougueiro e Coveiro. Ver §8.
 
 ---
 
 ## 8. Pendências conhecidas
 
-_(vazio no rascunho — preencher com o que ficar pendente ao fim da construção: vozes, trilha, arte não instalada, mecânica pela metade, como nas fases anteriores)_
+**Chefe**
+
+- **Sem desenho vetorial próprio.** O Alquimista usa o PNG recortado (`chefe-5.png`) como
+  sprite estático (com sombra, avanço no golpe e o telegrafo do arremesso), não pernas que
+  se movem de verdade como os 3 chefes anteriores pedem. Funciona e testa bem, mas é uma
+  regressão de acabamento — se o dono quiser o padrão dos outros chefes, precisa de um
+  desenho vetorial dedicado.
+- **Golpe e leva-golpe do Alquimista não têm fala** — só a entrada está fechada
+  (F4-FALAS.md). `cfg.sons.golpe`/`levaGolpe` apontam pra arquivos que ainda não existem.
+- **A trava dupla só checa os informantes.** Os "3 reagentes coletados" (F4-RF-11) ainda
+  não existem como item — `agir()` abre a soleira com só 1 das 2 condições do PRD.
+
+**Áudio**
+
+- Vozes dos 3 informantes e do Alquimista: textos fechados em F4-FALAS.md, gravação não
+  começou — hoje sai voz sintetizada do `cfg.voz`/`voz` de cada informante.
+- Trilha do piso e da arena: tocam `audio/fase2/trilha-fase2.mp3` e
+  `audio/fase4/trilha-arena.mp3` (este último nem existe) como tapa-buraco.
+- Nenhum SFX baixado ainda (`/buscar-sfx-prd` não rodou).
+
+**Itens e mundo**
+
+- Reagentes (3), frascos de antídoto, injeções de adrenalina, homúnculo (inimigo comum) e
+  o vazamento de gás cíclico (F4-RF-03) — nenhum ainda está no piso. É a próxima etapa.
+- `pintarAlquimistaCache` só tem o passe global (paredes 3/4 + placa de metal rebitada);
+  os 5 passes por cômodo (mobília, fornalha, bancadas, prateleiras) da etapa 8 não começaram.
+
+**Herdadas**
+
+- Balanceamento (F4-RF-21) vale até a primeira sessão real
+- CI para `testes/geometria.js` continua em aberto
 
 ---
 
