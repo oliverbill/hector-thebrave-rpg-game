@@ -2153,7 +2153,7 @@ function atualizarChefe(dt){
         if(Math.hypot(jog.x - alvo.x, jog.y - alvo.y) < f.arremessoRaio)
           machucar(f.arremessoDano, ang);
         fogosArena.push({x: alvo.x, y: alvo.y, raio: f.arremessoRaio});
-        tremor = Math.max(tremor, 5);   // era 12 — sacudia a tela inteira por um frasco
+        // sem tremor fixo aqui — machucar() já sacode quando o frasco acerta de fato
         if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe); else sBaterParede();
         for(let k=0;k<20;k++) faisca(alvo.x, alvo.y, '#e8a13c', .17);
         c.estado = 'exausto'; c.t = f.exaustoT;
@@ -3960,7 +3960,10 @@ function prenderNaCasa(h){
 function explodirHomunculo(h){
   h.hp = 0;
   tocarSfx('audio/fase4/sons/homunculo-explodindo-1.mp3', 1, sBaterParede);
-  tremor = Math.max(tremor, 5);   // era 14 — tela inteira tremendo por um bicho de 50 HP
+  /* sem tremor daqui: machucar() já sacode a tela (tremor:11) quando o
+     jogador de fato é atingido. Um tremor fixo aqui sacudia mesmo quando
+     o homúnculo explodia longe, sem acertar ninguém — parecia que a tela
+     tremia à toa o tempo todo */
   explosoes.push({x:h.x, y:h.y, t:0, dur:.45, raio:1.4});
   for(let k=0;k<26;k++) faisca(h.x, h.y, k%2 ? '#ffb04a' : '#e8632a', .19);
   if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.6) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
@@ -10733,6 +10736,21 @@ function desenharInjecoesArena(ox, oy){
     ctx.beginPath(); ctx.arc(px - tam*.02, py - tam*.05, tam*.02, 0, TAU); ctx.fill();
   });
 }
+/* a Lanterna dos Mortos vai na mão livre do jogador o tempo todo, do lado
+   oposto da arma — pedido do dono: ela não é item de bolsa, é equipamento
+   sempre visível, com o próprio facho de luz quente */
+const imgLanternaMao = new Image(); imgLanternaMao.src = 'img/fase3/lanterna-mortos.png';
+function desenharLanternaNaMao(px, py, r){
+  if(!inventario.some(i => i.id === 'lanterna-mortos')) return;
+  if(!(imgLanternaMao.complete && imgLanternaMao.naturalWidth > 0)) return;
+  const lado = Math.cos(jog.angulo) < 0 ? 1 : -1;   // a arma fica do lado do olhar; a lanterna, do outro
+  const lx = px - lado*tam*.4, ly = py + r*.75;
+  const alt = tam*.42, lar = imgLanternaMao.naturalWidth*(alt/imgLanternaMao.naturalHeight);
+  const g = ctx.createRadialGradient(lx, ly - alt*.3, 0, lx, ly - alt*.3, tam*.85);
+  g.addColorStop(0, 'rgba(255,205,130,.32)'); g.addColorStop(1, 'rgba(255,205,130,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(lx, ly - alt*.3, tam*.85, 0, TAU); ctx.fill();
+  ctx.drawImage(imgLanternaMao, lx - lar/2, ly - alt*.9, lar, alt);
+}
 const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta-arena.png';   // referência do dono: dragões + leão na chave do arco
 const PA_FOLHA = {x1:.21, x2:.79, y:.24};
 function atualizarPortaoArena(dt){
@@ -11139,7 +11157,7 @@ const PISO_ALQUIMISTA = {
       const f = faseVazamento(v);
       if(f.tipo === 'estoura'){
         if(!v.armado){
-          v.armado = true; tremor = Math.max(tremor, 4);   // era 10
+          v.armado = true;   // o tremor vem só de machucar(), quando acerta de verdade
           tocarSfx('audio/fase4/sons/explosao-2.mp3', 1, sBaterParede);
         }
         /* o dano sai da BOCA (v.bx/v.by), não do centro do barril — é ali
@@ -11281,6 +11299,7 @@ const PISO_ALQUIMISTA = {
   ],
   desenharNoJogador(px, py, r, bal){
     if(jog.arma) desenharArmaNaMao(px, py, r);
+    desenharLanternaNaMao(px, py, r);
   }
 };
 
