@@ -281,6 +281,12 @@ Açougueiro e Coveiro. Ver §8.
   os 5 passes por cômodo (mobília, fornalha, bancadas, prateleiras) da etapa 8 não começaram.
 - A poção-bomba (recompensa) e a Lanterna dos Mortos acendendo fornalhas (F4-RF-06) ainda
   não têm arte nem mecânica de puzzle — só a entrega genérica ao vencer o chefe funciona.
+- **Coadjuvantes: só a oficina tem** (1 ajudante circulando 3 postos). Fornalha, estúdio,
+  estufa, cela e depósito ainda não têm ninguém — cada um pede sua própria leva de imagens
+  (etapa 2/3) antes de instalar.
+- **`piso.ambientes` declarado, áudio não baixado.** 4 camadas (fornalha, oficina, estufa,
+  depósito) apontam pra `audio/fase4/sons/*.mp3` que ainda não existem — `/buscar-sfx-prd`
+  não rodou pra esta fase.
 
 **Herdadas**
 
