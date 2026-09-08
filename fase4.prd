@@ -282,11 +282,14 @@ Açougueiro e Coveiro. Ver §8.
 
 - `pintarAlquimistaCache` só tem o passe global (paredes 3/4 + placa de metal rebitada);
   os 5 passes por cômodo (mobília, fornalha, bancadas, prateleiras) da etapa 8 não começaram.
-- **A Lanterna dos Mortos acendendo fornalhas (F4-RF-06) está pronta**: um nicho selado no
-  corredor sul (x21,y42), com frasco de antídoto bônus dentro — só a poção-bomba
-  (recompensa final) ainda não tem arte, só a entrega genérica ao vencer o chefe funciona.
-  É o único nicho do piso; mais fornalhas apagadas (uma por cômodo, por exemplo) ficam
-  pra quando a decoração da etapa 8 entrar.
+- **A Lanterna dos Mortos acendendo fornalhas (F4-RF-06) está pronta**: um nicho selado na
+  soleira da oficina de bancadas (x12,y16-18), com frasco de antídoto bônus dentro — só a
+  poção-bomba (recompensa final) ainda não tem arte, só a entrega genérica ao vencer o
+  chefe funciona. A primeira posição (corredor sul, x21,y42) resolvia a geometria mas
+  ninguém achava por acaso; realocado pra dentro da primeira sala do piso. É o único nicho
+  do piso; mais fornalhas apagadas (uma por cômodo, por exemplo) ficam pra quando a
+  decoração da etapa 8 entrar. O jogador entra no piso já com a Lanterna garantida
+  (`aoIniciar` chama `adicionarAoInventario`), não depende só do empréstimo entre pisos.
 - **Coadjuvantes: só a oficina tem** (1 ajudante circulando 3 postos). Fornalha, estúdio,
   estufa, cela e depósito ainda não têm ninguém — cada um pede sua própria leva de imagens
   (etapa 2/3) antes de instalar.
