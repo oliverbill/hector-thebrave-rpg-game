@@ -10886,7 +10886,7 @@ function pintarAlquimistaCache(cmx, T){
 
 const PISO_ALQUIMISTA = {
   id:'alquimista', nome:'O Laboratório do Alquimista',
-  bgm:'audio/fase2/trilha-fase2.mp3',    // tapa-buraco: a trilha própria vem do dono (F4-RF-24)
+  bgm:'audio/fase4/trilha-fase4.mp3',    // trilha do dono (F4-RF-24)
   paleta:{
     fundo:'#05100c',
     chao:[74,102,92],       // verde-azulado de bronze oxidado — família inédita
@@ -11138,7 +11138,7 @@ const PISO_ALQUIMISTA = {
        && jog.y > ALQ.PORTA.y + .9
        && jog.x > ALQ.PORTA.x - 1 && jog.x < ALQ.PORTA.x + ALQ.PORTA.larg + 1){
       criarChefe();
-      tocarBgm('audio/fase4/trilha-arena.mp3', .38);   // tapa-buraco até o dono mandar a trilha (F4-RF-24)
+      tocarBgm('audio/fase4/trilha-arena.mp3', .38);   // trilha da luta, do dono (F4-RF-24)
       etapa = 'chefe';
     }
   },
