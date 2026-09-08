@@ -3959,7 +3959,8 @@ function prenderNaCasa(h){
    quanto quando o pavio chega a zero sozinho (chegou perto demais) */
 function explodirHomunculo(h){
   h.hp = 0;
-  sBaterParede(); tremor = Math.max(tremor, 14);
+  tocarSfx('audio/fase4/sons/homunculo-explodindo-1.mp3', 1, sBaterParede);
+  tremor = Math.max(tremor, 14);
   explosoes.push({x:h.x, y:h.y, t:0, dur:.45, raio:1.4});
   for(let k=0;k<26;k++) faisca(h.x, h.y, k%2 ? '#ffb04a' : '#e8632a', .19);
   if(Math.hypot(h.x-jog.x, h.y-jog.y) < 1.6) machucar(h.dano || 10, Math.atan2(jog.y-h.y, jog.x-h.x));
@@ -10967,7 +10968,7 @@ const PISO_ALQUIMISTA = {
          pelo resto da tentativa (a arena vai encolhendo) */
       arremessoAvisoT:.95, arremessoRaio:2.2, arremessoDano:22,
       exaustoT:1.8, tremorPasso:6,
-      sons:{arremesso:'fase4/sons/vidro-arremesso-1', irrompe:'fase4/sons/explosao-1',
+      sons:{arremesso:'fase4/sons/frasco-arremesso-1', irrompe:'fase4/sons/explosao-1',
             entrada:'fase4/vozes/alquimista-entrada', golpe:'fase4/vozes/alquimista-golpe',
             levaGolpe:'fase4/vozes/alquimista-levagolpe'},
       entrada:['O Alquimista', 'cada frasco tem um propósito'],
@@ -11083,7 +11084,10 @@ const PISO_ALQUIMISTA = {
     vazamentos.forEach(v => {
       const f = faseVazamento(v);
       if(f.tipo === 'estoura'){
-        if(!v.armado){ v.armado = true; tremor = Math.max(tremor, 10); sBaterParede(); }
+        if(!v.armado){
+          v.armado = true; tremor = Math.max(tremor, 10);
+          tocarSfx('audio/fase4/sons/explosao-2.mp3', 1, sBaterParede);
+        }
         /* o dano sai da BOCA (v.bx/v.by), não do centro do barril — é ali
            que o efeito visual da explosão aparece; conferir contra v.x/v.y
            deixava gente dentro do círculo laranja sem levar dano nenhum */
@@ -11202,7 +11206,7 @@ const PISO_ALQUIMISTA = {
      (etapa /buscar-sfx-prd não rodou); path já reservado, no padrão do
      piso 3 antes de gravar. */
   ambientes:[
-    { url:'audio/fase4/sons/borbulhar-alambique-1.mp3', ganho:.32, raio:6, desvanece:5,
+    { url:'audio/fase4/sons/liquido-borbulhando-1.mp3', ganho:.32, raio:6, desvanece:5,
       pontos:[[23,10]] },
     { url:'audio/fase4/sons/vidros-tinir-1.mp3', ganho:.26, raio:4.5, desvanece:4,
       pontos:[[8.5,10]] },
