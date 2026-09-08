@@ -2154,7 +2154,7 @@ function atualizarChefe(dt){
           machucar(f.arremessoDano, ang);
         fogosArena.push({x: alvo.x, y: alvo.y, raio: f.arremessoRaio});
         // sem tremor fixo aqui — machucar() já sacode quando o frasco acerta de fato
-        if(f.sons && f.sons.irrompe) vozChefe(f.sons.irrompe); else sBaterParede();
+        // sem som aqui — pedido do dono
         for(let k=0;k<20;k++) faisca(alvo.x, alvo.y, '#e8a13c', .17);
         c.estado = 'exausto'; c.t = f.exaustoT;
       }
@@ -3959,7 +3959,7 @@ function prenderNaCasa(h){
    quanto quando o pavio chega a zero sozinho (chegou perto demais) */
 function explodirHomunculo(h){
   h.hp = 0;
-  tocarSfx('audio/fase4/sons/homunculo-explodindo-1.mp3', 1, sBaterParede);
+  /* sem som aqui — pedido do dono (silenciosa, só o efeito visual) */
   /* sem tremor daqui: machucar() já sacode a tela (tremor:11) quando o
      jogador de fato é atingido. Um tremor fixo aqui sacudia mesmo quando
      o homúnculo explodia longe, sem acertar ninguém — parecia que a tela
@@ -11160,7 +11160,7 @@ const PISO_ALQUIMISTA = {
       if(f.tipo === 'estoura'){
         if(!v.armado){
           v.armado = true;   // o tremor vem só de machucar(), quando acerta de verdade
-          tocarSfx('audio/fase4/sons/explosao-2.mp3', 1, sBaterParede);
+          // sem som aqui — pedido do dono
         }
         /* o dano sai da BOCA (v.bx/v.by), não do centro do barril — é ali
            que o efeito visual da explosão aparece; conferir contra v.x/v.y
