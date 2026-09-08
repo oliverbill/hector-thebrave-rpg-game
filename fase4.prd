@@ -153,7 +153,7 @@ Mapa 44×64, spawn na escada de chegada (37,61). Regiões: oficina de bancadas (
 **Específicos desta fase:**
 
 - [ ] A Lanterna dos Mortos acende fornalhas/lareiras apagadas e libera passagens seladas
-- [ ] O vazamento de gás telegrafa e explode em ciclo, com dano de área
+- [x] O vazamento de gás telegrafa e explode em ciclo, com dano de área
 - [x] O homúnculo persegue e explode em dano de área ao morrer
 - [x] O Alquimista arremessa frascos à distância que incendeiam o chão da arena, encolhendo o espaço seguro
 - [x] As 3 chaves dos informantes mudam visivelmente o combate contra o Alquimista (dano pelas costas, telegrafo mais cedo, dano no exausto/preparo)
@@ -164,6 +164,27 @@ Mapa 44×64, spawn na escada de chegada (37,61). Regiões: oficina de bancadas (
 ---
 
 ## 7. Adições posteriores
+
+**Bugs achados na revisão do dono (08/09) e corrigidos:**
+
+- **`acaoGolpe` nunca tinha sido ligado no piso.** Cada piso precisa apontar
+  `acaoGolpe: golpeDeArma` (ou uma variante) — sem isso, o botão GOLPE literalmente não
+  fazia nada, nem contra o chefe nem contra o homúnculo. Era por isso que "o homúnculo não
+  explode": ele nunca tomava dano nenhum. Corrigido; era a causa raiz dos dois sintomas
+  relatados.
+- **O homúnculo perseguia o jogador porta afora.** Sem coleira, o raio de perseguição
+  (5,5 tiles) alcançava o corredor e a sala seguinte. Ganhou `casa` (a caixa do próprio
+  cômodo) e `prenderNaCasa(h)`, o mesmo mecanismo de `prenderChefeNaArena` — testado 12s
+  parado perto de 3 portas sem nenhum atravessar.
+- **A explosão do homúnculo era verde sobre chão verde — inexistente aos olhos.** Virou
+  `explosoes`/`desenharExplosoes`: um anel genérico laranja que se expande (não é dado de
+  piso — qualquer chefe ou inimigo futuro pode empurrar pra lá), mais tremor de tela e som
+  de impacto em vez do guincho da ratazana.
+
+**Vazamento de gás cíclico (F4-RF-03) construído.** 3 válvulas na Sala da Fornalha,
+ciclo de 5,2s: gás visível crescendo (3s, sem dano) → aviso piscando (0,4s) → explosão
+telegrafada com dano de área (12, 0,35s) → apaga e recomeça. Mesmo papel dos espinhos
+(fase 1) e labaredas (fase 2), mesma técnica (`faseVazamento`, análoga a `alturaEspinho`).
 
 **Máquina de estados do Alquimista construída (etapa 5 do /fase-nova).** Ciclo: espera →
 aproxima → combo (2 golpes corpo-a-corpo) → **arremesso** → exausto → repete. O `arremesso`
@@ -256,9 +277,6 @@ Açougueiro e Coveiro. Ver §8.
 
 **Itens e mundo**
 
-- O vazamento de gás cíclico (F4-RF-03, o obstáculo cíclico da Sala da Fornalha) ainda não
-  está no piso — reagentes, curas e o homúnculo entraram nesta etapa; o gás fica para
-  quando a Sala da Fornalha ganhar decoração (etapa 8).
 - `pintarAlquimistaCache` só tem o passe global (paredes 3/4 + placa de metal rebitada);
   os 5 passes por cômodo (mobília, fornalha, bancadas, prateleiras) da etapa 8 não começaram.
 - A poção-bomba (recompensa) e a Lanterna dos Mortos acendendo fornalhas (F4-RF-06) ainda

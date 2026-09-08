@@ -10422,6 +10422,55 @@ function desenharPortasAlq(ox, oy){
 
 /* --- a soleira da Sala de Experimentos: porta própria, maior e diferente
    das outras (pedido do dono, 08/09) --- */
+/* vazamento de gás cíclico (F4-RF-03): válvula solta gás visível por um
+   tempo, avisa, e ignifica numa explosão de área — o obstáculo cíclico
+   desta fase, papel dos espinhos (fase 1) e labaredas (fase 2) */
+let vazamentos = [];
+function criarVazamentos(pontos){
+  vazamentos = pontos.map(p => ({...p, fase:Math.random()*5.2, armado:false}));
+}
+function faseVazamento(v){
+  const c = (tempo + v.fase) % 5.2;
+  if(c < 3.0) return {tipo:'gas', p:c/3.0};
+  if(c < 3.4) return {tipo:'aviso', p:(c-3.0)/.4};
+  if(c < 3.75) return {tipo:'estoura', p:(c-3.4)/.35};
+  return {tipo:'nada', p:0};
+}
+function desenharVazamentos(ox, oy){
+  vazamentos.forEach(v => {
+    const px = ox + v.x*tam, py = oy + v.y*tam;
+    if(foraDaVista(px, py, tam*3)) return;
+    ctx.fillStyle = '#2c3a34';
+    ctx.beginPath(); ctx.ellipse(px, py, tam*.2, tam*.14, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(140,170,150,.6)'; ctx.lineWidth = Math.max(1, tam*.04);
+    ctx.beginPath(); ctx.ellipse(px, py, tam*.2, tam*.14, 0, 0, TAU); ctx.stroke();
+    const f = faseVazamento(v);
+    if(f.tipo === 'gas'){
+      const r = tam*(.3 + f.p*1.1);
+      ctx.fillStyle = 'rgba(150,220,160,' + (.06 + f.p*.16) + ')';
+      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+      for(let i=0;i<3;i++){
+        const a = tempo*1.3 + i*2.1 + v.fase;
+        ctx.fillStyle = 'rgba(170,230,180,.18)';
+        ctx.beginPath();
+        ctx.ellipse(px + Math.cos(a)*r*.4, py + Math.sin(a)*r*.3 - f.p*tam*.3, tam*.14, tam*.1, 0, 0, TAU);
+        ctx.fill();
+      }
+    } else if(f.tipo === 'aviso'){
+      const pisca = Math.abs(Math.sin(tempo*16));
+      ctx.strokeStyle = 'rgba(255,120,40,' + (.4 + .5*pisca) + ')';
+      ctx.lineWidth = Math.max(2, tam*.08);
+      ctx.beginPath(); ctx.arc(px, py, tam*1.3, 0, TAU); ctx.stroke();
+    } else if(f.tipo === 'estoura'){
+      const r = tam*1.3*(1 - f.p*.2);
+      ctx.fillStyle = 'rgba(255,150,50,' + (.5*(1 - f.p)) + ')';
+      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,200,90,' + (.8*(1 - f.p)) + ')';
+      ctx.lineWidth = Math.max(2, tam*.1);
+      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+    }
+  });
+}
 let portaoArena = null;
 /* poças de fogo que o arremesso deixa no chão da arena — persistem pelo
    resto da tentativa (F4-RF-19), fora da máquina de estados do chefe */
@@ -10873,6 +10922,8 @@ const PISO_ALQUIMISTA = {
     criarReagentes();
     criarFrascosAntidoto();
     criarInjecoesArena();
+    /* vazamento de gás: o obstáculo cíclico mora na sala da fornalha (F4-RF-03) */
+    criarVazamentos([{x:20, y:6}, {x:27, y:6}, {x:23, y:14}]);
     /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15).
        `casa` prende cada um ao próprio cômodo (prenderNaCasa) — sem isso ele
        perseguia o jogador porta afora e virava problema do piso inteiro */
@@ -10902,6 +10953,14 @@ const PISO_ALQUIMISTA = {
        cooldown (jog.invul), então parado ali dói umas duas vezes por segundo */
     fogosArena.forEach(fo => {
       if(Math.hypot(fo.x-jog.x, fo.y-jog.y) < fo.raio) machucar(6);
+    });
+    /* vazamento de gás: só dói na janela de 'estoura', igual aos espinhos/labaredas */
+    vazamentos.forEach(v => {
+      const f = faseVazamento(v);
+      if(f.tipo === 'estoura'){
+        if(!v.armado){ v.armado = true; tremor = Math.max(tremor, 10); sBaterParede(); }
+        if(Math.hypot(v.x-jog.x, v.y-jog.y) < 1.3) machucar(12);
+      } else v.armado = false;
     });
     /* reagentes: 15% da trava dupla que falta juntar aos informantes */
     reagentes.forEach(r => {
@@ -11003,6 +11062,7 @@ const PISO_ALQUIMISTA = {
     desenharFrascosAntidoto(ox, oy);
     desenharInjecoesArena(ox, oy);
     desenharHomunculos(ox, oy);
+    desenharVazamentos(ox, oy);
     desenharPortasAlq(ox, oy);
     desenharPortaoArena(ox, oy);
   },
