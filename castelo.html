@@ -10156,6 +10156,11 @@ function construirAlquimista(){
   cavar(3,39,41,41);
   cavar(3,42,4,42);             // corredor -> depósito (primeira cela do labirinto)
   cavar(30,42,31,42);           // corredor -> sala de experimentos
+  /* soleiras: TODA passagem leva porta (pedido do dono) — a estufa e a cela
+     tinham o fundo aberto de ponta a ponta pro corredor sul, sem vão nenhum
+     pra pendurar a folha. Fecha a fiada de baixo e sobra só a soleira. */
+  for(let x=3;  x<=14; x++) if(x<8  || x>9)  t[ix(x,38)] = PAREDE;   // estufa
+  for(let x=31; x<=42; x++) if(x<36 || x>37) t[ix(x,38)] = PAREDE;   // cela
 
   /* ---- depósito de barris e reagentes: labirinto 6x3, um caminho só ----
      Mesmo gerador do colombário (fase3) e da adega (fase2): backtracker
@@ -10200,10 +10205,14 @@ function criarPortasAlq(){
     {x:36, y:19, vert:false},    // estúdio -> salão
     {x:7,  y:26, vert:false},    // salão -> estufa
     {x:37, y:26, vert:false},    // salão -> cela
+    {x:8,  y:38, vert:false},    // estufa -> corredor sul
+    {x:36, y:38, vert:false},    // cela -> corredor sul
     {x:3,  y:42, vert:false},    // corredor sul -> depósito
-    {x:30, y:42, vert:false},    // corredor sul -> sala de experimentos
     {x:36, y:58, vert:false}     // sala de experimentos -> escada
   ].map(p => ({...p, ab:0, rangeu:false}));
+  /* a soleira da Sala de Experimentos é especial: porta própria, maior e
+     mais ornamentada, diferente das outras (pedido do dono) */
+  portaoArena = {x:30, y:42, ab:0, rangeu:false};
 }
 function desenharPortasAlq(ox, oy){
   const pronta = imgPorta4.complete && imgPorta4.naturalWidth > 0;
@@ -10240,6 +10249,152 @@ function desenharPortasAlq(ox, oy){
   });
 }
 
+/* --- a soleira da Sala de Experimentos: porta própria, maior e diferente
+   das outras (pedido do dono, 08/09) --- */
+let portaoArena = null;
+const imgPortaArena = new Image(); imgPortaArena.src = 'img/fase4/porta.png';   // placeholder até a arte da arena ser aprovada
+const PA_FOLHA = {x1:.12, x2:.88, y:.1};
+function atualizarPortaoArena(dt){
+  if(!portaoArena) return;
+  const p = portaoArena, cx = p.x + 1, cy = p.y;
+  const perto = Math.hypot(cx - jog.x, cy - jog.y) < 2.4;
+  const alvo = perto ? 1 : 0;
+  const antes = p.ab;
+  p.ab += (alvo - p.ab)*Math.min(1, dt*4);
+  if(alvo === 1 && antes < .04 && p.ab >= .04 && !p.rangeu){
+    p.rangeu = true;
+    if(Math.hypot(cx - jog.x, cy - jog.y) < 9) sRanger(.45);
+  }
+  if(alvo === 0 && p.ab < .04) p.rangeu = false;
+}
+function desenharPortaoArena(ox, oy){
+  if(!portaoArena) return;
+  const pronta = imgPortaArena.complete && imgPortaArena.naturalWidth > 0;
+  if(!pronta) return;
+  const p = portaoArena;
+  if(foraDaVista(ox + (p.x + 1)*tam, oy + (p.y + .5)*tam, tam*5)) return;
+  const iw = imgPortaArena.naturalWidth, ih = imgPortaArena.naturalHeight;
+  const w = tam*3.6, h = w*(ih/iw);
+  const x0 = ox + (p.x + 1)*tam - w/2, yTopo = oy + (p.y + .95)*tam - h;
+  const FL = PA_FOLHA;
+  const fx = FL.x1*w, fw = (FL.x2 - FL.x1)*w;
+  const fy = FL.y*h, fh = h - fy;
+  ctx.fillStyle = 'rgba(8,6,12,.6)';
+  ctx.fillRect(x0 + fx, yTopo + fy, fw, fh);
+  if(p.ab < .98){
+    const esc = Math.max(.05, 1 - p.ab*1.02);
+    ctx.fillStyle = 'rgba(0,0,0,' + (.3*(1 - p.ab)) + ')';
+    ctx.beginPath();
+    ctx.ellipse(x0 + fx + fw*esc*.5, yTopo + h + tam*.05, fw*esc*.5, tam*.15, 0, 0, TAU);
+    ctx.fill();
+    ctx.save();
+    ctx.translate(x0 + fx, yTopo + fy);
+    ctx.scale(esc, 1);
+    ctx.drawImage(imgPortaArena, iw*FL.x1, ih*FL.y, iw*(FL.x2-FL.x1), ih*(1-FL.y), 0, 0, fw, fh);
+    ctx.fillStyle = 'rgba(0,0,0,' + (p.ab*.6) + ')'; ctx.fillRect(0, 0, fw, fh);
+    ctx.restore();
+  }
+  ctx.drawImage(imgPortaArena, 0, 0, iw*FL.x1, ih, x0, yTopo, fx, h);
+  ctx.drawImage(imgPortaArena, iw*FL.x2, 0, iw*(1-FL.x2), ih, x0 + FL.x2*w, yTopo, (1-FL.x2)*w, h);
+  ctx.drawImage(imgPortaArena, iw*FL.x1, 0, iw*(FL.x2-FL.x1), ih*FL.y, x0 + fx, yTopo, fw, fy);
+}
+
+/* === PINTURA DO CENÁRIO DO PISO 4 (gancho pintarCache) ===================
+   Alto-relevo, mesma receita das fases 2/3: paredes em perspectiva 3/4
+   (FACE de chapa metálica rebitada onde olham para um cômodo aberto,
+   TOPO de rocha escura com veios de oxidação no resto) e sombra projetada
+   no chão logo abaixo. O chão ganha o módulo inédito da fase (etapa 1.5):
+   placa de metal rebitada, moldura em bisel + 4 rebites por tile — nunca a
+   laje lisa do piso 1, a 2×2 desgastada do 2, nem o mosaico fino do 3. */
+function pintarAlquimistaCache(cmx, T){
+  const rndDe = (x,y) => hash(x*3.7, y*9.1);
+  const dentro4 = (x,y) => x>=0 && y>=0 && x<ALQ.LARG && y<ALQ.ALT;
+  const aberto4 = v => v === CHAO || v === CHAO2;
+  const ehParede4 = (x,y) => dentro4(x,y) && mapa[y*ALQ.LARG + x] === PAREDE;
+  const ehAberto4 = (x,y) => dentro4(x,y) && aberto4(mapa[y*ALQ.LARG + x]);
+
+  for(let y=0; y<ALQ.ALT; y++) for(let x=0; x<ALQ.LARG; x++){
+    if(!ehParede4(x,y)) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x,y);
+    if(ehAberto4(x, y+1)){
+      /* FACE: chapa de metal rebitada, duas fiadas de rebites, ferrugem escorrida */
+      cmx.fillStyle = '#3c5750';
+      cmx.fillRect(px2, py2, T, T);
+      cmx.fillStyle = 'rgba(180,225,205,.12)';
+      cmx.fillRect(px2, py2, T, T*.3);
+      cmx.fillStyle = 'rgba(4,10,8,.28)';
+      cmx.fillRect(px2, py2 + T*.68, T, T*.32);
+      cmx.fillStyle = 'rgba(10,16,14,.55)';
+      cmx.fillRect(px2, py2 + T*.28, T, 2);
+      cmx.fillRect(px2, py2 + T*.68, T, 2);
+      cmx.fillStyle = 'rgba(230,235,215,.35)';
+      for(let k=0; k<3; k++){
+        cmx.beginPath(); cmx.arc(px2 + T*(.2 + k*.3), py2 + T*.28, T*.045, 0, TAU); cmx.fill();
+        cmx.beginPath(); cmx.arc(px2 + T*(.2 + k*.3), py2 + T*.68, T*.045, 0, TAU); cmx.fill();
+      }
+      if(h > .55){
+        cmx.fillStyle = 'rgba(150,110,60,' + (.10 + h*.08) + ')';
+        cmx.fillRect(px2 + T*(.15 + h*.6), py2, T*.09, T*.9);
+      }
+      cmx.fillStyle = '#8ba89c';
+      cmx.fillRect(px2, py2 + T - T*.12, T, T*.12);
+      cmx.strokeStyle = 'rgba(10,16,14,.5)'; cmx.lineWidth = 1.3;
+      cmx.strokeRect(px2 + 1, py2 + T - T*.12, T*.5 - 1, T*.12);
+      cmx.strokeRect(px2 + T*.5, py2 + T - T*.12, T*.5 - 1, T*.12);
+    } else {
+      /* TOPO: rocha escura com veios de oxidação verde */
+      cmx.fillStyle = '#1c2a26';
+      cmx.fillRect(px2, py2, T, T);
+      cmx.strokeStyle = 'rgba(6,10,8,.6)'; cmx.lineWidth = 1.5;
+      for(let k=0; k<3; k++){
+        const bx = px2 + T*(.2 + rndDe(x*3+k, y)*.6), by = py2 + T*(.2 + rndDe(x, y*3+k)*.6);
+        const br = T*(.13 + rndDe(x+k, y+k)*.12);
+        cmx.fillStyle = 'rgba(70,110,96,' + (.2 + rndDe(x-k, y)*.28) + ')';
+        cmx.beginPath(); cmx.ellipse(bx, by, br, br*.8, rndDe(x,y+k)*2, 0, TAU); cmx.fill();
+        cmx.stroke();
+      }
+      cmx.fillStyle = '#8ba89c';
+      if(ehAberto4(x, y-1)) cmx.fillRect(px2, py2, T, T*.1);
+      if(ehAberto4(x-1, y)) cmx.fillRect(px2, py2, T*.1, T);
+      if(ehAberto4(x+1, y)) cmx.fillRect(px2 + T - T*.1, py2, T*.1, T);
+    }
+  }
+
+  /* sombra que a face projeta no chão logo abaixo */
+  for(let y=0; y<ALQ.ALT; y++) for(let x=0; x<ALQ.LARG; x++){
+    if(!ehAberto4(x,y) || !ehParede4(x, y-1)) continue;
+    const g2 = cmx.createLinearGradient(0, y*T, 0, y*T + T*.5);
+    g2.addColorStop(0, 'rgba(0,0,0,.36)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+    cmx.fillStyle = g2;
+    cmx.fillRect(x*T, y*T, T, T*.5);
+  }
+
+  /* placa de metal rebitada: moldura em bisel + 4 rebites por tile */
+  for(let y=0; y<ALQ.ALT; y++) for(let x=0; x<ALQ.LARG; x++){
+    const v = mapa[y*ALQ.LARG + x];
+    if(v !== CHAO && v !== CHAO2) continue;
+    const px2 = x*T, py2 = y*T, h = rndDe(x+7, y+3);
+    cmx.strokeStyle = 'rgba(4,10,8,.5)'; cmx.lineWidth = 3;
+    cmx.strokeRect(px2+2, py2+2, T-4, T-4);
+    cmx.strokeStyle = 'rgba(190,220,205,.10)'; cmx.lineWidth = 1;
+    cmx.strokeRect(px2+3.5, py2+3.5, T-7, T-7);
+    cmx.fillStyle = 'rgba(6,12,10,.55)';
+    [[.14,.14],[.86,.14],[.14,.86],[.86,.86]].forEach(([fx,fy]) => {
+      cmx.beginPath(); cmx.arc(px2+T*fx, py2+T*fy, T*.045, 0, TAU); cmx.fill();
+    });
+    cmx.fillStyle = 'rgba(220,235,220,.28)';
+    [[.13,.13],[.85,.13],[.13,.85],[.85,.85]].forEach(([fx,fy]) => {
+      cmx.beginPath(); cmx.arc(px2+T*fx, py2+T*fy, T*.02, 0, TAU); cmx.fill();
+    });
+    if(h > .78){
+      cmx.fillStyle = 'rgba(150,110,60,.14)';
+      cmx.beginPath();
+      cmx.ellipse(px2+T*(.3+h*.4), py2+T*(.3+rndDe(x+3,y+9)*.4), T*.18, T*.12, h*2, 0, TAU);
+      cmx.fill();
+    }
+  }
+}
+
 const PISO_ALQUIMISTA = {
   id:'alquimista', nome:'O Laboratório do Alquimista',
   bgm:'audio/fase2/trilha-fase2.mp3',    // tapa-buraco: a trilha própria vem do dono (F4-RF-24)
@@ -10251,6 +10406,7 @@ const PISO_ALQUIMISTA = {
     luzAmbiente:'#6fa090'
   },
   construir: construirAlquimista,
+  pintarCache: pintarAlquimistaCache,
   comodos: COMODOS_ALQ,
   spawn:{x:37, y:61},
   trapos:0,
@@ -10321,11 +10477,13 @@ const PISO_ALQUIMISTA = {
     el('cargaGolpe').style.transform = 'scaleY(' + Math.min(1, jog.recarga/.36) + ')';
     anunciarComodoAlq();
     atualizarPortasInternas(dt);
+    atualizarPortaoArena(dt);
   },
   interacao(){ return null; },
   agir(i){},
   desenharCenario(ox, oy){
     desenharPortasAlq(ox, oy);
+    desenharPortaoArena(ox, oy);
   },
   desenharNoJogador(px, py, r, bal){
     if(jog.arma) desenharArmaNaMao(px, py, r);
