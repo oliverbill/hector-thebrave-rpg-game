@@ -10439,7 +10439,8 @@ function desenharPortasAlq(ox, oy){
    desta fase, papel dos espinhos (fase 1) e labaredas (fase 2) */
 let vazamentos = [];
 function criarVazamentos(pontos){
-  vazamentos = pontos.map(p => ({...p, fase:Math.random()*5.2, armado:false}));
+  vazamentos = pontos.map(p => ({...p, fase:Math.random()*5.2, armado:false,
+    ang: p.ang != null ? p.ang : Math.random()*TAU}));
 }
 function faseVazamento(v){
   const c = (tempo + v.fase) % 5.2;
@@ -10452,34 +10453,61 @@ function desenharVazamentos(ox, oy){
   vazamentos.forEach(v => {
     const px = ox + v.x*tam, py = oy + v.y*tam;
     if(foraDaVista(px, py, tam*3)) return;
-    ctx.fillStyle = '#2c3a34';
-    ctx.beginPath(); ctx.ellipse(px, py, tam*.2, tam*.14, 0, 0, TAU); ctx.fill();
-    ctx.strokeStyle = 'rgba(140,170,150,.6)'; ctx.lineWidth = Math.max(1, tam*.04);
-    ctx.beginPath(); ctx.ellipse(px, py, tam*.2, tam*.14, 0, 0, TAU); ctx.stroke();
+    const ang = v.ang || 0, comp = tam*.66, larg = tam*.34;
+    /* o barril de ferro velho, tombado — referência do dono: pilha de
+       tambores enferrujados vazando um brilho verde pela boca aberta */
+    ctx.save();
+    ctx.translate(px, py); ctx.rotate(ang);
+    ctx.fillStyle = 'rgba(0,0,0,.35)';
+    ctx.beginPath(); ctx.ellipse(tam*.03, larg*.55, comp*.5, larg*.26, 0, 0, TAU); ctx.fill();
+    const corpo = ctx.createLinearGradient(-comp/2, 0, comp/2, 0);
+    corpo.addColorStop(0, '#2c2319'); corpo.addColorStop(.5, '#4e3f2c'); corpo.addColorStop(1, '#1e1811');
+    ctx.fillStyle = corpo;
+    if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(-comp/2, -larg/2, comp, larg, larg*.42); ctx.fill(); }
+    else { ctx.fillRect(-comp/2, -larg/2, comp, larg); }
+    ctx.strokeStyle = 'rgba(14,11,8,.6)'; ctx.lineWidth = Math.max(1, tam*.028);
+    [-.26, 0, .26].forEach(fx => {
+      ctx.beginPath(); ctx.moveTo(comp*fx, -larg*.48); ctx.lineTo(comp*fx, larg*.48); ctx.stroke();
+    });
+    ctx.fillStyle = 'rgba(110,150,90,.28)';
+    ctx.beginPath(); ctx.ellipse(-comp*.14, larg*.08, larg*.24, larg*.15, .3, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(150,110,60,.25)';
+    ctx.beginPath(); ctx.ellipse(comp*.1, -larg*.12, larg*.2, larg*.12, -.4, 0, TAU); ctx.fill();
+    // a boca amassada e aberta, na ponta — é dali que vaza
+    ctx.fillStyle = '#0a0b08';
+    ctx.beginPath(); ctx.ellipse(comp/2, 0, larg*.34, larg*.48, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(90,120,80,.35)'; ctx.lineWidth = Math.max(1, tam*.02);
+    ctx.beginPath(); ctx.ellipse(comp/2, 0, larg*.34, larg*.48, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
+
+    const bocaX = px + Math.cos(ang)*comp*.52, bocaY = py + Math.sin(ang)*comp*.52;
     const f = faseVazamento(v);
     if(f.tipo === 'gas'){
-      const r = tam*(.3 + f.p*1.1);
-      ctx.fillStyle = 'rgba(150,220,160,' + (.06 + f.p*.16) + ')';
-      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+      const r = tam*(.26 + f.p*.95);
+      // poça esverdeada crescendo no chão, como a referência
+      ctx.fillStyle = 'rgba(110,225,130,' + (.1 + f.p*.22) + ')';
+      ctx.beginPath(); ctx.ellipse(bocaX, bocaY + larg*.3, r*.75, r*.32, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(120,220,130,' + (.06 + f.p*.16) + ')';
+      ctx.beginPath(); ctx.arc(bocaX, bocaY, r, 0, TAU); ctx.fill();
       for(let i=0;i<3;i++){
         const a = tempo*1.3 + i*2.1 + v.fase;
-        ctx.fillStyle = 'rgba(170,230,180,.18)';
+        ctx.fillStyle = 'rgba(150,240,160,.22)';
         ctx.beginPath();
-        ctx.ellipse(px + Math.cos(a)*r*.4, py + Math.sin(a)*r*.3 - f.p*tam*.3, tam*.14, tam*.1, 0, 0, TAU);
+        ctx.ellipse(bocaX + Math.cos(a)*r*.4, bocaY + Math.sin(a)*r*.3 - f.p*tam*.35, tam*.13, tam*.09, 0, 0, TAU);
         ctx.fill();
       }
     } else if(f.tipo === 'aviso'){
       const pisca = Math.abs(Math.sin(tempo*16));
       ctx.strokeStyle = 'rgba(255,120,40,' + (.4 + .5*pisca) + ')';
       ctx.lineWidth = Math.max(2, tam*.08);
-      ctx.beginPath(); ctx.arc(px, py, tam*1.3, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bocaX, bocaY, tam*1.3, 0, TAU); ctx.stroke();
     } else if(f.tipo === 'estoura'){
       const r = tam*1.3*(1 - f.p*.2);
       ctx.fillStyle = 'rgba(255,150,50,' + (.5*(1 - f.p)) + ')';
-      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.arc(bocaX, bocaY, r, 0, TAU); ctx.fill();
       ctx.strokeStyle = 'rgba(255,200,90,' + (.8*(1 - f.p)) + ')';
       ctx.lineWidth = Math.max(2, tam*.1);
-      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(bocaX, bocaY, r, 0, TAU); ctx.stroke();
     }
   });
 }
@@ -10935,7 +10963,14 @@ const PISO_ALQUIMISTA = {
     criarFrascosAntidoto();
     criarInjecoesArena();
     /* vazamento de gás: o obstáculo cíclico mora na sala da fornalha (F4-RF-03) */
-    criarVazamentos([{x:20, y:6}, {x:27, y:6}, {x:23, y:14}]);
+    /* espalhados pelo piso inteiro, não só na fornalha — barris velhos
+       largados em qualquer canto, cada um com sua própria inclinação */
+    criarVazamentos([
+      {x:19, y:5},    {x:28, y:15},                  // sala da fornalha, cantos opostos
+      {x:10, y:40},   {x:33, y:40},                   // corredor sul
+      {x:34, y:30},                                   // cela de experimentos
+      {x:5,  y:30}                                    // estufa de ingredientes
+    ]);
     /* homúnculo: um por região-chave, nunca ratazana/barata de novo (F4-RF-15).
        `casa` prende cada um ao próprio cômodo (prenderNaCasa) — sem isso ele
        perseguia o jogador porta afora e virava problema do piso inteiro */
