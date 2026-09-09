@@ -10274,7 +10274,7 @@ const PISO_FUNERAL = {
    ================================================================ */
 
 const ALQ = {                      // geografia do piso (planta: 3 salas ao norte, salão central, 2 salas ao sul, depósito + arena mais ao fundo, escada de chegada)
-  LARG:44, ALT:64,
+  LARG:44, ALT:73,   // +9 linhas: a sala oculta da lanterna vive num chão novo, sem risco de vazar pra sala nenhuma
   /* soleira SELADA da Sala de Experimentos (F4-RF-11): 2 tiles de PAREDE no
      corredor sul, x30..31/y42 — abre quando os 3 informantes forem ouvidos
      E os 3 reagentes coletados, como a cova do piso 3 */
@@ -10293,7 +10293,8 @@ const COMODOS_ALQ = [
   {x1:31, y1:27, x2:42, y2:38, nome:'A cela de experimentos',  sub:'o que deu errado fica trancado aqui'},
   {x1:3,  y1:43, x2:19, y2:50, nome:'O depósito de barris',    sub:'prateleiras e reagentes instáveis, sem saída fácil'},
   {x1:23, y1:43, x2:41, y2:56, nome:'A sala de experimentos',  sub:'aqui ele testa nos vivos'},
-  {x1:32, y1:59, x2:42, y2:63, nome:'A escada de chegada',     sub:'as salas de funeral ficaram lá embaixo'}
+  {x1:32, y1:59, x2:42, y2:63, nome:'A escada de chegada',     sub:'as salas de funeral ficaram lá embaixo'},
+  {x1:15, y1:66, x2:30, y2:72, nome:'A sala oculta',           sub:'alguém escondeu isso bem fundo — e por um bom motivo'}
 ];
 function anunciarComodoAlq(){
   for(const c of COMODOS_ALQ){
@@ -10340,6 +10341,15 @@ function construirAlquimista(){
   /* ---- corredor sul, ligando estufa e cela ao depósito e à arena ---- */
   cavar(3,39,43,41);            // vai até x43: alcança o desvio leste (abaixo)
   cavar(3,42,4,42);             // corredor -> depósito (primeira cela do labirinto)
+  /* SALA OCULTA da lanterna (pedido do dono, 09/09): a soleira (21,42)
+     fica PAREDE até acender — dali um corredor comprido desce por chão
+     que não existia antes (o piso cresceu de 64 pra 73 linhas só pra
+     isso), sem encostar em nenhuma sala vizinha. No fundo: o puzzle das
+     poções e a cela da criança presa. */
+  cavar(21,43,21,65);
+  cavar(15,66,30,70);
+  cavar(24,71,28,71,GRADE);     // a grade da cela
+  cavar(24,72,28,72,CHAO2);     // dentro da cela — a criança fica aqui
   /* a soleira da Sala de Experimentos (ALQ.PORTA, x30-31/y42) fica SELADA —
      só abre com os 3 informantes ouvidos e os 3 reagentes coletados
      (trava dupla, F4-RF-11); os tiles viram CHAO em abrirSalaExperimentos() */
@@ -10521,7 +10531,10 @@ function desenharAjudantesOficina(ox, oy){
    de parede vira CHAO — libera o nicho com o antídoto bônus */
 let fornalhasApagadas = [];
 function criarFornalhasApagadas(){
-  fornalhasApagadas = [{x:12, y:16, gx:12, gy:16, acesa:false}];
+  fornalhasApagadas = [
+    {x:12, y:16, gx:12, gy:16, acesa:false},
+    {x:21, y:42, gx:21, gy:42, acesa:false}   // a soleira da sala oculta
+  ];
 }
 function desenharFornalhasApagadas(ox, oy){
   fornalhasApagadas.forEach(f => {
@@ -10557,6 +10570,70 @@ function acenderFornalha(f){
   tocarSfx('audio/fase4/sons/fornalha-acendendo-1.mp3', 1, sTrapo);
   tremor = 6;
   avisar('A fornalha acende', 'um nicho se abre na parede');
+}
+
+/* SALA OCULTA: puzzle de poções + a criança presa (pedido do dono, 09/09).
+   3 potes, cada um cicla entre 3 cores; a placa ao lado mostra a ordem
+   certa sempre visível — não é adivinhação, é copiar o que já está
+   pintado na parede. Acertar destrava a fala da criança. */
+const CORES_POTE = ['#c0392b', '#2e9e5b', '#2980b9'];   // vermelho, verde, azul
+const SOLUCAO_POTES = [1, 2, 0];                        // verde, azul, vermelho
+let potesPuzzle = [], celaCriancaSolta = false;
+function criarPotesPuzzle(){
+  potesPuzzle = [{x:19, y:68, cor:0}, {x:22, y:68, cor:0}, {x:25, y:68, cor:0}];
+  celaCriancaSolta = false;
+}
+function potesResolvidos(){
+  return potesPuzzle.every((p, i) => p.cor === SOLUCAO_POTES[i]);
+}
+const imgCriancaPresa = new Image(); imgCriancaPresa.src = 'img/fase4/crianca-presa.png';
+function desenharSalaOculta(ox, oy){
+  // a placa com a dica: as 3 cores certas, sempre visíveis — copiar, não adivinhar
+  const ppx = ox + 19*tam, ppy = oy + 66.4*tam;
+  if(!foraDaVista(ppx, ppy, tam*4)){
+    ctx.fillStyle = 'rgba(20,16,10,.72)';
+    ctx.fillRect(ppx - tam*.5, ppy - tam*.32, tam*4.5, tam*.64);
+    ctx.strokeStyle = 'rgba(120,100,70,.6)'; ctx.lineWidth = Math.max(1, tam*.03);
+    ctx.strokeRect(ppx - tam*.5, ppy - tam*.32, tam*4.5, tam*.64);
+    SOLUCAO_POTES.forEach((c, i) => {
+      ctx.fillStyle = CORES_POTE[c];
+      ctx.beginPath(); ctx.arc(ppx + i*tam*1.15, ppy, tam*.2, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = Math.max(1, tam*.03); ctx.stroke();
+    });
+  }
+  potesPuzzle.forEach(p => {
+    const px = ox + p.x*tam, py = oy + p.y*tam;
+    if(foraDaVista(px, py, tam*2)) return;
+    ctx.fillStyle = 'rgba(0,0,0,.32)';
+    ctx.beginPath(); ctx.ellipse(px, py + tam*.24, tam*.22, tam*.08, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#3a3226';
+    ctx.fillRect(px - tam*.17, py - tam*.02, tam*.34, tam*.28);
+    ctx.fillStyle = CORES_POTE[p.cor];
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.14, tam*.16, tam*.22, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.55)'; ctx.lineWidth = Math.max(1, tam*.03);
+    ctx.beginPath(); ctx.ellipse(px, py - tam*.14, tam*.16, tam*.22, 0, 0, TAU); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.beginPath(); ctx.ellipse(px - tam*.05, py - tam*.2, tam*.04, tam*.08, 0, 0, TAU); ctx.fill();
+  });
+  desenharCriancaPresa(ox, oy);
+}
+function desenharCriancaPresa(ox, oy){
+  const px = ox + 26*tam, py = oy + 72.6*tam;
+  if(foraDaVista(px, py, tam*2)) return;
+  const pronta = imgCriancaPresa.complete && imgCriancaPresa.naturalWidth > 0;
+  const alt = (imgJogador.naturalWidth > 0
+    ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2) * .82;
+  ctx.fillStyle = 'rgba(0,0,0,.3)';
+  ctx.beginPath(); ctx.ellipse(px, py + alt*.04, alt*.22, alt*.08, 0, 0, TAU); ctx.fill();
+  if(pronta){
+    const lar = imgCriancaPresa.naturalWidth*(alt/imgCriancaPresa.naturalHeight);
+    ctx.drawImage(imgCriancaPresa, px - lar/2, py - alt, lar, alt);
+  }
+  if(!celaCriancaSolta){
+    // a grade, por cima da criança — ela fica atrás
+    ctx.fillStyle = '#1b1622';
+    for(let k=0;k<4;k++) ctx.fillRect(px - tam*1.1 + tam*(.15 + k*.55), py - alt*1.05, tam*.09, alt*1.05);
+  }
 }
 let vazamentos = [];
 function criarVazamentos(pontos){
@@ -11118,6 +11195,7 @@ const PISO_ALQUIMISTA = {
     ]);
     criarAjudantesOficina();   // o coadjuvante que circula pela oficina de bancadas
     criarFornalhasApagadas();  // F4-RF-06: a Lanterna dos Mortos acende, o nicho abre
+    criarPotesPuzzle();        // a sala oculta: puzzle de poções + a criança presa
     /* a Lanterna não é arma nem consumível — não tem o que "usar" na bolsa,
        ela só precisa estar no inventário pra ACENDER funcionar perto da
        fornalha. Garantida aqui em vez de confiar só no auto-empréstimo dos
@@ -11222,6 +11300,12 @@ const PISO_ALQUIMISTA = {
     if(etapa !== 'livre') return null;
     const fApagada = fornalhasApagadas.find(f => !f.acesa && Math.hypot(f.x-jog.x, f.y-jog.y) < 1.4);
     if(fApagada) return {tipo:'fornalha', rotulo:'ACENDER', icone:'✦', alvo:fApagada};
+    const pote = potesPuzzle.find(p => Math.hypot(p.x-jog.x, p.y-jog.y) < 1.0);
+    if(pote) return {tipo:'pote', rotulo:'GIRAR', icone:'⟳', alvo:pote};
+    if(!celaCriancaSolta && potesResolvidos() && Math.hypot(26-jog.x, 71.5-jog.y) < 1.8)
+      return {tipo:'soltarCrianca', rotulo:'LIBERTAR', icone:'⚷'};
+    if(celaCriancaSolta && Math.hypot(26-jog.x, 71.5-jog.y) < 1.8)
+      return {tipo:'falarCrianca', rotulo:'FALAR', icone:'❝'};
     if(!portaoArena || portaoArena.aberta) return null;
     if(Math.hypot(ALQ.PORTA.x + ALQ.PORTA.larg/2 - jog.x, ALQ.PORTA.y + 1 - jog.y) < 2.6)
       return {tipo:'arena', rotulo:'ABRIR', icone:'⇧'};
@@ -11232,6 +11316,23 @@ const PISO_ALQUIMISTA = {
       const temLanterna = inventario.some(it => it.id === 'lanterna-mortos');
       if(!temLanterna){ avisar('Fria demais', 'precisa da Lanterna dos Mortos pra acender'); return; }
       acenderFornalha(i.alvo);
+      return;
+    }
+    if(i.tipo === 'pote'){
+      i.alvo.cor = (i.alvo.cor + 1) % CORES_POTE.length;
+      sTrapo();
+      if(potesResolvidos()){ sPortao(); avisar('As cores batem', 'algo destrava na cela'); }
+      return;
+    }
+    if(i.tipo === 'soltarCrianca'){
+      celaCriancaSolta = true;
+      sPortao(); tremor = 4;
+      avisar('A criança está livre', 'ela te olha em silêncio, sem acreditar ainda');
+      return;
+    }
+    if(i.tipo === 'falarCrianca'){
+      abrirFala({nome:'A Criança', retrato:'img/fase4/crianca-presa.png',
+        falas:['(as falas dela ainda não foram gravadas)']}, () => {});
       return;
     }
     if(i.tipo !== 'arena') return;
@@ -11279,6 +11380,7 @@ const PISO_ALQUIMISTA = {
     desenharHomunculos(ox, oy);
     desenharAjudantesOficina(ox, oy);
     desenharFornalhasApagadas(ox, oy);
+    desenharSalaOculta(ox, oy);
     desenharVazamentos(ox, oy);
     desenharPortasAlq(ox, oy);
     desenharPortaoArena(ox, oy);
