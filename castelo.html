@@ -10572,35 +10572,132 @@ function acenderFornalha(f){
   avisar('A fornalha acende', 'um nicho se abre na parede');
 }
 
-/* SALA OCULTA: puzzle de poções + a criança presa (pedido do dono, 09/09).
-   3 potes, cada um cicla entre 3 cores; a placa ao lado mostra a ordem
-   certa sempre visível — não é adivinhação, é copiar o que já está
-   pintado na parede. Acertar destrava a fala da criança. */
+/* SALA OCULTA: puzzle de poções + o menino preso (pedido do dono, 09/09).
+   Os 3 potes ficam NA PRATELEIRA (arte aprovada, prateleira-1) e ciclam
+   entre 3 cores. NÃO há gabarito — o jogador descobre a combinação
+   testando a cela: cada tentativa diz quantas poções borbulham (sem dizer
+   quais), e com as 3 certas a cela abre e o menino passa a segui-lo. */
 const CORES_POTE = ['#c0392b', '#2e9e5b', '#2980b9'];   // vermelho, verde, azul
 const SOLUCAO_POTES = [1, 2, 0];                        // verde, azul, vermelho
 let potesPuzzle = [], celaCriancaSolta = false;
+let menino = null;                                      // vira {x,y,...} quando o piso monta
 function criarPotesPuzzle(){
-  potesPuzzle = [{x:19, y:68, cor:0}, {x:22, y:68, cor:0}, {x:25, y:68, cor:0}];
+  potesPuzzle = [{x:20.5, y:67, cor:0}, {x:22.2, y:67, cor:0}, {x:23.9, y:67, cor:0}];
   celaCriancaSolta = false;
+  menino = {x:26, y:72.3, vx:0, vy:0, raio:.26, passo:0, fase:Math.random()*TAU, ang:-Math.PI/2};
 }
-function potesResolvidos(){
-  return potesPuzzle.every((p, i) => p.cor === SOLUCAO_POTES[i]);
+function potesCertos(){
+  return potesPuzzle.filter((p, i) => p.cor === SOLUCAO_POTES[i]).length;
 }
 const imgCriancaPresa = new Image(); imgCriancaPresa.src = 'img/fase4/crianca-presa.png';
-function desenharSalaOculta(ox, oy){
-  // a placa com a dica: as 3 cores certas, sempre visíveis — copiar, não adivinhar
-  const ppx = ox + 19*tam, ppy = oy + 66.4*tam;
-  if(!foraDaVista(ppx, ppy, tam*4)){
-    ctx.fillStyle = 'rgba(20,16,10,.72)';
-    ctx.fillRect(ppx - tam*.5, ppy - tam*.32, tam*4.5, tam*.64);
-    ctx.strokeStyle = 'rgba(120,100,70,.6)'; ctx.lineWidth = Math.max(1, tam*.03);
-    ctx.strokeRect(ppx - tam*.5, ppy - tam*.32, tam*4.5, tam*.64);
-    SOLUCAO_POTES.forEach((c, i) => {
-      ctx.fillStyle = CORES_POTE[c];
-      ctx.beginPath(); ctx.arc(ppx + i*tam*1.15, ppy, tam*.2, 0, TAU); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,.5)'; ctx.lineWidth = Math.max(1, tam*.03); ctx.stroke();
-    });
+const imgPrateleira = new Image(); imgPrateleira.src = 'img/fase4/prateleira-sala.jpg';
+const imgCelaMenino = new Image(); imgCelaMenino.src = 'img/fase4/cela-menino-5.jpg';
+/* o menino fatiado como o jogador: tronco + braços + pernas que balançam */
+let fatiasMenino = null;
+function montarFatiasMenino(){
+  const im = imgCriancaPresa;
+  const iw = im.naturalWidth, ih = im.naturalHeight;
+  const corte = Math.round(ih*.62), ombro = Math.round(ih*.33);
+  const cv = (sx,sy,sw,sh) => {
+    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    c.getContext('2d').drawImage(im, sx, sy, sw, sh, 0, 0, sw, sh);
+    return c;
+  };
+  const larE = Math.round(iw*.41), x0D = Math.round(iw*.69);
+  const tronco = cv(0, 0, iw, corte + 2);
+  const tcx2 = tronco.getContext('2d');
+  tcx2.clearRect(0, ombro, larE, tronco.height - ombro);
+  tcx2.clearRect(x0D, ombro, iw - x0D, tronco.height - ombro);
+  fatiasMenino = {
+    corte, ombro, x0D,
+    tronco,
+    bracoE: cv(0, ombro, larE, corte - ombro),
+    bracoD: cv(x0D, ombro, iw - x0D, corte - ombro),
+    pernaE: cv(0, corte, Math.ceil(iw/2), ih - corte),
+    pernaD: cv(Math.floor(iw/2), corte, iw - Math.floor(iw/2), ih - corte)
+  };
+}
+function atualizarMenino(dt){
+  if(!menino) return;
+  menino.fase += dt;
+  if(!celaCriancaSolta) return;              // preso: só respira
+  const dx = jog.x - menino.x, dy = jog.y - menino.y, d = Math.hypot(dx, dy);
+  if(d > 1.25){
+    const vel = Math.min(3.4, 2.2 + d*.35);  // aperta o passo se ficar pra trás
+    menino.vx += (dx/d*vel - menino.vx)*Math.min(1, dt*6);
+    menino.vy += (dy/d*vel - menino.vy)*Math.min(1, dt*6);
+  } else {
+    menino.vx *= .78; menino.vy *= .78;
   }
+  mover(menino, menino.vx*dt, menino.vy*dt);
+  menino.passo += dt*Math.min(1, Math.hypot(menino.vx, menino.vy)/3.4)*3.2;
+  if(Math.abs(menino.vx) > .12) menino.ang = menino.vx < 0 ? Math.PI : 0;
+}
+function desenharMenino(ox, oy){
+  if(!menino) return;
+  const im = imgCriancaPresa;
+  if(!(im.complete && im.naturalWidth > 0)) return;
+  if(!fatiasMenino) montarFatiasMenino();
+  const px = ox + menino.x*tam, py = oy + menino.y*tam, r = tam*.26;
+  if(foraDaVista(px, py, tam*2.5)) return;
+  const f = fatiasMenino;
+  const iw = im.naturalWidth, ih = im.naturalHeight;
+  const altJog = imgJogador.naturalWidth > 0
+    ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2;
+  const alt = altJog*.82, esc = alt/ih, sW = iw*esc;
+  const mov = Math.min(1, Math.hypot(menino.vx, menino.vy)/3.4);
+  const bal = Math.sin(menino.passo*3.2)*tam*.04*mov;
+  ctx.fillStyle = 'rgba(0,0,0,.32)';
+  ctx.beginPath(); ctx.ellipse(px, py + r*.95, sW*.5, tam*.09, 0, 0, TAU); ctx.fill();
+  ctx.save();
+  const virado = Math.cos(menino.ang) < 0;
+  if(virado){ ctx.translate(px, 0); ctx.scale(-1, 1); ctx.translate(-px, 0); }
+  const base = py + r*.95 + bal;
+  const quadY = base - (ih - f.corte)*esc;
+  // pernas em fases opostas, igual ao jogador
+  const abre = Math.sin(menino.passo*3.2)*.55*mov;
+  const perna = (c, x0, a) => {
+    const pw = c.width*esc, ph = c.height*esc;
+    ctx.save();
+    ctx.translate(x0 + pw/2, quadY);
+    ctx.rotate(a);
+    ctx.drawImage(c, -pw/2, -ph*.08, pw, ph*1.08);
+    ctx.restore();
+  };
+  perna(f.pernaE, px - sW/2, abre);
+  perna(f.pernaD, px - sW/2 + f.pernaE.width*esc, -abre);
+  // braços em fases opostas às pernas do mesmo lado
+  const ombroY = base - (ih - f.ombro)*esc;
+  const braco = (c, x0, pivX, a) => {
+    const bw = c.width*esc, bh = c.height*esc;
+    ctx.save();
+    ctx.translate(px - sW/2 + pivX*esc, ombroY);
+    ctx.rotate(a);
+    ctx.drawImage(c, (x0 - pivX)*esc, -bh*.06, bw, bh*1.06);
+    ctx.restore();
+  };
+  braco(f.bracoE, 0, f.bracoE.width*.7, -abre*.8);
+  braco(f.bracoD, f.x0D, f.x0D + f.bracoD.width*.3, abre*.8);
+  // tronco: respira parado, inclina ao andar
+  const respira = (1-mov)*Math.sin(menino.fase*2.2)*.02;
+  ctx.save();
+  ctx.translate(px, quadY);
+  ctx.rotate(mov*.08);
+  ctx.scale(1 + respira, 1 - respira);
+  ctx.drawImage(f.tronco, -sW/2, -(f.corte + 2)*esc, sW, (f.corte + 2)*esc);
+  ctx.restore();
+  ctx.restore();
+}
+function desenharSalaOculta(ox, oy){
+  /* a prateleira de poções (arte aprovada), de pé contra a parede norte */
+  const pr = imgPrateleira;
+  if(pr.complete && pr.naturalWidth > 0){
+    const w = tam*4.2, h = w*(pr.naturalHeight/pr.naturalWidth);
+    const x0 = ox + 22.2*tam - w/2, y0 = oy + 67.2*tam - h;
+    if(!foraDaVista(x0 + w/2, y0 + h/2, Math.max(w, h)))
+      ctx.drawImage(pr, x0, y0, w, h);
+  }
+  /* os 3 potes do puzzle, assentados na base da prateleira */
   potesPuzzle.forEach(p => {
     const px = ox + p.x*tam, py = oy + p.y*tam;
     if(foraDaVista(px, py, tam*2)) return;
@@ -10615,24 +10712,25 @@ function desenharSalaOculta(ox, oy){
     ctx.fillStyle = 'rgba(255,255,255,.35)';
     ctx.beginPath(); ctx.ellipse(px - tam*.05, py - tam*.2, tam*.04, tam*.08, 0, 0, TAU); ctx.fill();
   });
-  desenharCriancaPresa(ox, oy);
-}
-function desenharCriancaPresa(ox, oy){
-  const px = ox + 26*tam, py = oy + 72.6*tam;
-  if(foraDaVista(px, py, tam*2)) return;
-  const pronta = imgCriancaPresa.complete && imgCriancaPresa.naturalWidth > 0;
-  const alt = (imgJogador.naturalWidth > 0
-    ? imgJogador.naturalHeight*(tam*.9/imgJogador.naturalWidth) : tam*2.2) * .82;
-  ctx.fillStyle = 'rgba(0,0,0,.3)';
-  ctx.beginPath(); ctx.ellipse(px, py + alt*.04, alt*.22, alt*.08, 0, 0, TAU); ctx.fill();
-  if(pronta){
-    const lar = imgCriancaPresa.naturalWidth*(alt/imgCriancaPresa.naturalHeight);
-    ctx.drawImage(imgCriancaPresa, px - lar/2, py - alt, lar, alt);
-  }
+  /* a frente da cela (arte aprovada), o menino visível DENTRO dela, e as
+     barras finas redesenhadas por cima pra ele ler como atrás da grade */
   if(!celaCriancaSolta){
-    // a grade, por cima da criança — ela fica atrás
-    ctx.fillStyle = '#1b1622';
-    for(let k=0;k<4;k++) ctx.fillRect(px - tam*1.1 + tam*(.15 + k*.55), py - alt*1.05, tam*.09, alt*1.05);
+    const ce = imgCelaMenino;
+    if(ce.complete && ce.naturalWidth > 0){
+      const w = tam*5.4, h = w*(ce.naturalHeight/ce.naturalWidth);
+      const x0 = ox + 26.5*tam - w/2, y0 = oy + 72.4*tam - h;
+      if(!foraDaVista(x0 + w/2, y0 + h/2, Math.max(w, h)))
+        ctx.drawImage(ce, x0, y0, w, h);
+    }
+    desenharMenino(ox, oy);
+    const bx = ox + 26*tam, by = oy + 72.4*tam;
+    if(!foraDaVista(bx, by, tam*3)){
+      ctx.fillStyle = 'rgba(16,22,18,.88)';
+      for(let k=0;k<5;k++) ctx.fillRect(bx - tam*1.35 + k*tam*.62, by - tam*2.3, tam*.09, tam*2.3);
+      ctx.fillRect(bx - tam*1.35, by - tam*1.5, tam*2.6, tam*.08);
+    }
+  } else {
+    desenharMenino(ox, oy);
   }
 }
 let vazamentos = [];
@@ -11227,6 +11325,7 @@ const PISO_ALQUIMISTA = {
     atualizarPortaoArena(dt);
     atualizarHomunculos(dt);
     atualizarAjudantesOficina(dt);
+    atualizarMenino(dt);
     /* o fogo do arremesso queima quem pisar — machucar() já tem o próprio
        cooldown (jog.invul), então parado ali dói umas duas vezes por segundo */
     fogosArena.forEach(fo => {
@@ -11302,9 +11401,9 @@ const PISO_ALQUIMISTA = {
     if(fApagada) return {tipo:'fornalha', rotulo:'ACENDER', icone:'✦', alvo:fApagada};
     const pote = potesPuzzle.find(p => Math.hypot(p.x-jog.x, p.y-jog.y) < 1.0);
     if(pote) return {tipo:'pote', rotulo:'GIRAR', icone:'⟳', alvo:pote};
-    if(!celaCriancaSolta && potesResolvidos() && Math.hypot(26-jog.x, 71.5-jog.y) < 1.8)
-      return {tipo:'soltarCrianca', rotulo:'LIBERTAR', icone:'⚷'};
-    if(celaCriancaSolta && Math.hypot(26-jog.x, 71.5-jog.y) < 1.8)
+    if(!celaCriancaSolta && Math.hypot(26-jog.x, 70.5-jog.y) < 1.8)
+      return {tipo:'testarCela', rotulo:'TESTAR', icone:'⚷'};
+    if(celaCriancaSolta && menino && Math.hypot(menino.x-jog.x, menino.y-jog.y) < 1.6)
       return {tipo:'falarCrianca', rotulo:'FALAR', icone:'❝'};
     if(!portaoArena || portaoArena.aberta) return null;
     if(Math.hypot(ALQ.PORTA.x + ALQ.PORTA.larg/2 - jog.x, ALQ.PORTA.y + 1 - jog.y) < 2.6)
@@ -11321,13 +11420,25 @@ const PISO_ALQUIMISTA = {
     if(i.tipo === 'pote'){
       i.alvo.cor = (i.alvo.cor + 1) % CORES_POTE.length;
       sTrapo();
-      if(potesResolvidos()){ sPortao(); avisar('As cores batem', 'algo destrava na cela'); }
       return;
     }
-    if(i.tipo === 'soltarCrianca'){
-      celaCriancaSolta = true;
-      sPortao(); tremor = 4;
-      avisar('A criança está livre', 'ela te olha em silêncio, sem acreditar ainda');
+    /* SEM gabarito: o jogador testa a cela e recebe só a contagem de
+       poções que borbulham — descobre a combinação por dedução */
+    if(i.tipo === 'testarCela'){
+      const certos = potesCertos();
+      if(certos === 3){
+        celaCriancaSolta = true;
+        for(let x = 24; x <= 28; x++) mapa[idx(x, 71)] = CHAO;
+        desenharCache();
+        sPortao(); tremor = 4;
+        avisar('A cela se abre', 'o menino corre pra perto de você');
+      } else {
+        sPortaoTravado();
+        avisar('Nada se abre',
+          certos === 0 ? 'nenhuma poção reage'
+          : certos === 1 ? 'uma poção borbulha...'
+          : 'duas poções borbulham...');
+      }
       return;
     }
     if(i.tipo === 'falarCrianca'){
