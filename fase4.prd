@@ -290,6 +290,20 @@ Açougueiro e Coveiro. Ver §8.
   do piso; mais fornalhas apagadas (uma por cômodo, por exemplo) ficam pra quando a
   decoração da etapa 8 entrar. O jogador entra no piso já com a Lanterna garantida
   (`aoIniciar` chama `adicionarAoInventario`), não depende só do empréstimo entre pisos.
+  Ela também aparece sempre desenhada na mão direita do jogador (`desenharLanternaNaMao`,
+  pedido do dono) — não é item de bolsa, não tem "usar".
+
+**Sala oculta com puzzle de poções e uma criança presa** (pedido do dono, 09/09, fora do
+questionário original — não tem F4-RF ainda, considerar quando o PRD for revisado).
+Segunda soleira acesa pela Lanterna, no corredor sul (21,42), abre um corredor comprido até
+uma sala nova ao sul de tudo (o piso cresceu de `ALT:64` pra `ALT:73` só pra isso, em chão
+que não existia antes — zero risco de vazar geometria). Dentro: 3 potes que ciclam entre
+vermelho/verde/azul (`potesPuzzle`, botão GIRAR), uma placa sempre visível com a combinação
+certa (`SOLUCAO_POTES`, hoje `[verde,azul,vermelho]` — não é adivinhação), e a criança presa
+atrás de uma `GRADE` de verdade. Acertar libera LIBERTAR; libertar destrava FALAR (falas
+ainda sem texto/gravação — hoje sai um placeholder). O tile `GRADE` continua bloqueando
+depois de "libertada": ela não caminha pra fora, só passa a conversar — funcional, mas pode
+ler como inconsistente pra quem espera vê-la sair da cela.
 - **Coadjuvantes: só a oficina tem** (1 ajudante circulando 3 postos). Fornalha, estúdio,
   estufa, cela e depósito ainda não têm ninguém — cada um pede sua própria leva de imagens
   (etapa 2/3) antes de instalar.
