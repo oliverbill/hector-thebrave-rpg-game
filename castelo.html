@@ -10589,6 +10589,13 @@ function criarPotesPuzzle(){
 function potesCertos(){
   return potesPuzzle.filter((p, i) => p.cor === SOLUCAO_POTES[i]).length;
 }
+function abrirCelaMenino(){
+  celaCriancaSolta = true;
+  for(let x = 24; x <= 28; x++) mapa[idx(x, 71)] = CHAO;
+  desenharCache();
+  sPortao(); tremor = 4;
+  avisar('A cela se abre', 'o menino corre pra perto de você');
+}
 const imgCriancaPresa = new Image(); imgCriancaPresa.src = 'img/fase4/crianca-presa.png';
 const imgPrateleira = new Image(); imgPrateleira.src = 'img/fase4/prateleira-sala.jpg';
 const imgCelaMenino = new Image(); imgCelaMenino.src = 'img/fase4/cela-menino-5.jpg';
@@ -11420,25 +11427,20 @@ const PISO_ALQUIMISTA = {
     if(i.tipo === 'pote'){
       i.alvo.cor = (i.alvo.cor + 1) % CORES_POTE.length;
       sTrapo();
+      /* combinação certa abre a cela NA HORA (pedido do dono) — nada de
+         ir até a cela apertar TESTAR depois de acertar */
+      if(!celaCriancaSolta && potesCertos() === 3) abrirCelaMenino();
       return;
     }
-    /* SEM gabarito: o jogador testa a cela e recebe só a contagem de
-       poções que borbulham — descobre a combinação por dedução */
+    /* SEM gabarito: testar a cela é a dica opcional — responde só a
+       contagem de poções que borbulham, e o jogador deduz o resto */
     if(i.tipo === 'testarCela'){
       const certos = potesCertos();
-      if(certos === 3){
-        celaCriancaSolta = true;
-        for(let x = 24; x <= 28; x++) mapa[idx(x, 71)] = CHAO;
-        desenharCache();
-        sPortao(); tremor = 4;
-        avisar('A cela se abre', 'o menino corre pra perto de você');
-      } else {
-        sPortaoTravado();
-        avisar('Nada se abre',
-          certos === 0 ? 'nenhuma poção reage'
-          : certos === 1 ? 'uma poção borbulha...'
-          : 'duas poções borbulham...');
-      }
+      sPortaoTravado();
+      avisar('Nada se abre',
+        certos === 0 ? 'nenhuma poção reage'
+        : certos === 1 ? 'uma poção borbulha...'
+        : 'duas poções borbulham...');
       return;
     }
     if(i.tipo === 'falarCrianca'){
